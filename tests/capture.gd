@@ -91,7 +91,7 @@ func _showcase() -> void:
 	var spots := {
 		"04_yard": Vector3(2, 0, -2), "05_shop": Vector3(9, 0, 2), "06_carpentry": Vector3(0, 0, -12),
 		"07_sawmill2_cnc": Vector3(3, 0, -22), "08_factory": Vector3(4, 0, -34), "09_lodge": Vector3(-10, 0, -36),
-		"10_forest": Vector3(-12, 0, -14),
+		"10_forest": Vector3(-12, 0, -14), "12_megasaw": Vector3(11, 0, -10.5), "13_belts": Vector3(4, 0, 2),
 	}
 	for k in spots:
 		world.player.global_position = spots[k]

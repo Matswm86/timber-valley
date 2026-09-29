@@ -64,7 +64,7 @@ func _process(delta: float) -> void:
 						if not shelf.is_empty():
 							shelf.transfer_to(stack)
 							Sfx.play("place", -12.0)
-							_timer = 0.28
+							_timer = 0.16
 					if stack.count() >= want:
 						_bubble.visible = false
 						shop.leave_queue(product, self)
@@ -78,7 +78,7 @@ func _process(delta: float) -> void:
 				if idx == 0:
 					if state != State.TILL:
 						state = State.TILL
-						_timer = 0.35
+						_timer = 0.2
 					_timer -= delta
 					if _timer <= 0.0:
 						shop.pay(self, Game.price_of(product) * stack.count())

@@ -234,7 +234,14 @@ func _process(delta: float) -> void:
 			_take_coins(Game.player)
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0:
-		_spawn_timer = randf_range(1.2, 2.4) / (1.0 + 0.08 * Game.level("prices"))
+		# More stock waiting on the counters brings more shoppers, so counters never clog.
+		var stock := 0
+		for p in shelves:
+			if is_open(p):
+				stock += shelf(p).count()
+		var rush := 1.0 + clampf(stock / 12.0, 0.0, 2.5)
+		var sign := 1.7 if Game.is_unlocked("roadsign") else 1.0
+		_spawn_timer = randf_range(0.9, 1.7) / (rush * sign * (1.0 + 0.1 * Game.level("prices")))
 		_try_spawn()
 
 
@@ -243,7 +250,7 @@ func _try_spawn() -> void:
 	for p in shelves:
 		if not is_open(p):
 			continue
-		if (queues[p] as Array).size() >= 4:
+		if (queues[p] as Array).size() >= 7:
 			continue
 		var w := 3 if not shelf(p).is_empty() else 1
 		for i in w:
@@ -253,10 +260,13 @@ func _try_spawn() -> void:
 	var total := 0
 	for q in queues:
 		total += (queues[q] as Array).size()
-	if total > 12:
+	if total > 34:
 		return
 	var prod: String = options[randi() % options.size()]
-	var n := randi_range(1, 3) if prod == "plank" else randi_range(1, 2)
+	var big := shelf(prod).count() >= 12
+	var n := randi_range(2, 5) if prod == "plank" else randi_range(1, 3)
+	if big:
+		n += randi_range(1, 3)
 	var spawn := to_global(Vector3(road_x, 0, 7.0 + randf() * 3.0))
 	var entry := to_global(Vector3(CUSTOMER_SIDE + 3.0, 0, shelves[prod].z + 1.5))
 	var exit_pt := to_global(Vector3(road_x, 0, till_z - 16.0))

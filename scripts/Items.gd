@@ -4,8 +4,8 @@ extends RefCounted
 ## Item catalogue: how each carried item looks and how tall it stacks.
 
 const DEFS := {
-	"log": {"path": "res://assets/models/nature/log.glb", "scale": 1.5, "rot": Vector3(0, 90, 0), "layer": 0.25, "cell": Vector2(1.1, 0.4)},
-	"plank": {"path": "res://assets/models/survival/resource-planks.glb", "scale": 1.3, "rot": Vector3(0, 90, 0), "layer": 0.13, "cell": Vector2(0.85, 0.52)},
+	"log": {"proc": "log", "path": "", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.31, "cell": Vector2(1.05, 0.36)},
+	"plank": {"proc": "plank", "path": "", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.11, "cell": Vector2(1.0, 0.4)},
 	"chair": {"path": "res://assets/models/furniture/chair.glb", "scale": 1.9, "rot": Vector3(0, 180, 0), "layer": 0.36, "cell": Vector2(0.5, 0.5)},
 	"table": {"path": "res://assets/models/furniture/table.glb", "scale": 1.05, "rot": Vector3(0, 0, 0), "layer": 0.36, "cell": Vector2(0.95, 0.55)},
 	"bookcase": {"path": "res://assets/models/furniture/bookcaseClosed.glb", "scale": 1.25, "rot": Vector3(-90, 0, 0), "layer": 0.34, "cell": Vector2(0.6, 1.15)},
@@ -26,6 +26,9 @@ static func make(type: String) -> Node3D:
 	root.name = type
 	root.set_meta("item", type)
 	var d: Dictionary = DEFS[type]
+	if d.has("proc"):
+		root.add_child(_procedural(str(d.proc)))
+		return root
 	if type == "coin":
 		var mi := MeshInstance3D.new()
 		mi.mesh = _coin()
@@ -37,6 +40,17 @@ static func make(type: String) -> Node3D:
 	root.add_child(_build(info.scene, d))
 	(root.get_child(0) as Node3D).position = info.offset
 	return root
+
+
+static func _procedural(kind: String) -> Node3D:
+	var n := Node3D.new()
+	match kind:
+		"log":
+			Shapes.log_node(n, 0.16, 0.95, Vector3(0, 0.16, 0), Vector3(0, 0, 90))
+		"plank":
+			var mi := Shapes.box_node(n, Vector3(0.95, 0.1, 0.34), Vector3(0, 0.05, 0), Shapes.wood(Color(0.96, 0.76, 0.48), 9.0), 0.03)
+			mi.name = "plank"
+	return n
 
 
 static func _build(scene: PackedScene, d: Dictionary) -> Node3D:

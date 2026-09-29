@@ -30,7 +30,13 @@ const UNLOCKS := [
 	{"id": "jack3", "cost": 900, "req": ["factory"], "title": "North Forest + 2 Lumberjacks", "pad": Vector3(-8.5, 0, -29.0)},
 	{"id": "dock", "cost": 1500, "req": ["factory"], "title": "Truck Loading Dock", "pad": Vector3(13.5, 0, -36)},
 	{"id": "conveyor2", "cost": 1300, "req": ["dock"], "title": "Factory Conveyor", "pad": Vector3(8.0, 0, -41.0)},
-	{"id": "lodge", "cost": 5000, "req": ["conveyor2", "jack3"], "title": "Build the Grand Lodge", "pad": Vector3(-12, 0, -39)},
+	{"id": "roadsign", "cost": 200, "req": ["carpentry"], "title": "Road Sign: More Shoppers", "pad": Vector3(13.0, 0, 9.5)},
+	{"id": "belt_planks", "cost": 350, "req": ["cashier"], "title": "Conveyor: Sawmill to Market", "pad": Vector3(3.2, 0, 9.6)},
+	{"id": "belt_saw2", "cost": 500, "req": ["hauler2"], "title": "Conveyor: Sawmill 2 to Carpentry", "pad": Vector3(-2.6, 0, -18.4)},
+	{"id": "belt_chairs", "cost": 650, "req": ["hauler3", "belt_planks"], "title": "Conveyor: Chairs to Market", "pad": Vector3(8.0, 0, -8.0)},
+	{"id": "megasaw", "cost": 2500, "req": ["factory"], "title": "MEGA Sawmill", "pad": Vector3(11.0, 0, -13.5)},
+	{"id": "belt_mega", "cost": 1000, "req": ["megasaw"], "title": "Conveyor: Mega Sawmill to CNC", "pad": Vector3(9.5, 0, -18.4)},
+	{"id": "lodge", "cost": 6000, "req": ["conveyor2", "jack3", "belt_mega"], "title": "Build the Grand Lodge", "pad": Vector3(-12, 0, -39)},
 ]
 
 var rng := RandomNumberGenerator.new()
@@ -74,6 +80,7 @@ func _ready() -> void:
 	_scatter_deco()
 	_update_ground_uniforms()
 	_bounds()
+	_palisades()
 	Game.unlocked.connect(_on_unlocked)
 	_loading = false
 
@@ -84,8 +91,8 @@ func _environment() -> void:
 	var env := Environment.new()
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
-	sm.sky_top_color = Color(0.36, 0.6, 0.86)
-	sm.sky_horizon_color = Color(0.78, 0.86, 0.9)
+	sm.sky_top_color = Color(0.32, 0.62, 0.95)
+	sm.sky_horizon_color = Color(0.82, 0.9, 0.95)
 	sm.ground_horizon_color = Color(0.78, 0.86, 0.9)
 	sm.ground_bottom_color = Color(0.4, 0.5, 0.4)
 	sm.sun_angle_max = 30.0
@@ -93,29 +100,29 @@ func _environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.85
+	env.ambient_light_energy = 0.75
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.05
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 0.92
 	env.tonemap_white = 6.0
 	env.glow_enabled = true
-	env.glow_intensity = 0.35
-	env.glow_bloom = 0.04
-	env.glow_hdr_threshold = 1.2
+	env.glow_intensity = 0.2
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 1.6
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.75, 0.84, 0.9)
-	env.fog_density = 0.004
+	env.fog_density = 0.0025
 	env.fog_sky_affect = 0.2
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.12
-	env.adjustment_contrast = 1.04
+	env.adjustment_saturation = 1.22
+	env.adjustment_contrast = 1.06
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52, -38, 0)
-	sun.light_color = Color(1.0, 0.95, 0.86)
-	sun.light_energy = 1.35
+	sun.light_color = Color(1.0, 0.93, 0.8)
+	sun.light_energy = 1.45
 	sun.shadow_enabled = true
 	sun.shadow_blur = 1.5
 	sun.shadow_bias = 0.04
@@ -123,7 +130,15 @@ func _environment() -> void:
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	sun.directional_shadow_max_distance = 42.0
 	sun.directional_shadow_blend_splits = true
+	sun.shadow_opacity = 0.85
 	add_child(sun)
+	# Cool fill light from the opposite side keeps shadowed faces readable.
+	var fill := DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-35, 150, 0)
+	fill.light_color = Color(0.7, 0.8, 1.0)
+	fill.light_energy = 0.35
+	fill.shadow_enabled = false
+	add_child(fill)
 
 
 func _ground() -> void:
@@ -140,8 +155,8 @@ func _ground() -> void:
 	detail.width = 256
 	detail.height = 256
 	var fn2 := FastNoiseLite.new()
-	fn2.frequency = 0.09
-	fn2.noise_type = FastNoiseLite.TYPE_CELLULAR
+	fn2.frequency = 0.12
+	fn2.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	detail.noise = fn2
 	ground_mat = ShaderMaterial.new()
 	ground_mat.shader = GROUND_SHADER
@@ -149,6 +164,10 @@ func _ground() -> void:
 	ground_mat.set_shader_parameter("detail_tex", detail)
 	ground_mat.set_shader_parameter("river_x", RIVER_X)
 	ground_mat.set_shader_parameter("river_half", RIVER_HALF)
+	ground_mat.set_shader_parameter("grass_a", Color(0.27, 0.54, 0.14))
+	ground_mat.set_shader_parameter("grass_b", Color(0.38, 0.63, 0.17))
+	ground_mat.set_shader_parameter("dirt", Color(0.86, 0.72, 0.5))
+	ground_mat.set_shader_parameter("dirt_dark", Color(0.78, 0.63, 0.42))
 	var mi := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(160, 170)
@@ -214,7 +233,7 @@ func _base_paths() -> void:
 	paths.append([Vector4(-9, 1, 0, -1.5), 0.8])
 	paths.append([Vector4(2.5, -3.5, 8.5, 3), 0.8])
 	paths.append([Vector4(8.5, -1.2, ROAD_X, -1.2), 0.9])
-	plazas.append(Vector4(0, -4, 4.3, 2.0))
+	plazas.append(Vector4(0, -4, 4.8, 2.2))
 	plazas.append(Vector4(10.5, 2.5, 3.2, 5.6))
 
 
@@ -269,33 +288,22 @@ func _model(path: String, pos: Vector3, scl: float, rot_y: float = 0.0, parent: 
 
 
 func _mat(c: Color, rough: float = 0.8, metal: float = 0.0) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = c
-	m.roughness = rough
-	m.metallic = metal
-	return m
+	return Shapes.mat(c, rough, metal)
 
 
 func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.material_override = mat
-	mi.position = pos
-	mi.rotation_degrees = rot
-	parent.add_child(mi)
-	return mi
+	var r := clampf(minf(size.x, minf(size.y, size.z)) * 0.3, 0.02, 0.12)
+	return Shapes.box_node(parent, size, pos, mat, r, rot)
 
 
 ## Open wooden shed: floor, four posts and a pitched roof.
 func _shed(parent: Node3D, w: float, d: float, h: float, roof: Color) -> void:
-	var wood := _mat(Color(0.74, 0.52, 0.32))
-	var dark := _mat(Color(0.47, 0.31, 0.19))
+	var wood := Shapes.wood(Color(0.86, 0.62, 0.38))
+	var dark := Shapes.wood(Color(0.55, 0.36, 0.22))
 	_box(parent, Vector3(w, 0.2, d), Vector3(0, 0.1, 0), wood)
 	for sx in [-1, 1]:
 		for sz in [-1, 1]:
-			_box(parent, Vector3(0.22, h, 0.22), Vector3(sx * (w * 0.5 - 0.2), h * 0.5, sz * (d * 0.5 - 0.2)), dark)
+			Shapes.log_node(parent, 0.13, h, Vector3(sx * (w * 0.5 - 0.2), h * 0.5, sz * (d * 0.5 - 0.2)), Vector3.ZERO)
 	_box(parent, Vector3(w + 0.2, 0.2, 0.24), Vector3(0, h, -d * 0.5 + 0.2), dark)
 	_box(parent, Vector3(w + 0.2, 0.2, 0.24), Vector3(0, h, d * 0.5 - 0.2), dark)
 	# Lean-to roof over the back half so the machine stays visible from the camera.
@@ -410,9 +418,9 @@ func _border_forest() -> void:
 
 func _scatter_deco() -> void:
 	var sets := [
-		["grass", 420, 2.2, false], ["grass_large", 240, 2.2, false], ["grass_leafs", 160, 2.4, false],
-		["flower_redA", 70, 2.4, false], ["flower_yellowA", 80, 2.4, false], ["flower_yellowB", 60, 2.4, false],
-		["flower_redC", 50, 2.4, false], ["plant_bush", 60, 2.4, true], ["plant_bushDetailed", 50, 2.2, true],
+		["grass", 260, 2.4, false], ["grass_large", 160, 2.4, false], ["grass_leafs", 110, 2.6, false],
+		["flower_redA", 110, 2.6, false], ["flower_yellowA", 120, 2.6, false], ["flower_yellowB", 60, 2.4, false],
+		["flower_redC", 50, 2.4, false], ["plant_bush", 110, 2.8, true], ["plant_bushDetailed", 90, 2.6, true],
 		["rock_smallA", 40, 2.2, true], ["rock_smallC", 40, 2.2, true], ["mushroom_redGroup", 25, 2.2, false],
 		["mushroom_tanGroup", 20, 2.2, false], ["rock_largeA", 10, 2.4, true],
 	]
@@ -474,32 +482,111 @@ func _machine(id: String, pos: Vector3, i_t: String, o_t: String, i_n: int, o_n:
 
 func _build_sawmill1() -> void:
 	var m := _machine("sawmill1", Vector3(0, 0, -4), "log", "plank", 1, 2, 1.0)
-	_dress_sawmill(m, Color(0.78, 0.3, 0.22))
+	_dress_sawmill(m, Color(1.0, 0.45, 0.12))
 	add_child(m)
 
 
-func _dress_sawmill(m: Machine, roof: Color) -> void:
-	_shed(m.body, 3.6, 2.6, 2.3, roof)
+func _dress_sawmill(m: Machine, frame: Color) -> void:
+	m.input.position.x = -3.4
+	m.in_zone.position.x = -3.4
+	m.output.position.x = 3.4
+	m.out_zone.position.x = 3.4
+	var bed := Shapes.mat(Color(0.2, 0.5, 0.86), 0.45)
+	var yellow := Shapes.mat(Color(1.0, 0.76, 0.18), 0.45)
+	var steel := Shapes.mat(Color(0.55, 0.58, 0.62), 0.4, 0.6)
+	_box(m.body, Vector3(4.4, 0.5, 1.15), Vector3(0, 0.25, 0.2), bed)
+	for z in [-0.42, 0.82]:
+		_box(m.body, Vector3(4.5, 0.14, 0.12), Vector3(0, 0.56, z), yellow)
 	var belt := MeshInstance3D.new()
 	var bm := BoxMesh.new()
-	bm.size = Vector3(3.8, 0.14, 0.8)
+	bm.size = Vector3(0.8, 0.05, 4.3)
 	belt.mesh = bm
 	var bmat := ShaderMaterial.new()
 	bmat.shader = Conveyor.BELT_SHADER
-	bmat.set_shader_parameter("length", 3.8)
+	bmat.set_shader_parameter("length", 4.3)
+	bmat.set_shader_parameter("speed", -1.0)
 	belt.material_override = bmat
-	belt.position = Vector3(0, 0.7, 0.2)
+	belt.position = Vector3(0, 0.52, 0.2)
 	belt.rotation_degrees.y = 90
 	m.body.add_child(belt)
-	_box(m.body, Vector3(3.6, 0.5, 0.9), Vector3(0, 0.4, 0.2), _mat(Color(0.35, 0.37, 0.38), 0.5, 0.5))
-	m.add_saw_blade(Vector3(0, 0.95, 0.2), 0.55)
-	_box(m.body, Vector3(0.5, 0.25, 0.25), Vector3(0, 0.95, 0.35), _mat(Color(0.95, 0.68, 0.18), 0.5))
-	m.add_model("res://assets/models/nature/log_stack.glb", Vector3(-1.1, 0.2, -0.85), 2.0)
-	m.add_model("res://assets/models/survival/barrel.glb", Vector3(1.3, 0.2, -0.8), 2.2)
-	m.mouth_in = Vector3(-1.2, 0.9, 0.2)
-	m.mouth_out = Vector3(1.2, 0.85, 0.2)
-	m.add_dust(Vector3(0, 1.0, 0.4), Color(0.93, 0.8, 0.58))
-	m.add_blocker(Vector3(3.6, 2.2, 2.6))
+	for x in [-1.8, 1.8]:
+		for z in [-0.35, 0.75]:
+			_box(m.body, Vector3(0.14, 0.2, 0.14), Vector3(x, 0.05, z), steel)
+	# Stand for the saw motor behind the belt, then the saw itself across the belt.
+	# Frame over the belt holding an upright chainsaw that rips logs into planks.
+	var fc := Shapes.mat(frame, 0.45)
+	for x in [-0.75, 0.75]:
+		_box(m.body, Vector3(0.24, 2.7, 0.3), Vector3(x, 1.35, -0.45), fc)
+	_box(m.body, Vector3(1.8, 0.3, 0.34), Vector3(0, 2.7, -0.45), fc)
+	_box(m.body, Vector3(1.9, 0.08, 0.4), Vector3(0, 2.88, -0.45), yellow)
+	var saw := ChainSaw.new()
+	saw.bar_len = 1.55
+	saw.setup(m, frame)
+	saw.rotation_degrees = Vector3(90, 90, 0)
+	saw.position = Vector3(0, 1.28, 0.2)
+	m.body.add_child(saw)
+	# Warning stripes and a little control box.
+	_box(m.body, Vector3(0.35, 0.5, 0.3), Vector3(1.4, 0.8, -0.75), yellow)
+	_box(m.body, Vector3(0.22, 0.16, 0.05), Vector3(1.4, 0.92, -0.58), Shapes.mat(Color(0.15, 0.8, 0.35), 0.3))
+	var logs := Node3D.new()
+	logs.position = Vector3(-1.2, 0, -1.25)
+	m.body.add_child(logs)
+	for k in 3:
+		Shapes.log_node(logs, 0.17, 1.3, Vector3(0, 0.17, k * 0.36 - 0.36), Vector3(0, 0, 90))
+	Shapes.log_node(logs, 0.17, 1.3, Vector3(0, 0.47, -0.18), Vector3(0, 0, 90))
+	Shapes.log_node(logs, 0.17, 1.3, Vector3(0, 0.47, 0.18), Vector3(0, 0, 90))
+	m.mouth_in = Vector3(-2.0, 0.55, 0.2)
+	m.mouth_out = Vector3(1.9, 0.55, 0.2)
+	m.cut_point = Vector3(0, 0.55, 0.2)
+	m.add_dust(Vector3(0.1, 0.75, 0.3), Color(0.98, 0.78, 0.45))
+	m.dust.amount = 48
+	m.dust.initial_velocity_min = 2.5
+	m.dust.initial_velocity_max = 5.0
+	m.dust.direction = Vector3(0.6, 1, 0.3)
+	m.dust.spread = 50
+	m.dust.gravity = Vector3(0, -9, 0)
+	m.dust.lifetime = 1.0
+	(m.dust.mesh as BoxMesh).size = Vector3(0.09, 0.04, 0.05)
+	m.add_blocker(Vector3(4.4, 1.2, 1.3), Vector3(0, 0, 0.2))
+
+
+## Log palisade fences: rows of upright logs around the valley and behind the first forest.
+func _palisades() -> void:
+	var lines := [
+		[Vector2(-23.2, 15.3), Vector2(14.8, 15.3)],
+		[Vector2(-23.2, -46.6), Vector2(14.8, -46.6)],
+		[Vector2(-23.2, 15.3), Vector2(-23.2, -46.6)],
+		[Vector2(-13.3, -1.5), Vector2(-13.3, 9.5)],
+	]
+	var xforms := []
+	for ln in lines:
+		var a: Vector2 = ln[0]
+		var b: Vector2 = ln[1]
+		var n := int(a.distance_to(b) / 0.31)
+		for k in n + 1:
+			var p := a.lerp(b, float(k) / maxf(n, 1))
+			var hgt := rng.randf_range(0.95, 1.3)
+			var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1, hgt, 1))
+			basis = Basis(Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)).normalized(), rng.randf_range(0, 0.04)) * basis
+			xforms.append(Transform3D(basis, Vector3(p.x, hgt * 0.5, p.y)))
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = Shapes.log_mesh(0.16, 1.0)
+	mm.instance_count = xforms.size()
+	for k in xforms.size():
+		mm.set_instance_transform(k, xforms[k])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.material_override = Shapes.log_material(0.16)
+	add_child(mmi)
+	var sb := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = Vector3(0.4, 2, 11)
+	col.shape = bs
+	sb.position = Vector3(-13.3, 1, 4)
+	sb.add_child(col)
+	add_child(sb)
 
 
 func _build_shop() -> void:
@@ -549,9 +636,9 @@ func _apply_unlock(id: String, animate: bool) -> void:
 			shop.hire_cashier(animate)
 		"sawmill2":
 			var m := _machine("sawmill2", Vector3(-3, 0, -24), "log", "plank", 1, 2, 0.8)
-			_dress_sawmill(m, Color(0.25, 0.5, 0.62))
+			_dress_sawmill(m, Color(0.3, 0.75, 0.3))
 			add_child(m)
-			plazas.append(Vector4(-3, -24, 4.3, 2.0))
+			plazas.append(Vector4(-3, -24, 4.8, 2.2))
 			if animate:
 				Fx.pop_in(m, 0.7)
 		"jack2":
@@ -563,7 +650,7 @@ func _apply_unlock(id: String, animate: bool) -> void:
 			shop.open_shelf("table", animate)
 		"conveyor1":
 			var c := Conveyor.new().setup(machines.sawmill2.output, machines.cnc.input, PackedVector3Array([
-				Vector3(-0.3, 0, -25.6), Vector3(6.3, 0, -25.6), Vector3(6.3, 0, -24.4)]))
+				Vector3(0.4, 0, -25.6), Vector3(6.0, 0, -25.6), Vector3(6.0, 0, -24.4)]))
 			add_child(c)
 			if animate:
 				Fx.pop_in(c, 0.6)
@@ -592,10 +679,53 @@ func _apply_unlock(id: String, animate: bool) -> void:
 			add_child(c)
 			if animate:
 				Fx.pop_in(c, 0.6)
+		"roadsign":
+			var sg := Node3D.new()
+			sg.position = Vector3(15.0, 0, 10.5)
+			add_child(sg)
+			for x in [-0.9, 0.9]:
+				Shapes.log_node(sg, 0.12, 2.6, Vector3(x, 1.3, 0), Vector3.ZERO)
+			_box(sg, Vector3(2.4, 1.1, 0.14), Vector3(0, 2.1, 0), Shapes.wood(Color(0.9, 0.66, 0.4)))
+			var lbl := Label3D.new()
+			lbl.font = Fx.font()
+			lbl.text = "TIMBER\nVALLEY"
+			lbl.font_size = 64
+			lbl.outline_size = 14
+			lbl.modulate = Color(1, 0.96, 0.85)
+			lbl.outline_modulate = Color(0.35, 0.2, 0.08)
+			lbl.pixel_size = 0.006
+			lbl.position = Vector3(0, 2.1, 0.09)
+			sg.add_child(lbl)
+			if animate:
+				Fx.pop_in(sg, 0.6)
+		"belt_planks":
+			_belt(machines.sawmill1.output, shop.shelf("plank"), [Vector3(4.8, 0, -3.8), Vector3(4.8, 0, 6.6), Vector3(9.1, 0, 6.6)], animate)
+		"belt_saw2":
+			_belt(machines.sawmill2.output, machines.carpentry.input, [Vector3(0.4, 0, -22.3), Vector3(0.4, 0, -15.2), Vector3(-0.7, 0, -15.2), Vector3(-0.7, 0, -14.2)], animate)
+		"belt_chairs":
+			_belt(machines.carpentry.output, shop.shelf("chair"), [Vector3(5.9, 0, -12.8), Vector3(5.9, 0, 4.0), Vector3(9.1, 0, 4.0)], animate)
+		"megasaw":
+			var ms := MegaSaw.new().setup()
+			ms.position = Vector3(10.2, 0, -13.2)
+			add_child(ms)
+			machines["megasaw"] = ms
+			plazas.append(Vector4(11.0, -12.6, 5.0, 2.8))
+			if animate:
+				Fx.pop_in(ms, 0.9)
+		"belt_mega":
+			var ms: MegaSaw = machines.megasaw
+			_belt(ms.output, machines.cnc.input, [Vector3(15.1, 0, -12.9), Vector3(15.1, 0, -27.4), Vector3(6.9, 0, -27.4), Vector3(6.9, 0, -24.7)], animate)
 		"lodge":
 			_build_lodge(animate)
 	if not _loading:
 		_update_ground_uniforms()
+
+
+func _belt(src: ItemStack, dst: ItemStack, pts: Array, animate: bool) -> void:
+	var c := Conveyor.new().setup(src, dst, PackedVector3Array(pts))
+	add_child(c)
+	if animate:
+		Fx.pop_in(c, 0.6)
 
 
 func _build_office(animate: bool) -> void:
@@ -852,9 +982,9 @@ func _place_camera(t: float) -> void:
 	var vp := get_viewport().get_visible_rect().size
 	var portrait := vp.y > vp.x
 	camera.keep_aspect = Camera3D.KEEP_WIDTH if portrait else Camera3D.KEEP_HEIGHT
-	camera.fov = 50.0 if portrait else 40.0
+	camera.fov = 45.0 if portrait else 36.0
 	_cam_pos = _cam_pos.lerp(player.global_position, t)
-	var offset := Vector3(0, 11.5, 8.6)
+	var offset := Vector3(0, 8.4, 6.6)
 	camera.global_position = _cam_pos + offset
 	camera.look_at(_cam_pos + Vector3(0, 0.6, 0), Vector3.UP)
 

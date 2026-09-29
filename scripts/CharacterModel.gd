@@ -3,7 +3,7 @@ extends Node3D
 
 ## Kenney mini-character with walk/idle/carry/chop animations and an axe on the right hand.
 
-const SCALE := 2.0
+const SCALE := 2.25
 
 var anim: AnimationPlayer
 var skeleton: Skeleton3D

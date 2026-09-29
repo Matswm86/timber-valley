@@ -1,0 +1,80 @@
+class_name ChainSaw
+extends Node3D
+
+## Big industrial chainsaw: a bar standing across the conveyor with teeth running around it.
+
+const TEETH := 26
+
+var machine: Machine
+var bar_len: float = 1.9
+var bar_h: float = 0.42
+var _teeth: Array[MeshInstance3D] = []
+var _phase: float = 0.0
+var _speed: float = 0.0
+var always_on: bool = false
+
+
+func setup(m: Machine, frame: Color) -> ChainSaw:
+	machine = m
+	var steel := Shapes.mat(Color(0.8, 0.82, 0.85), 0.28, 0.85)
+	var dark := Shapes.mat(Color(0.18, 0.18, 0.2), 0.5, 0.4)
+	# Bar long axis is local Z, height local Y; callers rotate it to stand upright facing the camera.
+	Shapes.box_node(self, Vector3(0.08, bar_h, bar_len), Vector3.ZERO, steel, 0.2)
+	Shapes.box_node(self, Vector3(0.1, bar_h * 0.5, bar_len * 0.9), Vector3.ZERO, Shapes.mat(Color(0.62, 0.64, 0.68), 0.35, 0.8), 0.1)
+	var motor := Shapes.box_node(self, Vector3(0.6, 0.7, 0.55), Vector3(0, 0.0, -bar_len * 0.5 - 0.2), Shapes.mat(frame, 0.45), 0.14)
+	motor.name = "motor"
+	Shapes.box_node(self, Vector3(0.64, 0.12, 0.3), Vector3(0, 0.0, -bar_len * 0.5 - 0.25), dark, 0.05)
+	var tm := BoxMesh.new()
+	tm.size = Vector3(0.1, 0.07, 0.09) * (bar_h / 0.42)
+	for i in TEETH:
+		var t := MeshInstance3D.new()
+		t.mesh = tm
+		t.material_override = dark
+		add_child(t)
+		_teeth.append(t)
+	_place_teeth()
+	return self
+
+
+## Position along the rounded-rectangle outline of the bar, 0..1.
+func _outline(u: float) -> Array:
+	var r := bar_h * 0.5
+	var straight := bar_len - bar_h
+	var total := 2.0 * straight + TAU * r
+	var d := fposmod(u, 1.0) * total
+	if d < straight:
+		return [Vector3(0, r, straight * 0.5 - d), 0.0]
+	d -= straight
+	if d < PI * r:
+		var a := d / r
+		return [Vector3(0, cos(a) * r, -straight * 0.5 - sin(a) * r), a]
+	d -= PI * r
+	if d < straight:
+		return [Vector3(0, -r, -straight * 0.5 + d), PI]
+	d -= straight
+	var a2 := d / r
+	return [Vector3(0, -cos(a2) * r, straight * 0.5 + sin(a2) * r), PI + a2]
+
+
+func _place_teeth() -> void:
+	for i in _teeth.size():
+		var o := _outline(_phase + float(i) / TEETH)
+		var p: Vector3 = o[0]
+		_teeth[i].position = p * 1.08
+		_teeth[i].rotation.x = -float(o[1])
+
+
+func _process(delta: float) -> void:
+	var target := 1.0 if always_on or (machine != null and machine._busy) else 0.0
+	_speed = lerpf(_speed, target * Game.machine_speed(), 1.0 - exp(-5.0 * delta))
+	if _speed > 0.01:
+		_phase += delta * _speed * 0.9
+		_place_teeth()
+		position.y = _base_y + sin(Time.get_ticks_msec() * 0.06) * 0.008 * _speed
+
+
+var _base_y: float = 0.0
+
+
+func _ready() -> void:
+	_base_y = position.y

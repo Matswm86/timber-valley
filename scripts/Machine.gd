@@ -19,6 +19,8 @@ var smoke: CPUParticles3D
 var body: Node3D
 var mouth_in := Vector3(-0.9, 1.0, 0)
 var mouth_out := Vector3(0.9, 0.8, 0)
+## When set, input items slide along the belt to this point while being processed.
+var cut_point: Vector3 = Vector3.INF
 var _busy: bool = false
 var _spin: float = 0.0
 var _t: float = 0.0
@@ -197,7 +199,7 @@ func _start_cycle() -> void:
 		var it := input.pop()
 		if it == null:
 			break
-		_fly_and_free(it, to_global(mouth_in))
+		_fly_and_free(it, to_global(mouth_in), i)
 
 
 func _finish_cycle() -> void:
@@ -206,11 +208,11 @@ func _finish_cycle() -> void:
 	for i in out_per_cycle:
 		var it := Items.make(out_type)
 		add_child(it)
-		it.position = mouth_out + Vector3(0, 0.1 * i, 0)
+		it.position = (cut_point if cut_point != Vector3.INF else mouth_out) + Vector3(0.3, 0.1 * i, 0)
 		output.push(it)
 
 
-func _fly_and_free(it: Node3D, target: Vector3) -> void:
+func _fly_and_free(it: Node3D, target: Vector3, idx: int = 0) -> void:
 	if it.has_meta("tw"):
 		var old: Tween = it.get_meta("tw")
 		if old and old.is_valid():
@@ -221,5 +223,13 @@ func _fly_and_free(it: Node3D, target: Vector3) -> void:
 	it.global_transform = gxf
 	var tw := it.create_tween()
 	tw.tween_property(it, "global_position", target, 0.25).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_property(it, "scale", Vector3.ONE * 0.4, 0.25)
+	if cut_point != Vector3.INF:
+		# Line up with the belt, then ride into the saw.
+		tw.parallel().tween_property(it, "global_rotation", Vector3(0, 0, 0), 0.25)
+		var slide := cycle_time / Game.machine_speed() * 0.85
+		tw.tween_interval(idx * 0.1)
+		tw.tween_property(it, "global_position", to_global(cut_point), slide)
+		tw.tween_property(it, "scale", Vector3(0.2, 1.0, 1.0), 0.12)
+	else:
+		tw.parallel().tween_property(it, "scale", Vector3.ONE * 0.4, 0.25)
 	tw.tween_callback(it.queue_free)

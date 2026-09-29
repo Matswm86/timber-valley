@@ -11,6 +11,9 @@ var paid_amount: int = 0
 var title: String
 var zone: Zone
 var _price: Label3D
+var _fill: MeshInstance3D
+var _bar_w: float = 2.0
+var _tile: MeshInstance3D
 var _arrow: MeshInstance3D
 var _t: float = 0.0
 
@@ -36,6 +39,15 @@ func setup(pad_id: String, price: int, text: String, size: Vector2 = Vector2(2.6
 	t.width = 700
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(t)
+	# Dark rounded tile with a plus sign and a green price bar along the front edge.
+	zone.marker.visible = false
+	_tile = Shapes.box_node(self, Vector3(size.x, 0.1, size.y), Vector3(0, 0.05, 0), Shapes.mat(Color(0.28, 0.22, 0.19), 0.8), 0.25)
+	var plus := Shapes.mat(Color(0.95, 0.92, 0.86), 0.6)
+	Shapes.box_node(self, Vector3(0.9, 0.06, 0.2), Vector3(0, 0.12, -0.25), plus, 0.08)
+	Shapes.box_node(self, Vector3(0.2, 0.06, 0.9), Vector3(0, 0.12, -0.25), plus, 0.08)
+	_bar_w = size.x * 0.86
+	Shapes.box_node(self, Vector3(_bar_w, 0.08, 0.62), Vector3(0, 0.1, size.y * 0.5 - 0.5), Shapes.mat(Color(0.16, 0.4, 0.14), 0.6), 0.2)
+	_fill = Shapes.box_node(self, Vector3(_bar_w, 0.1, 0.62), Vector3(0, 0.11, size.y * 0.5 - 0.5), Shapes.mat(Color(0.35, 0.82, 0.25), 0.5), 0.2)
 	_price = Label3D.new()
 	_price.font = Fx.font()
 	_price.font_size = 72
@@ -44,7 +56,10 @@ func setup(pad_id: String, price: int, text: String, size: Vector2 = Vector2(2.6
 	_price.outline_modulate = Color(0.25, 0.15, 0.0, 0.9)
 	_price.pixel_size = 0.009
 	_price.rotation_degrees = Vector3(-90, 0, 0)
-	_price.position = Vector3(0, 0.06, 0)
+	_price.position = Vector3(0, 0.17, size.y * 0.5 - 0.5)
+	_price.modulate = Color(1, 1, 1)
+	_price.outline_modulate = Color(0.1, 0.3, 0.08, 1.0)
+	_price.pixel_size = 0.0075
 	add_child(_price)
 	_arrow = MeshInstance3D.new()
 	var cm := CylinderMesh.new()
@@ -65,7 +80,10 @@ func setup(pad_id: String, price: int, text: String, size: Vector2 = Vector2(2.6
 
 func _refresh() -> void:
 	_price.text = "$%d" % (cost - paid_amount)
-	zone.set_progress(float(paid_amount) / float(cost))
+	var f := clampf(float(paid_amount) / float(cost), 0.0, 1.0)
+	# The bright bar starts full-width but empty-coloured; it grows from the left as you pay.
+	_fill.scale = Vector3(maxf(f, 0.001), 1, 1)
+	_fill.position.x = -_bar_w * 0.5 * (1.0 - f)
 
 
 func _process(delta: float) -> void:
@@ -74,7 +92,8 @@ func _process(delta: float) -> void:
 	_arrow.visible = affordable
 	_arrow.position = Vector3(0, 2.1 + sin(_t * 4.0) * 0.18, 0)
 	_arrow.rotation.y = _t * 1.5
-	zone.set_highlight(affordable)
+	var pulse := 1.0 + (sin(_t * 5.0) * 0.03 if affordable else 0.0)
+	_tile.scale = Vector3(pulse, 1, pulse)
 
 
 func _on_carrier(carrier: Node, delta: float) -> bool:

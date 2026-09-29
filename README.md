@@ -11,7 +11,7 @@ without the ad-supported game wrapped around it.
 <p align="center">
   <img src="screenshots/02_carrying.jpg" alt="Chopping trees next to the first sawmill" width="260"/>
   <img src="screenshots/05_shop.jpg" alt="The market with shoppers at the counters" width="260"/>
-  <img src="screenshots/08_factory.jpg" alt="The robot furniture factory and its conveyor belt" width="260"/>
+  <img src="screenshots/12_megasaw.jpg" alt="The mega sawmill: a crane-fed giant log and a huge chainsaw" width="260"/>
 </p>
 
 ## Download
@@ -48,16 +48,21 @@ to wonder what to do. Progress saves by itself.
 
 ## What you can build
 
-19 purchases, from $10 to $5,000, unlocked a few at a time:
+25 purchases, from $10 to $6,000, unlocked a few at a time:
 
 - **Forests**: more broadleaf trees, a pine forest, a north forest.
-- **Machines**: two sawmills (log to planks), a carpentry (planks to chairs),
+- **Machines**: two chainsaw sawmills (log to planks), a carpentry (planks to chairs),
   a CNC workshop (planks to tables), a robot furniture factory (logs to
   bookcases).
 - **Workers**: lumberjacks who chop and deliver logs, carriers who move goods
   between machines and the market, and a cashier who collects the money.
-- **Automation**: conveyor belts that feed machines on their own, and a truck
-  dock where a truck loads bookcases and pays on the way out.
+- **Big machinery**: the MEGA sawmill, where a crane drops giant logs onto a
+  belt and a huge chainsaw slices them into planks nonstop.
+- **Automation**: seven conveyor belts (sawmills to the market, to the
+  carpentry and the CNC, chairs to the market, factory to the dock), and a
+  truck dock where a truck loads bookcases and pays on the way out.
+- **Shoppers**: more stock on the counters brings more shoppers, and a road
+  sign brings even more, so the counters never clog.
 - **Upgrades**: bigger backpack, faster shoes, sharper axe, faster machines,
   faster workers, better prices.
 - **The Grand Lodge**: the last purchase. The game says congratulations, and
@@ -66,8 +71,9 @@ to wonder what to do. Progress saves by itself.
 ## Graphics and sound
 
 Real-time 3D with Godot's Mobile (Vulkan) renderer: soft sun shadows, drifting
-cloud shadows, a flowing river, shingle roofs, glow, sawdust and wood-chip
-particles. Characters are animated, and a carried stack sways as you walk.
+cloud shadows, a flowing river, rounded-edge machines, logs with bark and
+end-grain rings, grained planks, log palisade fences, running chainsaw teeth,
+and wood-chip sprays. Characters are animated, and a carried stack sways as you walk.
 The music loop and forest ambience come from `tools/make_music.py`
 (numpy + scipy, no samples); sound effects are Kenney CC0 packs.
 
@@ -75,8 +81,8 @@ The music loop and forest ambience come from `tools/make_music.py`
 
 - 3D models and sound effects: [Kenney](https://kenney.nl) (CC0): Nature Kit,
   Survival Kit, Mini Characters, Factory Kit, Furniture Kit, Car Kit, Impact
-  Sounds, Interface Sounds, RPG Audio, Casino Audio. Some textures were
-  recoloured.
+  Sounds, Interface Sounds, RPG Audio, Casino Audio. Nature Kit greens were
+  warmed slightly.
 - Font: [Fredoka](https://github.com/google/fonts/tree/main/ofl/fredoka)
   (SIL Open Font License, see `assets/fonts/OFL.txt`).
 
