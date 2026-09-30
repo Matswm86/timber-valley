@@ -40,7 +40,7 @@ things:
 | A square marked PLANKS, CHAIRS... | You pick up what the machine made |
 | A market counter | You stock it; shoppers walk in from the road and buy |
 | CASH | You collect what the shoppers paid |
-| A yellow square with a price | You pay for the next building or worker |
+| A dark tile with a plus sign and a price | You pay for the next building or worker |
 | UPGRADES | The upgrade shop opens |
 
 A yellow arrow at your feet points to the next useful thing, so you never have
@@ -58,7 +58,7 @@ to wonder what to do. Progress saves by itself.
   between machines and the market, and a cashier who collects the money.
 - **Big machinery**: the MEGA sawmill, where a crane drops giant logs onto a
   belt and a huge chainsaw slices them into planks nonstop.
-- **Automation**: seven conveyor belts (sawmills to the market, to the
+- **Automation**: six conveyor belts (sawmills to the market, to the
   carpentry and the CNC, chairs to the market, factory to the dock), and a
   truck dock where a truck loads bookcases and pays on the way out.
 - **Shoppers**: more stock on the counters brings more shoppers, and a road
@@ -75,7 +75,7 @@ cloud shadows, a flowing river, rounded-edge machines, logs with bark and
 end-grain rings, grained planks, log palisade fences, running chainsaw teeth,
 and wood-chip sprays. Characters are animated, and a carried stack sways as you walk.
 The music loop and forest ambience come from `tools/make_music.py`
-(numpy + scipy, no samples); sound effects are Kenney CC0 packs.
+(numpy, scipy and soundfile, no samples); sound effects are Kenney CC0 packs.
 
 ## Credits
 
