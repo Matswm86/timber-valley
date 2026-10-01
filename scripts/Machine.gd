@@ -8,12 +8,18 @@ var out_type: String
 var in_per_cycle: int = 1
 var out_per_cycle: int = 2
 var cycle_time: float = 1.0
+## Valley this machine belongs to (its Sharp Saws level speeds it up).
+var region: int = 1
 var input: ItemStack
 var output: ItemStack
 var in_zone: Zone
 var out_zone: Zone
 var spinners: Array[Node3D] = []
 var arms: Array[Node3D] = []
+## Press plates: travel down and back up once per cycle while busy (local y).
+var plates: Array[Node3D] = []
+var plate_up: float = 1.35
+var plate_down: float = 0.93
 var dust: CPUParticles3D
 var smoke: CPUParticles3D
 var body: Node3D
@@ -27,8 +33,9 @@ var _t: float = 0.0
 var _anim_t: float = 0.0
 
 
-func setup(id: String, i_type: String, o_type: String, i_n: int, o_n: int, t: float) -> Machine:
+func setup(id: String, i_type: String, o_type: String, i_n: int, o_n: int, t: float, region_id: int = 1, out_cap: int = 48) -> Machine:
 	name = id
+	region = region_id
 	in_type = i_type
 	out_type = o_type
 	in_per_cycle = i_n
@@ -37,11 +44,11 @@ func setup(id: String, i_type: String, o_type: String, i_n: int, o_n: int, t: fl
 	input = ItemStack.new().setup(in_type, 36, 2, 3, id + ":in")
 	input.position = Vector3(-2.7, 0, 0.2)
 	add_child(input)
-	output = ItemStack.new().setup(out_type, 48, 2, 3, id + ":out")
+	output = ItemStack.new().setup(out_type, out_cap, 2, 3, id + ":out")
 	output.position = Vector3(2.7, 0, 0.2)
 	add_child(output)
-	var in_label := "%sS" % in_type.to_upper()
-	var out_label := "%sS" % out_type.to_upper()
+	var in_label := ("%sS" % in_type.to_upper()).replace("_", " ")
+	var out_label := ("%sS" % out_type.to_upper()).replace("_", " ")
 	in_zone = Zone.new().setup(Zone.Kind.DROP, input, Vector2(2.2, 2.6), in_label, Color(1, 1, 1))
 	in_zone.position = input.position
 	add_child(in_zone)
@@ -168,7 +175,7 @@ func add_smoke(pos: Vector3) -> void:
 
 
 func _process(delta: float) -> void:
-	var speed := Game.machine_speed()
+	var speed := Game.machine_speed(region)
 	if not _busy and input.count() >= in_per_cycle and output.count() + out_per_cycle <= output.capacity:
 		_start_cycle()
 	if _busy:
@@ -184,6 +191,9 @@ func _process(delta: float) -> void:
 	for i in arms.size():
 		var a := arms[i]
 		a.rotation.y = sin(_anim_t * 3.0 + i * 1.7) * 0.9
+	for pl in plates:
+		var k := (0.5 - 0.5 * cos(_t / cycle_time * TAU)) if _busy else 0.0
+		pl.position.y = lerpf(plate_up, plate_down, k)
 	var working := _busy or _spin > 1.0
 	if dust:
 		dust.emitting = _busy
@@ -226,7 +236,7 @@ func _fly_and_free(it: Node3D, target: Vector3, idx: int = 0) -> void:
 	if cut_point != Vector3.INF:
 		# Line up with the belt, then ride into the saw.
 		tw.parallel().tween_property(it, "global_rotation", Vector3(0, 0, 0), 0.25)
-		var slide := cycle_time / Game.machine_speed() * 0.85
+		var slide := cycle_time / Game.machine_speed(region) * 0.85
 		tw.tween_interval(idx * 0.1)
 		tw.tween_property(it, "global_position", to_global(cut_point), slide)
 		tw.tween_property(it, "scale", Vector3(0.2, 1.0, 1.0), 0.12)

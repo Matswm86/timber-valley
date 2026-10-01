@@ -3,12 +3,17 @@ extends RefCounted
 
 ## Item catalogue: how each carried item looks and how tall it stacks.
 
+## v3 item models (assets/models_v3/ASSETS_M1.md section 2), world units at scale 1.0.
 const DEFS := {
-	"log": {"proc": "log", "path": "", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.31, "cell": Vector2(1.05, 0.36)},
-	"plank": {"proc": "plank", "path": "", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.11, "cell": Vector2(1.0, 0.4)},
-	"chair": {"path": "res://assets/models/furniture/chair.glb", "scale": 1.9, "rot": Vector3(0, 180, 0), "layer": 0.36, "cell": Vector2(0.5, 0.5)},
-	"table": {"path": "res://assets/models/furniture/table.glb", "scale": 1.05, "rot": Vector3(0, 0, 0), "layer": 0.36, "cell": Vector2(0.95, 0.55)},
-	"bookcase": {"path": "res://assets/models/furniture/bookcaseClosed.glb", "scale": 1.25, "rot": Vector3(-90, 0, 0), "layer": 0.34, "cell": Vector2(0.6, 1.15)},
+	"log": {"path": "res://assets/models_v3/items/item_log.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.31, "cell": Vector2(1.05, 0.36)},
+	"plank": {"path": "res://assets/models_v3/items/item_plank.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.11, "cell": Vector2(1.0, 0.4)},
+	"chair": {"path": "res://assets/models_v3/items/item_chair.glb", "scale": 1.0, "rot": Vector3(0, 180, 0), "layer": 0.36, "cell": Vector2(0.5, 0.5)},
+	"table": {"path": "res://assets/models_v3/items/item_table.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.36, "cell": Vector2(0.95, 0.55)},
+	"bookcase": {"path": "res://assets/models_v3/items/item_bookcase.glb", "scale": 1.0, "rot": Vector3(-90, 0, 0), "layer": 0.34, "cell": Vector2(0.6, 1.15)},
+	"birch_log": {"path": "res://assets/models_v3/items/item_birch_log.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.31, "cell": Vector2(1.05, 0.36)},
+	"veneer": {"path": "res://assets/models_v3/items/item_veneer.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.05, "cell": Vector2(1.0, 0.5)},
+	"plywood": {"path": "res://assets/models_v3/items/item_plywood.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.12, "cell": Vector2(1.0, 0.6)},
+	"canoe": {"path": "res://assets/models_v3/items/item_canoe.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.35, "cell": Vector2(0.7, 2.0)},
 	"coin": {"path": "", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.075, "cell": Vector2(0.36, 0.36)},
 }
 

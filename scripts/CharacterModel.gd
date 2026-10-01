@@ -1,63 +1,72 @@
 class_name CharacterModel
 extends Node3D
 
-## Kenney mini-character with walk/idle/carry/chop animations and an axe on the right hand.
+## KayKit Adventurer (models_v3) with walk/idle/carry/chop animations and the axe already in the hand.
+## Wiring follows assets/models_v3/chars/WIRING.md.
 
+const MODEL_PATH := "res://assets/models_v3/chars/%s.glb"
+## The rig scale (0.35-0.37) is baked in the file, so 0.80 x 2.25 = 1.8 m tall.
 const SCALE := 2.25
+const ANIM_IDLE := "Idle"
+const ANIM_WALK := "Walking_A"
+const ANIM_RUN := "Running_A"
+const ANIM_CHOP := "1H_Melee_Attack_Slice_Horizontal"
+const ANIM_CARRY := "Carry_Pose"
+const CARRY_BONES := ["upperarm.l", "lowerarm.l", "upperarm.r", "lowerarm.r"]
+const CHOP_BONES := [
+	"upperarm.l", "lowerarm.l", "wrist.l", "hand.l", "upperarm.r", "lowerarm.r", "wrist.r", "hand.r", "chest",
+]
 
 var anim: AnimationPlayer
 var skeleton: Skeleton3D
+## The axe that is currently shown while chopping (plain or upgraded).
 var axe: Node3D
+var _axe_plain: Node3D
+var _axe_gold: Node3D
 var _current: String = ""
 var _chop_until: float = 0.0
 
 
 func setup(model_name: String) -> CharacterModel:
-	var scene: PackedScene = load("res://assets/models/chars/%s.glb" % model_name)
+	var scene: PackedScene = load(MODEL_PATH % model_name)
 	var inst: Node3D = scene.instantiate()
 	inst.scale = Vector3.ONE * SCALE
 	add_child(inst)
 	anim = inst.find_children("*", "AnimationPlayer", true, false)[0]
 	skeleton = inst.find_children("*", "Skeleton3D", true, false)[0]
 	_build_anims()
-	var att := BoneAttachment3D.new()
-	skeleton.add_child(att)
-	att.bone_name = "arm-right"
-	axe = load("res://assets/models/survival/tool-axe.glb").instantiate()
-	axe.scale = Vector3.ONE * 1.3
-	axe.rotation_degrees = Vector3(90, 0, 0)
-	axe.position = Vector3(-0.02, -0.12, 0.06)
-	att.add_child(axe)
-	axe.visible = false
+	_axe_plain = inst.find_child("Axe", true, false)
+	_axe_gold = inst.find_child("AxeUpgraded", true, false)
+	_axe_plain.visible = false
+	_axe_gold.visible = false
+	axe = _axe_plain
 	_play("idle")
 	return self
 
 
+## Switches which of the two in-hand axes shows while chopping.
 func set_axe_model(upgraded: bool) -> void:
-	var path := "res://assets/models/survival/tool-axe%s.glb" % ("-upgraded" if upgraded else "")
-	var parent := axe.get_parent()
-	var xf := axe.transform
 	var vis := axe.visible
-	axe.queue_free()
-	axe = load(path).instantiate()
-	axe.transform = xf
+	axe.visible = false
+	axe = _axe_gold if upgraded else _axe_plain
 	axe.visible = vis
-	parent.add_child(axe)
 
 
 func _build_anims() -> void:
 	var lib: AnimationLibrary = anim.get_animation_library("")
-	for n in ["idle", "walk", "sprint"]:
+	for n in [ANIM_IDLE, ANIM_WALK, ANIM_RUN]:
 		if lib.has_animation(n):
 			lib.get_animation(n).loop_mode = Animation.LOOP_LINEAR
-	lib.add_animation("carry-walk", _compose("walk", "holding-both", ["arm-left", "arm-right"]))
-	lib.add_animation("carry-idle", _compose("idle", "holding-both", ["arm-left", "arm-right"]))
-	lib.add_animation(
-		"chop-walk", _compose("walk", "attack-melee-right", ["arm-left", "arm-right", "torso"])
-	)
+	# Short aliases keep the state code readable.
+	lib.add_animation("idle", lib.get_animation(ANIM_IDLE))
+	lib.add_animation("walk", lib.get_animation(ANIM_WALK))
+	lib.add_animation("carry-walk", _compose(ANIM_WALK, ANIM_CARRY, CARRY_BONES))
+	lib.add_animation("carry-idle", _compose(ANIM_IDLE, ANIM_CARRY, CARRY_BONES))
+	lib.add_animation("chop-walk", _compose(ANIM_WALK, ANIM_CHOP, CHOP_BONES))
 	lib.get_animation("chop-walk").loop_mode = Animation.LOOP_NONE
-	var chop: Animation = lib.get_animation("attack-melee-right")
+	var chop: Animation = lib.get_animation(ANIM_CHOP)
 	chop.loop_mode = Animation.LOOP_NONE
+	lib.add_animation("chop", chop)
 
 
 func _compose(base: String, overlay: String, bones: Array) -> Animation:
@@ -70,7 +79,7 @@ func _compose(base: String, overlay: String, bones: Array) -> Animation:
 		for t in o.get_track_count():
 			if str(o.track_get_path(t)).ends_with(":" + bone):
 				o.copy_track(t, a)
-	# A one-frame pose overlay (holding) must hold its key across the base loop.
+	# A one-frame pose overlay (Carry_Pose) must hold its key across the base loop.
 	a.loop_mode = Animation.LOOP_LINEAR
 	return a
 
@@ -91,7 +100,7 @@ func update_state(move_speed: float, carrying: bool, chopping: bool) -> void:
 		axe.visible = true
 		if now >= _chop_until:
 			_current = ""
-			var n := "chop-walk" if move_speed > 0.1 else "attack-melee-right"
+			var n := "chop-walk" if move_speed > 0.1 else "chop"
 			_play(n, 1.5)
 			_chop_until = now + anim.get_animation(n).length / 1.5
 		return

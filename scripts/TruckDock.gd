@@ -1,7 +1,8 @@
 class_name TruckDock
 extends Node3D
 
-## Loading dock by the road. A truck pulls in, loads finished goods, and pays on the way out.
+## Export dock. A vehicle (the Valley 1 truck on the road, the Birch Bend barge on the river)
+## pulls in, loads finished goods, and pays on the way out.
 
 enum State { AWAY, ARRIVING, LOADING, LEAVING }
 
@@ -12,6 +13,13 @@ var road_x: float
 var truck: Node3D
 var bed: ItemStack
 var state: State = State.AWAY
+## "truck" or "barge" (Balance.EXPORTS has capacity and time away).
+var vehicle: String = "truck"
+var region: int = 1
+var region_node: Region
+var _away: float = 5.0
+## How far up/down the road (river) the vehicle appears and leaves.
+var start_dist: float = 45.0
 var _timer: float = 2.0
 var _wait: float = 0.0
 var _stop: Vector3
@@ -19,10 +27,18 @@ var _start: Vector3
 var _end: Vector3
 
 
-func setup(prod: String, road_x_global: float) -> TruckDock:
-	name = "TruckDock"
+func setup(prod: String, road_x_global: float, vehicle_kind: String = "truck", region_id: int = 1) -> TruckDock:
+	name = "TruckDock" if vehicle_kind == "truck" else "BargeDock"
 	product = prod
 	road_x = road_x_global
+	vehicle = vehicle_kind
+	region = region_id
+	var ex: Dictionary = Balance.EXPORTS[vehicle]
+	_away = float(ex.away)
+	if vehicle == "barge":
+		# Appear north of the bridge, so the barge never sails through it.
+		start_dist = 22.0
+		return _setup_barge(int(ex.cap))
 	var floor_mat := StandardMaterial3D.new()
 	floor_mat.albedo_color = Color(0.62, 0.6, 0.56)
 	floor_mat.roughness = 0.9
@@ -48,17 +64,39 @@ func setup(prod: String, road_x_global: float) -> TruckDock:
 	var model: Node3D = load("res://assets/models/car/truck-flat.glb").instantiate()
 	model.scale = Vector3.ONE * 1.7
 	truck.add_child(model)
-	bed = ItemStack.new().setup(product, 8, 2, 2)
+	bed = ItemStack.new().setup(product, int(ex.cap), 2, 2)
 	bed.position = Vector3(0, 1.25, -0.9)
+	truck.add_child(bed)
+	return self
+
+
+## Birch Bend: a pier on the river bank and a barge that sails south to north.
+func _setup_barge(cap: int) -> TruckDock:
+	var landing := Models.make("barge_landing")
+	landing.position = Vector3(0.6, 0, 0)
+	add_child(landing)
+	pile = ItemStack.new().setup(product, 24, 2, 3, "dock:" + product)
+	pile.position = Vector3(0.6, 0.4, 0)
+	add_child(pile)
+	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + product.to_upper() + "S", Color(0.7, 1.0, 0.8))
+	zone.position = Vector3(-2.2, 0, 0)
+	add_child(zone)
+	truck = Node3D.new()
+	truck.add_child(Models.make("barge"))
+	# Cargo deck x -1.1..1.1, z -2.7..1.6, top at y 0.49: 6 canoes = 3 across x 2 long.
+	bed = ItemStack.new().setup(product, cap, 3, 2)
+	bed.position = Vector3(0, 0.49, -0.55)
 	truck.add_child(bed)
 	return self
 
 
 func _ready() -> void:
 	get_parent().add_child.call_deferred(truck)
-	_stop = Vector3(road_x, 0, global_position.z)
-	_start = Vector3(road_x, 0, global_position.z + 45.0)
-	_end = Vector3(road_x, 0, global_position.z - 45.0)
+	# The barge floats on the river surface (river mesh at y 0.06).
+	var y := 0.06 if vehicle == "barge" else 0.0
+	_stop = Vector3(road_x, y, global_position.z)
+	_start = Vector3(road_x, y, global_position.z + start_dist)
+	_end = Vector3(road_x, y, global_position.z - 45.0)
 	truck.visible = false
 
 
@@ -72,7 +110,7 @@ func _process(delta: float) -> void:
 				state = State.ARRIVING
 				truck.visible = true
 				truck.global_position = _start
-				truck.rotation.y = PI
+				truck.rotation.y = PI if vehicle == "truck" else 0.0
 		State.ARRIVING:
 			truck.global_position = truck.global_position.move_toward(_stop, 9.0 * delta * _ease(_stop))
 			if truck.global_position.distance_to(_stop) < 0.05:
@@ -96,13 +134,15 @@ func _process(delta: float) -> void:
 				var value := 0
 				while not bed.is_empty():
 					value += Game.price_of(bed.take_and_free())
-				Game.add_money(value)
+				Game.add_money(value, region)
+				if region_node:
+					region_node.record(value)
 				Sfx.play("coins", -4.0)
 				if Game.hud:
-					Game.hud.toast("Truck delivered: +$%d" % value)
+					Game.hud.toast("%s delivered: +%s" % [vehicle.capitalize(), Game.fmt(value)])
 				state = State.AWAY
 				truck.visible = false
-				_timer = 5.0
+				_timer = _away
 
 
 func _ease(target: Vector3) -> float:

@@ -12,6 +12,8 @@ var source_pos: Vector3
 var dest: ItemStack
 var dest_pos: Vector3
 var home: Vector3
+## Valley this worker belongs to (its Crew Coffee level applies).
+var region: int = 1
 var _target_tree: ChopTree
 var _delivering: bool = false
 var _timer: float = 0.0
@@ -42,8 +44,8 @@ func as_hauler(look: String, s: ItemStack, s_pos: Vector3, d: ItemStack, d_pos: 
 
 
 func _process(delta: float) -> void:
-	walk_speed = Game.worker_speed()
-	cap = Game.worker_capacity()
+	walk_speed = Game.worker_speed(region)
+	cap = Game.worker_capacity(region)
 	if job == Job.LUMBERJACK:
 		_lumberjack(delta)
 	else:

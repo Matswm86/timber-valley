@@ -23,3 +23,9 @@ android/build/
 .vscode/
 .idea/
 *.swp
+
+# Look-dev renders and screenshot runs (regenerable, large)
+tools/lookdev/_render/
+tools/lookdev/tex/
+tools/lookdev/*.png
+screenshots_v3/

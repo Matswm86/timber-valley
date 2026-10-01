@@ -9,6 +9,10 @@ const MODELS := [
 ]
 const BROADLEAF := ["tree_default", "tree_oak", "tree_detailed", "tree_fat"]
 
+## Tree kind from Balance.TREES ("broad", "pine", "birch", ...).
+var kind: String = "broad"
+## Item the tree drops ("log" in Valley 1, "birch_log" in Birch Bend).
+var log_type: String = "log"
 var logs_given: int = 3
 var hits_needed: int = 3
 var regrow_time: float = 7.0
@@ -23,20 +27,29 @@ var _chips: CPUParticles3D
 var _leaves: CPUParticles3D
 
 
-func setup(kind: String, logs: int, rng: RandomNumberGenerator) -> ChopTree:
-	logs_given = logs
-	hits_needed = 3 if logs <= 3 else 4
+func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
+	kind = tree_kind
+	var d: Dictionary = Balance.TREES[kind]
+	log_type = str(d.log)
+	logs_given = int(d.logs)
+	hits_needed = int(d.hits)
+	regrow_time = float(d.regrow)
 	hp = hits_needed
-	var list: Array = MODELS if kind == "pine" else BROADLEAF
-	var mname: String = list[rng.randi() % list.size()]
+	var paths: Array = []
+	if kind == "birch":
+		paths = Models.PATHS.birch_trees
+	else:
+		for m in (MODELS if kind == "pine" else BROADLEAF):
+			paths.append("res://assets/models_v3/nature/%s.glb" % m)
+	var mpath: String = paths[rng.randi() % paths.size()]
 	_tree = Node3D.new()
-	var inst: Node3D = load("res://assets/models/nature/%s.glb" % mname).instantiate()
-	var s := rng.randf_range(2.3, 2.8) * (1.15 if logs > 3 else 1.0)
+	var inst: Node3D = load(mpath).instantiate()
+	var s := rng.randf_range(2.3, 2.8) * (1.15 if kind == "pine" else 1.0) * float(d.scale)
 	inst.scale = Vector3.ONE * s
 	inst.rotation.y = rng.randf() * TAU
 	_tree.add_child(inst)
 	add_child(_tree)
-	_stump = load("res://assets/models/nature/stump_roundDetailed.glb").instantiate()
+	_stump = Models.make("birch_stump" if kind == "birch" else "default_stump")
 	_stump.scale = Vector3.ONE * 2.2
 	_stump.visible = false
 	add_child(_stump)
@@ -55,7 +68,7 @@ func setup(kind: String, logs: int, rng: RandomNumberGenerator) -> ChopTree:
 	zone.on_carrier = _on_carrier
 	add_child(zone)
 	_chips = _make_particles(Color(0.85, 0.66, 0.42), 0.09, 14)
-	_leaves = _make_particles(Color(0.36, 0.62, 0.3), 0.12, 10)
+	_leaves = _make_particles(Color(0.64, 0.82, 0.34) if kind == "birch" else Color(0.36, 0.62, 0.3), 0.12, 10)
 	_leaves.position.y = 2.2
 	_leaves.gravity = Vector3(0, -2.5, 0)
 	return self
@@ -94,7 +107,7 @@ func _on_carrier(carrier: Node, delta: float) -> bool:
 	if not is_ready():
 		return false
 	var back: ItemStack = carrier.stack
-	if back.count() >= carrier.capacity() or not back.can_accept("log"):
+	if back.count() >= carrier.capacity() or not back.can_accept(log_type):
 		return false
 	if reserved_by != null and reserved_by != carrier and is_instance_valid(reserved_by):
 		return false
@@ -159,7 +172,7 @@ func _fall(carrier: Node) -> void:
 	var back: ItemStack = carrier.stack
 	var n := mini(logs_given, carrier.capacity() - back.count())
 	for i in n:
-		var it := Items.make("log")
+		var it := Items.make(log_type)
 		get_tree().current_scene.add_child(it)
 		it.global_position = global_position + away * (1.0 + i * 0.5) + Vector3.UP * 0.4
 		it.rotation.y = randf() * TAU

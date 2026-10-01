@@ -1,0 +1,1402 @@
+{
+ "tree_default": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_A_Color1.gltf",
+  "tris": 530,
+  "tex": 512,
+  "size": [
+   0.776,
+   0.793,
+   1.708
+  ],
+  "kenney_size": [
+   0.755,
+   0.654,
+   1.708
+  ],
+  "min": [
+   -0.472,
+   -0.396,
+   -0.107
+  ],
+  "kenney_min": [
+   -0.378,
+   -0.327,
+   -0.05
+  ],
+  "bytes": 181320
+ },
+ "tree_oak": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_B_Color1.gltf",
+  "tris": 636,
+  "tex": 512,
+  "size": [
+   0.777,
+   0.668,
+   1.226
+  ],
+  "kenney_size": [
+   0.641,
+   0.74,
+   1.226
+  ],
+  "min": [
+   -0.347,
+   -0.334,
+   -0.085
+  ],
+  "kenney_min": [
+   -0.32,
+   -0.37,
+   -0.05
+  ],
+  "bytes": 191956
+ },
+ "tree_detailed": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_3_A_Color1.gltf",
+  "tris": 700,
+  "tex": 512,
+  "size": [
+   0.889,
+   0.889,
+   1.332
+  ],
+  "kenney_size": [
+   0.847,
+   0.762,
+   1.332
+  ],
+  "min": [
+   -0.446,
+   -0.445,
+   -0.099
+  ],
+  "kenney_min": [
+   -0.432,
+   -0.389,
+   -0.05
+  ],
+  "bytes": 209048
+ },
+ "tree_fat": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_3_B_Color1.gltf",
+  "tris": 700,
+  "tex": 512,
+  "size": [
+   0.793,
+   0.793,
+   1.15
+  ],
+  "kenney_size": [
+   0.755,
+   0.654,
+   1.15
+  ],
+  "min": [
+   -0.402,
+   -0.396,
+   -0.09
+  ],
+  "kenney_min": [
+   -0.378,
+   -0.327,
+   -0.05
+  ],
+  "bytes": 196256
+ },
+ "tree_default_dark": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_A_Color1.gltf",
+  "tris": 530,
+  "tex": 512,
+  "size": [
+   0.776,
+   0.793,
+   1.708
+  ],
+  "kenney_size": [
+   0.755,
+   0.654,
+   1.708
+  ],
+  "min": [
+   -0.472,
+   -0.396,
+   -0.107
+  ],
+  "kenney_min": [
+   -0.378,
+   -0.327,
+   -0.05
+  ],
+  "bytes": 176164
+ },
+ "tree_pineTallA_detailed": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:5:0.46:1.53:0.9:0",
+  "tris": 688,
+  "tex": 512,
+  "size": [
+   0.431,
+   0.429,
+   1.53
+  ],
+  "kenney_size": [
+   0.386,
+   0.392,
+   1.53
+  ],
+  "min": [
+   -0.216,
+   -0.214,
+   0.0
+  ],
+  "kenney_min": [
+   -0.179,
+   -0.198,
+   -0.05
+  ],
+  "bytes": 144324
+ },
+ "tree_pineTallB_detailed": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:5:0.46:1.93:0.9:1",
+  "tris": 688,
+  "tex": 512,
+  "size": [
+   0.403,
+   0.409,
+   1.935
+  ],
+  "kenney_size": [
+   0.386,
+   0.392,
+   1.935
+  ],
+  "min": [
+   -0.201,
+   -0.204,
+   0.0
+  ],
+  "kenney_min": [
+   -0.179,
+   -0.198,
+   -0.05
+  ],
+  "bytes": 141064
+ },
+ "tree_pineTallC_detailed": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:4:0.56:1.67:1.0:2",
+  "tris": 578,
+  "tex": 512,
+  "size": [
+   0.522,
+   0.529,
+   1.67
+  ],
+  "kenney_size": [
+   0.48,
+   0.555,
+   1.67
+  ],
+  "min": [
+   -0.261,
+   -0.265,
+   0.0
+  ],
+  "kenney_min": [
+   -0.24,
+   -0.277,
+   -0.05
+  ],
+  "bytes": 141840
+ },
+ "tree_pineTallD_detailed": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:5:0.56:2.08:1.0:3",
+  "tris": 688,
+  "tex": 512,
+  "size": [
+   0.49,
+   0.492,
+   2.075
+  ],
+  "kenney_size": [
+   0.48,
+   0.555,
+   2.075
+  ],
+  "min": [
+   -0.245,
+   -0.246,
+   0.0
+  ],
+  "kenney_min": [
+   -0.24,
+   -0.277,
+   -0.05
+  ],
+  "bytes": 148864
+ },
+ "tree_pineRoundA": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:3:0.74:1.37:1.6:4",
+  "tris": 468,
+  "tex": 512,
+  "size": [
+   0.6,
+   0.602,
+   1.366
+  ],
+  "kenney_size": [
+   0.617,
+   0.712,
+   1.366
+  ],
+  "min": [
+   -0.3,
+   -0.301,
+   0.0
+  ],
+  "kenney_min": [
+   -0.309,
+   -0.356,
+   -0.05
+  ],
+  "bytes": 148284
+ },
+ "tree_pineRoundB": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:3:0.64:1.20:1.6:5",
+  "tris": 468,
+  "tex": 512,
+  "size": [
+   0.541,
+   0.536,
+   1.196
+  ],
+  "kenney_size": [
+   0.532,
+   0.613,
+   1.196
+  ],
+  "min": [
+   -0.271,
+   -0.268,
+   0.0
+  ],
+  "kenney_min": [
+   -0.277,
+   -0.308,
+   -0.05
+  ],
+  "bytes": 141692
+ },
+ "tree_pineRoundC": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:3:0.58:1.25:1.6:6",
+  "tris": 468,
+  "tex": 512,
+  "size": [
+   0.502,
+   0.506,
+   1.253
+  ],
+  "kenney_size": [
+   0.48,
+   0.555,
+   1.253
+  ],
+  "min": [
+   -0.251,
+   -0.253,
+   0.0
+  ],
+  "kenney_min": [
+   -0.24,
+   -0.277,
+   -0.05
+  ],
+  "bytes": 151552
+ },
+ "tree_pineDefaultA": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:4:0.62:1.55:1.2:7",
+  "tris": 578,
+  "tex": 512,
+  "size": [
+   0.534,
+   0.529,
+   1.546
+  ],
+  "kenney_size": [
+   0.532,
+   0.532,
+   1.546
+  ],
+  "min": [
+   -0.267,
+   -0.265,
+   0.0
+  ],
+  "kenney_min": [
+   -0.266,
+   -0.266,
+   -0.05
+  ],
+  "bytes": 155472
+ },
+ "tree_pineDefaultB": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:4:0.62:1.55:1.2:8",
+  "tris": 578,
+  "tex": 512,
+  "size": [
+   0.523,
+   0.529,
+   1.546
+  ],
+  "kenney_size": [
+   0.532,
+   0.532,
+   1.546
+  ],
+  "min": [
+   -0.262,
+   -0.265,
+   0.0
+  ],
+  "kenney_min": [
+   -0.266,
+   -0.266,
+   -0.05
+  ],
+  "bytes": 149832
+ },
+ "plant_bush": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Bush_1_C_Color1.gltf",
+  "tris": 168,
+  "tex": 256,
+  "size": [
+   0.38,
+   0.38,
+   0.255
+  ],
+  "kenney_size": [
+   0.396,
+   0.396,
+   0.244
+  ],
+  "min": [
+   -0.19,
+   -0.19,
+   -0.004
+  ],
+  "kenney_min": [
+   -0.198,
+   -0.198,
+   -0.05
+  ],
+  "bytes": 53992
+ },
+ "plant_bushDetailed": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Bush_1_E_Color1.gltf",
+  "tris": 300,
+  "tex": 256,
+  "size": [
+   0.646,
+   0.539,
+   0.336
+  ],
+  "kenney_size": [
+   0.603,
+   0.603,
+   0.36
+  ],
+  "min": [
+   -0.342,
+   -0.292,
+   -0.004
+  ],
+  "kenney_min": [
+   -0.301,
+   -0.301,
+   -0.05
+  ],
+  "bytes": 92084
+ },
+ "grass": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Grass_1_C_Singlesided_Color1.gltf",
+  "tris": 126,
+  "tex": 128,
+  "size": [
+   0.355,
+   0.351,
+   0.281
+  ],
+  "kenney_size": [
+   0.381,
+   0.392,
+   0.254
+  ],
+  "min": [
+   -0.18,
+   -0.163,
+   -0.016
+  ],
+  "kenney_min": [
+   -0.199,
+   -0.153,
+   -0.05
+  ],
+  "bytes": 23496
+ },
+ "grass_large": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Grass_1_D_Singlesided_Color1.gltf",
+  "tris": 168,
+  "tex": 128,
+  "size": [
+   0.404,
+   0.46,
+   0.226
+  ],
+  "kenney_size": [
+   0.409,
+   0.408,
+   0.254
+  ],
+  "min": [
+   -0.19,
+   -0.221,
+   -0.014
+  ],
+  "kenney_min": [
+   -0.199,
+   -0.196,
+   -0.05
+  ],
+  "bytes": 27876
+ },
+ "grass_leafs": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Grass_1_B_Singlesided_Color1.gltf",
+  "tris": 42,
+  "tex": 128,
+  "size": [
+   0.186,
+   0.194,
+   0.189
+  ],
+  "kenney_size": [
+   0.234,
+   0.257,
+   0.142
+  ],
+  "min": [
+   -0.098,
+   -0.069,
+   -0.017
+  ],
+  "kenney_min": [
+   -0.123,
+   -0.124,
+   -0.05
+  ],
+  "bytes": 15128
+ },
+ "rock_smallA": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pebbles:1",
+  "tris": 144,
+  "tex": 256,
+  "size": [
+   0.428,
+   0.435,
+   0.159
+  ],
+  "kenney_size": [
+   0.361,
+   0.361,
+   0.191
+  ],
+  "min": [
+   -0.212,
+   -0.216,
+   -0.016
+  ],
+  "kenney_min": [
+   -0.18,
+   -0.18,
+   -0.05
+  ],
+  "bytes": 43688
+ },
+ "rock_smallC": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pebbles:2",
+  "tris": 288,
+  "tex": 256,
+  "size": [
+   0.402,
+   0.354,
+   0.11
+  ],
+  "kenney_size": [
+   0.361,
+   0.361,
+   0.123
+  ],
+  "min": [
+   -0.215,
+   -0.183,
+   -0.012
+  ],
+  "kenney_min": [
+   -0.18,
+   -0.18,
+   -0.05
+  ],
+  "bytes": 55720
+ },
+ "rock_smallD": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pebbles:3",
+  "tris": 288,
+  "tex": 256,
+  "size": [
+   0.445,
+   0.368,
+   0.221
+  ],
+  "kenney_size": [
+   0.426,
+   0.369,
+   0.231
+  ],
+  "min": [
+   -0.189,
+   -0.185,
+   -0.023
+  ],
+  "kenney_min": [
+   -0.213,
+   -0.184,
+   -0.05
+  ],
+  "bytes": 59168
+ },
+ "rock_largeA": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pebbles:4",
+  "tris": 432,
+  "tex": 256,
+  "size": [
+   0.971,
+   0.782,
+   0.272
+  ],
+  "kenney_size": [
+   0.785,
+   1.015,
+   0.26
+  ],
+  "min": [
+   -0.425,
+   -0.405,
+   -0.028
+  ],
+  "kenney_min": [
+   -0.392,
+   -0.508,
+   -0.05
+  ],
+  "bytes": 69712
+ },
+ "flower_redA": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:flower_red",
+  "tris": 132,
+  "tex": 128,
+  "size": [
+   0.174,
+   0.177,
+   0.3
+  ],
+  "kenney_size": [
+   0.159,
+   0.181,
+   0.292
+  ],
+  "min": [
+   -0.081,
+   -0.088,
+   0.0
+  ],
+  "kenney_min": [
+   -0.105,
+   -0.091,
+   -0.05
+  ],
+  "bytes": 27576
+ },
+ "flower_redC": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:flower_red",
+  "tris": 132,
+  "tex": 128,
+  "size": [
+   0.155,
+   0.157,
+   0.267
+  ],
+  "kenney_size": [
+   0.181,
+   0.181,
+   0.233
+  ],
+  "min": [
+   -0.072,
+   -0.079,
+   0.0
+  ],
+  "kenney_min": [
+   -0.105,
+   -0.091,
+   -0.05
+  ],
+  "bytes": 27212
+ },
+ "flower_yellowA": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:flower_yellow",
+  "tris": 132,
+  "tex": 128,
+  "size": [
+   0.141,
+   0.143,
+   0.243
+  ],
+  "kenney_size": [
+   0.159,
+   0.181,
+   0.192
+  ],
+  "min": [
+   -0.066,
+   -0.072,
+   0.0
+  ],
+  "kenney_min": [
+   -0.105,
+   -0.091,
+   -0.05
+  ],
+  "bytes": 27512
+ },
+ "flower_yellowB": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:flower_white",
+  "tris": 132,
+  "tex": 128,
+  "size": [
+   0.147,
+   0.149,
+   0.254
+  ],
+  "kenney_size": [
+   0.207,
+   0.239,
+   0.159
+  ],
+  "min": [
+   -0.069,
+   -0.075,
+   0.0
+  ],
+  "kenney_min": [
+   -0.129,
+   -0.12,
+   -0.05
+  ],
+  "bytes": 29508
+ },
+ "mushroom_redGroup": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:mushrooms_red",
+  "tris": 174,
+  "tex": 128,
+  "size": [
+   0.309,
+   0.247,
+   0.219
+  ],
+  "kenney_size": [
+   0.27,
+   0.254,
+   0.25
+  ],
+  "min": [
+   -0.128,
+   -0.09,
+   0.0
+  ],
+  "kenney_min": [
+   -0.136,
+   -0.142,
+   -0.05
+  ],
+  "bytes": 31568
+ },
+ "mushroom_tanGroup": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:mushrooms_tan",
+  "tris": 174,
+  "tex": 128,
+  "size": [
+   0.309,
+   0.247,
+   0.219
+  ],
+  "kenney_size": [
+   0.27,
+   0.254,
+   0.25
+  ],
+  "min": [
+   -0.128,
+   -0.09,
+   0.0
+  ],
+  "kenney_min": [
+   -0.136,
+   -0.142,
+   -0.05
+  ],
+  "bytes": 30488
+ },
+ "stump_roundDetailed": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:stump",
+  "tris": 356,
+  "tex": 256,
+  "size": [
+   0.397,
+   0.397,
+   0.193
+  ],
+  "kenney_size": [
+   0.357,
+   0.371,
+   0.206
+  ],
+  "min": [
+   -0.199,
+   -0.199,
+   -0.019
+  ],
+  "kenney_min": [
+   -0.161,
+   -0.185,
+   -0.05
+  ],
+  "bytes": 90948
+ },
+ "log_stackLarge": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:log_stack",
+  "tris": 936,
+  "tex": 256,
+  "size": [
+   0.571,
+   0.632,
+   0.389
+  ],
+  "kenney_size": [
+   0.634,
+   0.71,
+   0.346
+  ],
+  "min": [
+   -0.293,
+   -0.316,
+   -0.003
+  ],
+  "kenney_min": [
+   -0.325,
+   -0.355,
+   -0.05
+  ],
+  "bytes": 150612
+ },
+ "campfire_logs": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:campfire",
+  "tris": 640,
+  "tex": 256,
+  "size": [
+   0.292,
+   0.29,
+   0.185
+  ],
+  "kenney_size": [
+   0.292,
+   0.292,
+   0.063
+  ],
+  "min": [
+   -0.146,
+   -0.145,
+   -0.003
+  ],
+  "kenney_min": [
+   -0.146,
+   -0.146,
+   -0.05
+  ],
+  "bytes": 123552
+ },
+ "fence_simple": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:fence",
+  "tris": 768,
+  "tex": 256,
+  "size": [
+   1.0,
+   0.067,
+   0.345
+  ],
+  "kenney_size": [
+   1.0,
+   0.07,
+   0.345
+  ],
+  "min": [
+   -0.5,
+   0.432,
+   -0.003
+  ],
+  "kenney_min": [
+   -0.5,
+   0.43,
+   -0.05
+  ],
+  "bytes": 81796
+ },
+ "barrel": {
+  "far_tris": null,
+  "kit": "survival",
+  "source": "barrel.gltf",
+  "tris": 240,
+  "tex": 256,
+  "size": [
+   0.278,
+   0.278,
+   0.292
+  ],
+  "kenney_size": [
+   0.236,
+   0.236,
+   0.344
+  ],
+  "min": [
+   -0.139,
+   -0.139,
+   -0.003
+  ],
+  "kenney_min": [
+   -0.118,
+   -0.118,
+   0.0
+  ],
+  "bytes": 70224
+ },
+ "box-large": {
+  "far_tris": null,
+  "kit": "survival",
+  "source": "proc:crate",
+  "tris": 260,
+  "tex": 256,
+  "size": [
+   0.25,
+   0.495,
+   0.25
+  ],
+  "kenney_size": [
+   0.25,
+   0.5,
+   0.25
+  ],
+  "min": [
+   -0.125,
+   -0.247,
+   -0.003
+  ],
+  "kenney_min": [
+   -0.125,
+   -0.25,
+   0.0
+  ],
+  "bytes": 78224
+ },
+ "signpost": {
+  "far_tris": null,
+  "kit": "survival",
+  "source": "proc:signpost",
+  "tris": 272,
+  "tex": 256,
+  "size": [
+   0.212,
+   0.063,
+   0.46
+  ],
+  "kenney_size": [
+   0.214,
+   0.043,
+   0.46
+  ],
+  "min": [
+   -0.111,
+   -0.035,
+   -0.003
+  ],
+  "kenney_min": [
+   -0.112,
+   -0.025,
+   0.0
+  ],
+  "bytes": 54316
+ },
+ "tree_default_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_A_Color1.gltf",
+  "tris": 169,
+  "tex": 256,
+  "size": [
+   0.764,
+   0.793,
+   1.708
+  ],
+  "kenney_size": [
+   0.755,
+   0.654,
+   1.708
+  ],
+  "min": [
+   -0.458,
+   -0.39,
+   -0.099
+  ],
+  "kenney_min": [
+   -0.378,
+   -0.327,
+   -0.05
+  ],
+  "bytes": 77008
+ },
+ "tree_oak_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_B_Color1.gltf",
+  "tris": 169,
+  "tex": 256,
+  "size": [
+   0.777,
+   0.698,
+   1.226
+  ],
+  "kenney_size": [
+   0.641,
+   0.74,
+   1.226
+  ],
+  "min": [
+   -0.327,
+   -0.344,
+   -0.06
+  ],
+  "kenney_min": [
+   -0.32,
+   -0.37,
+   -0.05
+  ],
+  "bytes": 85464
+ },
+ "tree_detailed_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_B_Color1.gltf",
+  "tris": 169,
+  "tex": 256,
+  "size": [
+   0.889,
+   0.8,
+   1.332
+  ],
+  "kenney_size": [
+   0.847,
+   0.762,
+   1.332
+  ],
+  "min": [
+   -0.375,
+   -0.394,
+   -0.065
+  ],
+  "kenney_min": [
+   -0.432,
+   -0.389,
+   -0.05
+  ],
+  "bytes": 80408
+ },
+ "tree_fat_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_A_Color1.gltf",
+  "tris": 169,
+  "tex": 256,
+  "size": [
+   0.764,
+   0.793,
+   1.15
+  ],
+  "kenney_size": [
+   0.755,
+   0.654,
+   1.15
+  ],
+  "min": [
+   -0.458,
+   -0.39,
+   -0.067
+  ],
+  "kenney_min": [
+   -0.378,
+   -0.327,
+   -0.05
+  ],
+  "bytes": 79880
+ },
+ "tree_default_dark_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "Tree_1_A_Color1.gltf",
+  "tris": 169,
+  "tex": 256,
+  "size": [
+   0.764,
+   0.793,
+   1.708
+  ],
+  "kenney_size": [
+   0.755,
+   0.654,
+   1.708
+  ],
+  "min": [
+   -0.458,
+   -0.39,
+   -0.099
+  ],
+  "kenney_min": [
+   -0.378,
+   -0.327,
+   -0.05
+  ],
+  "bytes": 75484
+ },
+ "tree_pineTallA_detailed_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:5:0.46:1.53:0.9:0",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.433,
+   0.431,
+   1.53
+  ],
+  "kenney_size": [
+   0.386,
+   0.392,
+   1.53
+  ],
+  "min": [
+   -0.217,
+   -0.215,
+   0.0
+  ],
+  "kenney_min": [
+   -0.179,
+   -0.198,
+   -0.05
+  ],
+  "bytes": 61920
+ },
+ "tree_pineTallB_detailed_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:5:0.46:1.93:0.9:1",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.403,
+   0.409,
+   1.935
+  ],
+  "kenney_size": [
+   0.386,
+   0.392,
+   1.935
+  ],
+  "min": [
+   -0.202,
+   -0.205,
+   0.0
+  ],
+  "kenney_min": [
+   -0.179,
+   -0.198,
+   -0.05
+  ],
+  "bytes": 54908
+ },
+ "tree_pineTallC_detailed_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:4:0.56:1.67:1.0:2",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.525,
+   0.532,
+   1.67
+  ],
+  "kenney_size": [
+   0.48,
+   0.555,
+   1.67
+  ],
+  "min": [
+   -0.262,
+   -0.266,
+   0.0
+  ],
+  "kenney_min": [
+   -0.24,
+   -0.277,
+   -0.05
+  ],
+  "bytes": 61936
+ },
+ "tree_pineTallD_detailed_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:5:0.56:2.08:1.0:3",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.492,
+   0.493,
+   2.075
+  ],
+  "kenney_size": [
+   0.48,
+   0.555,
+   2.075
+  ],
+  "min": [
+   -0.246,
+   -0.247,
+   0.0
+  ],
+  "kenney_min": [
+   -0.24,
+   -0.277,
+   -0.05
+  ],
+  "bytes": 61332
+ },
+ "tree_pineRoundA_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:3:0.74:1.37:1.6:4",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.583,
+   0.591,
+   1.366
+  ],
+  "kenney_size": [
+   0.617,
+   0.712,
+   1.366
+  ],
+  "min": [
+   -0.292,
+   -0.295,
+   0.0
+  ],
+  "kenney_min": [
+   -0.309,
+   -0.356,
+   -0.05
+  ],
+  "bytes": 57076
+ },
+ "tree_pineRoundB_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:3:0.64:1.20:1.6:5",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.533,
+   0.532,
+   1.196
+  ],
+  "kenney_size": [
+   0.532,
+   0.613,
+   1.196
+  ],
+  "min": [
+   -0.267,
+   -0.264,
+   0.0
+  ],
+  "kenney_min": [
+   -0.277,
+   -0.308,
+   -0.05
+  ],
+  "bytes": 60796
+ },
+ "tree_pineRoundC_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:3:0.58:1.25:1.6:6",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.495,
+   0.506,
+   1.253
+  ],
+  "kenney_size": [
+   0.48,
+   0.555,
+   1.253
+  ],
+  "min": [
+   -0.251,
+   -0.253,
+   0.0
+  ],
+  "kenney_min": [
+   -0.24,
+   -0.277,
+   -0.05
+  ],
+  "bytes": 58732
+ },
+ "tree_pineDefaultA_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:4:0.62:1.55:1.2:7",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.536,
+   0.531,
+   1.546
+  ],
+  "kenney_size": [
+   0.532,
+   0.532,
+   1.546
+  ],
+  "min": [
+   -0.268,
+   -0.266,
+   0.0
+  ],
+  "kenney_min": [
+   -0.266,
+   -0.266,
+   -0.05
+  ],
+  "bytes": 61716
+ },
+ "tree_pineDefaultB_far": {
+  "far_tris": null,
+  "kit": "nature",
+  "source": "proc:pine:4:0.62:1.55:1.2:8",
+  "tris": 170,
+  "tex": 256,
+  "size": [
+   0.525,
+   0.532,
+   1.546
+  ],
+  "kenney_size": [
+   0.532,
+   0.532,
+   1.546
+  ],
+  "min": [
+   -0.262,
+   -0.266,
+   0.0
+  ],
+  "kenney_min": [
+   -0.266,
+   -0.266,
+   -0.05
+  ],
+  "bytes": 63296
+ }
+}

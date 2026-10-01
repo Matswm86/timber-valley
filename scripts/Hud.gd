@@ -17,6 +17,13 @@ var toast_label: Label
 var toast_pill: PanelContainer
 var upgrades_panel: PanelContainer
 var upgrade_rows: Dictionary = {}
+## Which office board is open: 1 = Valley 1 (global), 2 = Riverside Office (V2 + extended global).
+var upgrade_board: int = 1
+var _up_title: Label
+var _up_list: VBoxContainer
+var valley_label: Label
+var valley_pill: PanelContainer
+var valley_card: PanelContainer
 var menu_panel: PanelContainer
 var finish_panel: PanelContainer
 var sound_btn: Button
@@ -41,6 +48,7 @@ func _ready() -> void:
 	_build_upgrades(root)
 	_build_menu(root)
 	_build_finish(root)
+	_build_valley_card(root)
 	_shown_money = Game.money
 	Game.money_changed.connect(_on_money)
 	Game.upgraded.connect(func(_i: String, _l: int) -> void: _refresh_upgrades())
@@ -113,6 +121,15 @@ func _build_top(root: Control) -> void:
 	mrow.add_child(coin)
 	money_label = _label("$0", 58)
 	mrow.add_child(money_label)
+	# Valley chip under the money pill: "Birch Bend 7/19".
+	valley_pill = PanelContainer.new()
+	valley_pill.add_theme_stylebox_override("panel", _style(Color(0.18, 0.3, 0.16, 0.75), 24, 6))
+	valley_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	valley_pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	top.add_child(valley_pill)
+	valley_label = _label("", 32, Color.WHITE)
+	valley_pill.add_child(valley_label)
+	valley_pill.visible = false
 	hint_pill = PanelContainer.new()
 	hint_pill.add_theme_stylebox_override("panel", _style(Color(0.1, 0.12, 0.08, 0.6), 30, 10))
 	hint_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -208,53 +225,96 @@ func _build_upgrades(root: Control) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 14)
 	upgrades_panel.add_child(v)
-	var title := _label("Upgrades", 56)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(title)
-	for id in Game.UPGRADES:
-		var d: Dictionary = Game.UPGRADES[id]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 16)
-		v.add_child(row)
-		var texts := VBoxContainer.new()
-		texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		texts.add_theme_constant_override("separation", 0)
-		row.add_child(texts)
-		texts.add_child(_label(d.name, 40))
-		var sub := _label(d.desc, 28, Color(0.42, 0.36, 0.3))
-		texts.add_child(sub)
-		var pips := _label("", 30, GREEN)
-		texts.add_child(pips)
-		var btn := _button("$0", GREEN, 36)
-		btn.custom_minimum_size = Vector2(230, 96)
-		btn.pressed.connect(func() -> void:
-			if Game.buy_upgrade(id):
-				Sfx.play("upgrade", -3.0)
-			_refresh_upgrades())
-		row.add_child(btn)
-		upgrade_rows[id] = {"btn": btn, "pips": pips}
+	_up_title = _label("Upgrades", 56)
+	_up_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_up_title)
+	_up_list = VBoxContainer.new()
+	_up_list.add_theme_constant_override("separation", 14)
+	v.add_child(_up_list)
+	_build_board(1)
 	Game.money_changed.connect(func(_v: int, _d: int) -> void:
 		if upgrades_panel.visible:
 			_refresh_upgrades())
 
 
+## Board 1: the six global upgrades. Board 2: Birch Bend upgrades plus the extended global levels.
+func _build_board(board: int) -> void:
+	upgrade_board = board
+	upgrade_rows.clear()
+	for c in _up_list.get_children():
+		c.queue_free()
+	_up_title.text = "Upgrades" if board == 1 else "Riverside Office"
+	var specs: Array = []
+	if board == 1:
+		for id in Game.UPGRADES:
+			specs.append({"key": id, "region": 0, "ext": false, "name": Game.UPGRADES[id].name, "desc": Game.UPGRADES[id].desc})
+	else:
+		for key in ["saws", "crew", "fame"]:
+			var info: Dictionary = Balance.REGION_UPGRADE_INFO[key]
+			specs.append({"key": key, "region": board, "ext": false, "name": info.name, "desc": info.desc})
+		for id in Balance.GLOBAL_EXT:
+			specs.append({"key": id, "region": 0, "ext": true, "name": Game.UPGRADES[id].name, "desc": Game.UPGRADES[id].desc + " (all valleys)"})
+	for spec in specs:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		_up_list.add_child(row)
+		var texts := VBoxContainer.new()
+		texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		texts.add_theme_constant_override("separation", 0)
+		row.add_child(texts)
+		texts.add_child(_label(spec.name, 40))
+		texts.add_child(_label(spec.desc, 28, Color(0.42, 0.36, 0.3)))
+		var pips := _label("", 30, GREEN)
+		texts.add_child(pips)
+		var btn := _button("$0", GREEN, 36)
+		btn.custom_minimum_size = Vector2(230, 96)
+		var sp: Dictionary = spec
+		btn.pressed.connect(func() -> void:
+			var ok := false
+			if int(sp.region) > 0:
+				ok = Game.buy_region_upgrade(int(sp.region), str(sp.key))
+			else:
+				ok = Game.buy_upgrade(str(sp.key), bool(sp.ext))
+			if ok:
+				Sfx.play("upgrade", -3.0)
+			_refresh_upgrades())
+		row.add_child(btn)
+		upgrade_rows["%d:%s" % [sp.region, sp.key]] = {"btn": btn, "pips": pips, "spec": sp}
+
+
 func _refresh_upgrades() -> void:
-	for id in upgrade_rows:
-		var r: Dictionary = upgrade_rows[id]
-		var lvl := Game.level(id)
-		var mx: int = Game.UPGRADES[id].max
-		(r.pips as Label).text = "●".repeat(lvl) + "○".repeat(mx - lvl)
+	for k in upgrade_rows:
+		var r: Dictionary = upgrade_rows[k]
+		var sp: Dictionary = r.spec
+		var region := int(sp.region)
+		var key := str(sp.key)
+		var lvl := 0
+		var mx := 0
+		var can := false
+		var cost := 0
+		if region > 0:
+			lvl = Game.region_level(region, key)
+			mx = Balance.REGION_UPGRADE_MAX
+			can = Game.can_region_upgrade(region, key)
+			cost = Game.region_cost(region, key) if can else 0
+		else:
+			lvl = Game.level(key)
+			mx = Game.max_level(key, bool(sp.ext))
+			can = Game.can_upgrade(key, bool(sp.ext))
+			cost = Game.upgrade_cost(key) if can else 0
+		(r.pips as Label).text = "●".repeat(lvl) + "○".repeat(maxi(mx - lvl, 0))
 		var btn: Button = r.btn
-		if not Game.can_upgrade(id):
+		if not can:
 			btn.text = "MAX"
 			btn.disabled = true
 		else:
-			var c := Game.upgrade_cost(id)
-			btn.text = "$%d" % c
-			btn.disabled = Game.money < c
+			btn.text = Game.fmt(cost)
+			btn.disabled = Game.money < cost
 
 
-func open_upgrades() -> void:
+func open_upgrades(board: int = 1) -> void:
+	if board != upgrade_board:
+		_build_board(board)
 	_refresh_upgrades()
 	Sfx.play("open", -4.0)
 	upgrades_panel.visible = true
@@ -346,9 +406,56 @@ func _build_finish(root: Control) -> void:
 	v.add_child(keep)
 
 
+func _build_valley_card(root: Control) -> void:
+	valley_card = PanelContainer.new()
+	valley_card.add_theme_stylebox_override("panel", _style(CREAM, 42, 34))
+	valley_card.set_anchors_preset(Control.PRESET_CENTER)
+	valley_card.anchor_left = 0.08
+	valley_card.anchor_right = 0.92
+	valley_card.anchor_top = 0.28
+	valley_card.anchor_bottom = 0.28
+	valley_card.visible = false
+	root.add_child(valley_card)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 22)
+	valley_card.add_child(v)
+	var t := _label("", 54, GREEN)
+	t.name = "Title"
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(t)
+	var body := _label("", 36)
+	body.name = "Body"
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(body)
+	var ok := _button("Keep going", GREEN, 42)
+	ok.custom_minimum_size.y = 110
+	ok.pressed.connect(func() -> void: valley_card.visible = false)
+	v.add_child(ok)
+
+
+## "Valley complete" card (Lodge, Boathouse): name, time played there, money earned there.
+func show_valley_card(region: int, next_line: String) -> void:
+	var st: Dictionary = Game.stats(region)
+	var secs := int(float(st.get("time", 0.0)))
+	var when := "%dh %02dm" % [secs / 3600, (secs / 60) % 60] if secs >= 3600 else "%d min" % maxi(secs / 60, 1)
+	(valley_card.find_child("Title", true, false) as Label).text = "%s complete!" % str(Balance.REGIONS[region].name)
+	(valley_card.find_child("Body", true, false) as Label).text = "Time here: %s\nEarned here: %s\n\n%s" % [when, Game.fmt(int(st.get("earned", 0))), next_line]
+	valley_card.visible = true
+	Sfx.play("upgrade", 0.0)
+	get_tree().create_timer(0.35).timeout.connect(func() -> void: Sfx.play("upgrade", 0.0))
+
+
+func set_valley(text: String) -> void:
+	valley_pill.visible = text != ""
+	if valley_label.text != text:
+		valley_label.text = text
+
+
 func show_finish() -> void:
 	var body: Label = finish_panel.find_child("Body", true, false)
-	body.text = "Timber Valley is complete.\nYou earned $%d in total.\n\nYour workers keep going, so feel free to stay and chop a few trees." % Game.total_earned
+	body.text = "Timber Valley is complete.\nYou earned %s in total.\n\nYour workers keep going, so feel free to stay and chop a few trees." % Game.fmt(Game.total_earned)
 	finish_panel.visible = true
 	Sfx.play("upgrade", 0.0)
 
@@ -388,4 +495,4 @@ func _process(delta: float) -> void:
 
 
 func _update_money_text() -> void:
-	money_label.text = "$%d" % int(round(_shown_money))
+	money_label.text = Game.fmt(int(round(_shown_money)))

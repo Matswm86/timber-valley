@@ -11,9 +11,22 @@ var dest: ItemStack
 var points: PackedVector3Array
 var speed: float = 2.2
 var interval: float = 0.7
+## Valley this belt belongs to (its Sharp Saws level speeds it up).
+var region: int = 1
+## Flume look: a water trough instead of a belt, fixed speed, logs bob on the water.
+var flume: bool = false
+var bob_m: float = 0.0
+var bob_hz: float = 0.0
+var _clock: float = 0.0
+## Optional second route (a split): items alternate between dest and dest2.
+var dest2: ItemStack
+var points2: PackedVector3Array
+var _length2: float = 0.0
+var _flip: bool = false
 var _riding: Array = []
 var _timer: float = 0.0
 var _length: float = 0.0
+var _height: float = HEIGHT
 
 
 func setup(src: ItemStack, dst: ItemStack, pts: PackedVector3Array) -> Conveyor:
@@ -22,8 +35,20 @@ func setup(src: ItemStack, dst: ItemStack, pts: PackedVector3Array) -> Conveyor:
 	points = pts
 	for i in range(1, pts.size()):
 		_length += pts[i - 1].distance_to(pts[i])
-		_build_segment(pts[i - 1], pts[i])
+		if not flume:
+			_build_segment(pts[i - 1], pts[i])
 	return self
+
+
+## Log flume: water speed and spacing from Balance.FLUME; the trough models are built by World.
+func setup_flume(src: ItemStack, dst: ItemStack, pts: PackedVector3Array, height: float) -> Conveyor:
+	flume = true
+	speed = float(Balance.FLUME.speed)
+	interval = float(Balance.FLUME.spacing)
+	bob_m = float(Balance.FLUME.bob_m)
+	bob_hz = float(Balance.FLUME.bob_hz)
+	_height = height
+	return setup(src, dst, pts)
 
 
 func _build_segment(a: Vector3, b: Vector3) -> void:
@@ -75,16 +100,56 @@ func _point_at(dist: float) -> Vector3:
 	for i in range(1, points.size()):
 		var l := points[i - 1].distance_to(points[i])
 		if d <= l:
-			return points[i - 1].lerp(points[i], d / l) + Vector3(0, HEIGHT, 0)
+			return points[i - 1].lerp(points[i], d / l) + Vector3(0, _height, 0)
 		d -= l
-	return points[-1] + Vector3(0, HEIGHT, 0)
+	return points[-1] + Vector3(0, _height, 0)
+
+
+## Adds a second route. full_pts is the whole path to dst2; segments from index build_from on are built.
+func add_split(dst2: ItemStack, full_pts: PackedVector3Array, build_from: int) -> void:
+	dest2 = dst2
+	points2 = full_pts
+	_length2 = 0.0
+	for i in range(1, full_pts.size()):
+		_length2 += full_pts[i - 1].distance_to(full_pts[i])
+		if i > build_from:
+			_build_segment(full_pts[i - 1], full_pts[i])
+
+
+func _room(route: int) -> int:
+	var dst: ItemStack = dest if route == 0 else dest2
+	var n := 0
+	for r in _riding:
+		if int(r.r) == route:
+			n += 1
+	return dst.capacity - dst.count() - n
+
+
+func _point_on(route: int, dist: float) -> Vector3:
+	if route == 0:
+		return _point_at(dist)
+	var keep := points
+	points = points2
+	var out := _point_at(dist)
+	points = keep
+	return out
+
+
+func _speed_mult() -> float:
+	return 1.0 if flume else Game.machine_speed(region)
 
 
 func _process(delta: float) -> void:
+	_clock += delta
 	_timer -= delta
-	var room := dest.capacity - dest.count() - _riding.size()
-	if _timer <= 0.0 and not source.is_empty() and room > 0:
-		_timer = interval / Game.machine_speed()
+	var route := 0
+	if dest2 != null:
+		route = 1 if _flip else 0
+		if _room(route) <= 0:
+			route = 1 - route
+	if _timer <= 0.0 and not source.is_empty() and _room(route) > 0:
+		_flip = not _flip
+		_timer = interval / _speed_mult()
 		var it := source.pop()
 		if it.has_meta("tw"):
 			var old: Tween = it.get_meta("tw")
@@ -95,15 +160,18 @@ func _process(delta: float) -> void:
 		add_child(it)
 		it.global_transform = gxf
 		it.scale = Vector3.ONE
-		_riding.append({"node": it, "d": -0.6})
+		_riding.append({"node": it, "d": -0.6, "r": route})
 	for r in _riding.duplicate():
 		var it: Node3D = r.node
-		r.d += speed * Game.machine_speed() * delta
+		r.d += speed * _speed_mult() * delta
+		var rt := int(r.r)
 		if r.d < 0.0:
-			it.global_position = it.global_position.lerp(to_global(_point_at(0.0)), 0.3)
+			it.global_position = it.global_position.lerp(to_global(_point_on(rt, 0.0)), 0.3)
 			continue
-		if r.d >= _length:
+		if r.d >= (_length if rt == 0 else _length2):
 			_riding.erase(r)
-			dest.push(it)
+			(dest if rt == 0 else dest2).push(it)
 			continue
-		it.global_position = to_global(_point_at(r.d))
+		it.global_position = to_global(_point_on(rt, r.d))
+		if flume:
+			it.global_position.y += sin(_clock * TAU * bob_hz + r.d * 2.0) * bob_m

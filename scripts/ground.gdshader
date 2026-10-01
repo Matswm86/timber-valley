@@ -10,6 +10,10 @@ uniform vec3 grass_b : source_color = vec3(0.56, 0.74, 0.32);
 uniform vec3 dirt : source_color = vec3(0.76, 0.62, 0.43);
 uniform vec3 dirt_dark : source_color = vec3(0.63, 0.5, 0.34);
 uniform vec3 shore : source_color = vec3(0.55, 0.52, 0.36);
+// Painted 4 x 4 m tiles (assets/textures/ground, ASSETS_M1.md section 4): one grass tile per valley.
+uniform sampler2D grass_tex : source_color, repeat_enable, filter_linear_mipmap;
+uniform sampler2D dirt_tex : source_color, repeat_enable, filter_linear_mipmap;
+uniform float tile_m = 4.0;
 // Path segments: xy = start (world xz), zw = end.
 uniform vec4 paths[32];
 uniform float path_widths[32];
@@ -41,8 +45,7 @@ void fragment() {
 	vec2 p = world_pos.xz;
 	float n = texture(noise_tex, p * 0.018).r;
 	float n2 = texture(detail_tex, p * 0.21).r;
-	vec3 grass = mix(grass_a, grass_b, smoothstep(0.35, 0.7, n));
-	grass *= 0.92 + 0.16 * n2;
+	vec3 grass = texture(grass_tex, p / tile_m).rgb * mix(0.94, 1.06, smoothstep(0.35, 0.7, n));
 
 	float d = 1e5;
 	for (int i = 0; i < path_count; i++) {
@@ -53,7 +56,7 @@ void fragment() {
 	}
 	float wobble = (n2 - 0.5) * 0.5;
 	float dirt_mask = smoothstep(0.25, -0.15, d + wobble);
-	vec3 dirt_col = mix(dirt_dark, dirt, smoothstep(0.2, 0.8, n2));
+	vec3 dirt_col = texture(dirt_tex, p / tile_m + vec2(0.37, 0.61)).rgb;
 	vec3 col = mix(grass, dirt_col, dirt_mask);
 	// Soft darker rim where grass meets the path.
 	col *= 1.0 - 0.12 * smoothstep(0.6, 0.0, abs(d + wobble)) * (1.0 - dirt_mask);

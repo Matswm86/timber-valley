@@ -48,7 +48,8 @@ static func rounded_box(size: Vector3, radius: float, seg: int = 4) -> ArrayMesh
 		for j in n:
 			for i in n:
 				var q := [grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]]
-				for idx in [0, 2, 1, 0, 3, 2]:
+				# Clockwise winding is the front face in Godot, so the box's outside faces the camera.
+				for idx in [0, 1, 2, 0, 2, 3]:
 					st.set_normal(q[idx][1])
 					st.set_uv(q[idx][2])
 					st.add_vertex(q[idx][0])

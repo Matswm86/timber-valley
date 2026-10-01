@@ -1,0 +1,529 @@
+{
+ "tree_birchA": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 693,
+  "tex": 512,
+  "size": [
+   0.663,
+   0.6,
+   1.848
+  ],
+  "min": [
+   -0.342,
+   -0.303,
+   -0.04
+  ],
+  "bytes": 164840
+ },
+ "tree_birchB": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 670,
+  "tex": 512,
+  "size": [
+   0.537,
+   0.511,
+   2.018
+  ],
+  "min": [
+   -0.264,
+   -0.255,
+   -0.04
+  ],
+  "bytes": 159100
+ },
+ "tree_birchC": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 694,
+  "tex": 512,
+  "size": [
+   0.768,
+   0.698,
+   1.775
+  ],
+  "min": [
+   -0.386,
+   -0.323,
+   -0.042
+  ],
+  "bytes": 166568
+ },
+ "tree_birchA_far": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 173,
+  "tex": 256,
+  "size": [
+   0.554,
+   0.532,
+   1.771
+  ],
+  "min": [
+   -0.266,
+   -0.281,
+   -0.04
+  ],
+  "bytes": 53480
+ },
+ "tree_birchB_far": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 173,
+  "tex": 256,
+  "size": [
+   0.462,
+   0.456,
+   1.983
+  ],
+  "min": [
+   -0.221,
+   -0.241,
+   -0.04
+  ],
+  "bytes": 46284
+ },
+ "tree_birchC_far": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 180,
+  "tex": 256,
+  "size": [
+   0.665,
+   0.57,
+   1.658
+  ],
+  "min": [
+   -0.319,
+   -0.301,
+   -0.044
+  ],
+  "bytes": 57124
+ },
+ "stump_birch": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 356,
+  "tex": 256,
+  "size": [
+   0.457,
+   0.457,
+   0.222
+  ],
+  "min": [
+   -0.228,
+   -0.228,
+   -0.022
+  ],
+  "bytes": 97124
+ },
+ "log_stack_birch": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 936,
+  "tex": 256,
+  "size": [
+   0.596,
+   0.66,
+   0.406
+  ],
+  "min": [
+   -0.298,
+   -0.33,
+   0.002
+  ],
+  "bytes": 160564
+ },
+ "reeds": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 198,
+  "tex": 128,
+  "size": [
+   0.249,
+   0.172,
+   0.636
+  ],
+  "min": [
+   -0.157,
+   -0.097,
+   -0.003
+  ],
+  "bytes": 35848
+ },
+ "lilypads": {
+  "folder": "birch",
+  "units": "kenney",
+  "tris": 432,
+  "tex": 128,
+  "size": [
+   0.469,
+   0.388,
+   0.058
+  ],
+  "min": [
+   -0.179,
+   -0.129,
+   0.0
+  ],
+  "bytes": 42772
+ },
+ "veneer_lathe": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 1552,
+  "tex": 512,
+  "size": [
+   3.0,
+   1.95,
+   1.6
+  ],
+  "min": [
+   -1.5,
+   -1.03,
+   0.0
+  ],
+  "bytes": 284308
+ },
+ "veneer_lathe_log": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 164,
+  "tex": 256,
+  "size": [
+   1.5,
+   0.48,
+   0.468
+  ],
+  "min": [
+   -0.75,
+   -0.24,
+   -0.234
+  ],
+  "bytes": 41516
+ },
+ "plywood_press": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 1428,
+  "tex": 512,
+  "size": [
+   2.2,
+   1.665,
+   3.18
+  ],
+  "min": [
+   -1.05,
+   -0.89,
+   0.0
+  ],
+  "bytes": 249188
+ },
+ "plywood_press_plate": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 152,
+  "tex": 128,
+  "size": [
+   1.45,
+   1.05,
+   1.04
+  ],
+  "min": [
+   -0.725,
+   -0.525,
+   -0.14
+  ],
+  "bytes": 14588
+ },
+ "boat_workshop": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 1324,
+  "tex": 512,
+  "size": [
+   4.5,
+   3.024,
+   2.85
+  ],
+  "min": [
+   -2.25,
+   -1.5,
+   0.0
+  ],
+  "bytes": 326076
+ },
+ "riverside_office": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 1556,
+  "tex": 512,
+  "size": [
+   3.9,
+   3.763,
+   3.15
+  ],
+  "min": [
+   -1.95,
+   -2.2,
+   0.0
+  ],
+  "bytes": 281516
+ },
+ "barge": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 1796,
+  "tex": 512,
+  "size": [
+   2.804,
+   6.05,
+   2.495
+  ],
+  "min": [
+   -1.402,
+   -3.03,
+   -0.295
+  ],
+  "bytes": 315304
+ },
+ "barge_landing": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 708,
+  "tex": 512,
+  "size": [
+   4.22,
+   5.0,
+   2.24
+  ],
+  "min": [
+   -2.11,
+   -2.5,
+   0.0
+  ],
+  "bytes": 324656
+ },
+ "flume_straight": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 308,
+  "tex": 256,
+  "size": [
+   2.0,
+   1.09,
+   1.121
+  ],
+  "min": [
+   -1.0,
+   -0.545,
+   -0.051
+  ],
+  "bytes": 99948
+ },
+ "flume_chute": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 652,
+  "tex": 256,
+  "size": [
+   2.5,
+   1.66,
+   1.471
+  ],
+  "min": [
+   -1.5,
+   -0.83,
+   -0.051
+  ],
+  "bytes": 144336
+ },
+ "flume_end": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 440,
+  "tex": 256,
+  "size": [
+   1.929,
+   1.09,
+   1.121
+  ],
+  "min": [
+   -1.0,
+   -0.545,
+   -0.051
+  ],
+  "bytes": 126520
+ },
+ "boathouse": {
+  "folder": "birch",
+  "units": "world",
+  "tris": 1448,
+  "tex": 512,
+  "size": [
+   6.982,
+   11.05,
+   5.51
+  ],
+  "min": [
+   -3.491,
+   -6.6,
+   -0.03
+  ],
+  "bytes": 261736
+ },
+ "item_log": {
+  "folder": "items",
+  "units": "world",
+  "tris": 140,
+  "tex": 256,
+  "size": [
+   0.95,
+   0.32,
+   0.32
+  ],
+  "min": [
+   -0.475,
+   -0.16,
+   -0.0
+  ],
+  "bytes": 68000
+ },
+ "item_plank": {
+  "folder": "items",
+  "units": "world",
+  "tris": 108,
+  "tex": 256,
+  "size": [
+   0.95,
+   0.34,
+   0.1
+  ],
+  "min": [
+   -0.475,
+   -0.17,
+   0.0
+  ],
+  "bytes": 63664
+ },
+ "item_chair": {
+  "folder": "items",
+  "units": "world",
+  "tris": 252,
+  "tex": 256,
+  "size": [
+   0.38,
+   0.367,
+   0.89
+  ],
+  "min": [
+   -0.19,
+   -0.18,
+   0.0
+  ],
+  "bytes": 97292
+ },
+ "item_table": {
+  "folder": "items",
+  "units": "world",
+  "tris": 220,
+  "tex": 256,
+  "size": [
+   0.88,
+   0.47,
+   0.343
+  ],
+  "min": [
+   -0.44,
+   -0.235,
+   0.0
+  ],
+  "bytes": 76672
+ },
+ "item_bookcase": {
+  "folder": "items",
+  "units": "world",
+  "tris": 376,
+  "tex": 256,
+  "size": [
+   0.508,
+   0.31,
+   1.06
+  ],
+  "min": [
+   -0.25,
+   -0.155,
+   0.0
+  ],
+  "bytes": 107956
+ },
+ "item_birch_log": {
+  "folder": "items",
+  "units": "world",
+  "tris": 140,
+  "tex": 256,
+  "size": [
+   0.95,
+   0.32,
+   0.32
+  ],
+  "min": [
+   -0.475,
+   -0.16,
+   -0.0
+  ],
+  "bytes": 57256
+ },
+ "item_veneer": {
+  "folder": "items",
+  "units": "world",
+  "tris": 128,
+  "tex": 128,
+  "size": [
+   0.911,
+   0.48,
+   0.09
+  ],
+  "min": [
+   -0.475,
+   -0.24,
+   0.0
+  ],
+  "bytes": 24752
+ },
+ "item_plywood": {
+  "folder": "items",
+  "units": "world",
+  "tris": 108,
+  "tex": 256,
+  "size": [
+   0.95,
+   0.56,
+   0.11
+  ],
+  "min": [
+   -0.475,
+   -0.28,
+   0.0
+  ],
+  "bytes": 49408
+ },
+ "item_canoe": {
+  "folder": "items",
+  "units": "world",
+  "tris": 548,
+  "tex": 256,
+  "size": [
+   0.688,
+   2.004,
+   0.396
+  ],
+  "min": [
+   -0.344,
+   -1.002,
+   -0.03
+  ],
+  "bytes": 87984
+ }
+}
