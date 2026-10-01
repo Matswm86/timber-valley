@@ -29,6 +29,10 @@ func setup(region_id: int) -> Region:
 	rect = d.rect
 	name = "Region%d" % region_id
 	_baseline = float(Game.ledger.get(key(), 0.0))
+	add_child(ShadowProxy.new())
+	add_child(ZoneMarkers.new())
+	add_child(GroundLabels.new())
+	add_child(TreeBatch.new())
 	return self
 
 

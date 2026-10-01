@@ -88,10 +88,12 @@ vertical gradient), so the sun can move without the assets disagreeing with it.
 - Don't let chop-forest trees get wider than 1.05x the Kenney footprint. Wider canopies hide the path and
   the guide arrow from the portrait camera.
 - Characters are KayKit Adventurers (round, soft), recoloured per role in workwear colours; no greens,
-  so they read against the grass. The player is the only red-shirt, bald, ginger-bearded character.
+  so they read against the grass. The player (2026-10-01) is a friendly lumberjack: brown hair under a mustard knit
+  beanie, red-and-black plaid, raised brows and a smile. He is the only character in red and the only one with a cap.
+  Review: `tools/lookdev/player_options.png`.
   Wiring: `assets/models_v3/chars/WIRING.md`.
-- Not yet covered: the code-built sawmill, sheds and ground (BoxMesh/CylinderMesh in World.gd and
-  Shapes.gd). They are the next biggest "prototype" tell once the nature is swapped.
+- Covered 2026-10-01: the code-built sawmills, sheds, CNC, factory, lodge, Mega Saw, market, dock, truck, bridge,
+  belts, palisade and road now have v3 replacements: `assets/models_v3/ASSETS_LEFTOVER.md`.
 
 ## 12. Birch Bend (M1, 2026-10-01)
 
@@ -111,3 +113,38 @@ Do / don't:
 - Do keep the birch trunk white and visible under the canopy. It is how a birch reads from the camera.
 - Don't give open workshops a full roof. The camera looks down at about 52 degrees, so a roof hides the product.
 - Border forest: use the imposter atlas (ASSETS_M1.md section 5). The `_far` meshes are the fallback.
+
+## 13. Maple Highlands (M2, 2026-10-01)
+
+Asset list, anchors and swap dicts: `assets/models_v3/ASSETS_M2.md`. Review sheet: `tools/lookdev/compare_m2.png`.
+References: **Stardew Valley's fall season** (take the red/orange/gold canopy mix over olive ground and the warm village
+of small painted houses), and **Townscaper** (take the simple house silhouettes with one strong roof colour each, and
+the build-up of a building in readable steps).
+Mood: a crisp autumn hill village, warm canopies, one cool accent on everything people built.
+
+| Role | Hex | Godot |
+|---|---|---|
+| 60 - V3 grass, autumn olive (ground tile mean) | `#809236` | `Color(0.502, 0.573, 0.212)` |
+| 60 - maple canopy red | `#d94f2e` | `Color(0.85, 0.31, 0.18)` |
+| 60 - maple canopy orange | `#ed8a2b` | `Color(0.93, 0.54, 0.17)` |
+| 60 - maple canopy gold | `#f0b53a` | `Color(0.94, 0.71, 0.23)` |
+| 30 - maple bark, grey | `#8a8278` | `Color(0.54, 0.51, 0.47)` |
+| 30 - cut maple / beams | `#f5d9a8` | `Color(0.96, 0.85, 0.66)` |
+| 30 - **region accent: highland teal** (machines, roofs, ironwork, train) | `#2a9d8f` | `Color(0.165, 0.616, 0.561)` |
+| 30 - teal dark (frames, straps) | `#1c6b63` | `Color(0.11, 0.42, 0.39)` |
+| 10 - cabin-kit tag red | `#db332e` | `Color(0.86, 0.2, 0.18)` |
+| 10 - village walls: cream / ochre / barn red / white | `#f7edd6` / `#edc26e` / `#bd382b` / `#f7f2e6` | |
+
+Why teal: it is complementary to the red/orange canopies, so machines stand out from the forest. It is clear of Home's
+orange/green, Birch Bend's river blue `#408ac2` (33 deg of hue away) and purple.
+Contrast (my calc): teal and the olive grass have the same luminance (1.0:1), so they separate by hue only. Teal against
+the dirt plazas is 1.5:1, and the yellow trims, cream panels and baked AO base outline every teal object.
+
+Do / don't:
+- Do keep teal for things people built (machines, roofs, train, gate, office). Trees and ground stay warm.
+- Do put every teal machine on a dirt plaza. Never stand a teal body flat on bare olive grass.
+- Do keep the maple trunk short and grey under a round crown. The grey trunk is what tells a maple from the V1 tree at a distance.
+- Do raise build sites stage by stage with the shipped `stageN` nodes; never swap in a whole house at once.
+- Don't give houses colours from another valley's accent (no river-blue roofs). The village uses cream, ochre, barn red,
+  white and teal only.
+- Don't use the GDD's "red frame" for the beam saw. Red disappears against red canopies, so it is teal like the other V3 machines.

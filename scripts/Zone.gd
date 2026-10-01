@@ -20,12 +20,20 @@ var label: Label3D
 var _timers: Dictionary = {}
 var _inside: Dictionary = {}
 var _mat: ShaderMaterial
+## Marker look, also read by the valley's ZoneMarkers MultiMesh.
+var marker_color: Color = Color.WHITE
+var progress: float = 0.0
+var active: float = 0.0
+var _plane: Mesh
+var _batch: ZoneMarkers
+var _label_batch: GroundLabels
 
 
 func setup(k: Kind, s: ItemStack, size: Vector2, text: String, color: Color = Color.WHITE) -> Zone:
 	kind = k
 	stack = s
 	half = size * 0.5
+	marker_color = color
 	marker = MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = size
@@ -56,16 +64,44 @@ func setup(k: Kind, s: ItemStack, size: Vector2, text: String, color: Color = Co
 
 
 func set_progress(p: float) -> void:
+	progress = p
 	_mat.set_shader_parameter("progress", p)
 
 
 func set_highlight(on: bool) -> void:
-	_mat.set_shader_parameter("active", 1.0 if on else 0.0)
+	active = 1.0 if on else 0.0
+	_mat.set_shader_parameter("active", active)
 
 
 func contains(p: Vector3) -> bool:
 	var l := global_transform.affine_inverse() * p
 	return absf(l.x) <= half.x + 0.25 and absf(l.z) <= half.y + 0.25
+
+
+## Inside a valley the marker is drawn by the valley's ZoneMarkers (one draw for all zones);
+## the marker node stays (other code shows/hides it) but has no mesh of its own.
+func _enter_tree() -> void:
+	_batch = ZoneMarkers.find_for(self)
+	if _batch:
+		if _plane == null:
+			_plane = marker.mesh
+		marker.mesh = null
+		_batch.add(self)
+	if label:
+		_label_batch = GroundLabels.find_for(self)
+		if _label_batch:
+			_label_batch.add(label)
+
+
+func _exit_tree() -> void:
+	if _batch:
+		_batch.remove(self)
+		_batch = null
+		marker.mesh = _plane
+	if _label_batch:
+		_label_batch.remove(label)
+		_label_batch = null
+		label.visible = true
 
 
 ## Called every physics frame for a carrier standing inside. Returns true if something moved.

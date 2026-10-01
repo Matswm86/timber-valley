@@ -63,6 +63,8 @@ static func fly_to_and_free(it: Node3D, target: Node3D, delay: float = 0.0) -> v
 
 static func confetti(parent: Node, pos: Vector3) -> void:
 	var p := CPUParticles3D.new()
+	# Small bits: no shadow pass draw.
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.amount = 60
 	p.lifetime = 1.6
 	p.one_shot = true

@@ -1,0 +1,1006 @@
+{
+ "tree_mapleA": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 686,
+  "tex": 512,
+  "size_godot": [
+   0.704,
+   1.662,
+   0.732
+  ],
+  "min_godot": [
+   -0.366,
+   -0.04,
+   -0.388
+  ],
+  "max_godot": [
+   0.338,
+   1.622,
+   0.343
+  ],
+  "bytes": 171456,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "tree_mapleB": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 686,
+  "tex": 512,
+  "size_godot": [
+   0.648,
+   1.856,
+   0.64
+  ],
+  "min_godot": [
+   -0.343,
+   -0.04,
+   -0.315
+  ],
+  "max_godot": [
+   0.305,
+   1.816,
+   0.325
+  ],
+  "bytes": 179380,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "tree_mapleC": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 686,
+  "tex": 512,
+  "size_godot": [
+   0.767,
+   1.502,
+   0.744
+  ],
+  "min_godot": [
+   -0.41,
+   -0.04,
+   -0.361
+  ],
+  "max_godot": [
+   0.357,
+   1.462,
+   0.383
+  ],
+  "bytes": 174280,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "tree_mapleA_far": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 173,
+  "tex": 256,
+  "size_godot": [
+   0.667,
+   1.565,
+   0.647
+  ],
+  "min_godot": [
+   -0.32,
+   -0.04,
+   -0.305
+  ],
+  "max_godot": [
+   0.347,
+   1.525,
+   0.341
+  ],
+  "bytes": 47968,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "tree_mapleB_far": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 173,
+  "tex": 256,
+  "size_godot": [
+   0.572,
+   1.799,
+   0.568
+  ],
+  "min_godot": [
+   -0.274,
+   -0.04,
+   -0.268
+  ],
+  "max_godot": [
+   0.298,
+   1.759,
+   0.3
+  ],
+  "bytes": 46568,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "tree_mapleC_far": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 173,
+  "tex": 256,
+  "size_godot": [
+   0.686,
+   1.39,
+   0.666
+  ],
+  "min_godot": [
+   -0.329,
+   -0.04,
+   -0.315
+  ],
+  "max_godot": [
+   0.357,
+   1.35,
+   0.352
+  ],
+  "bytes": 48612,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "stump_maple": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 428,
+  "tex": 256,
+  "size_godot": [
+   0.583,
+   0.225,
+   0.557
+  ],
+  "min_godot": [
+   -0.259,
+   -0.025,
+   -0.233
+  ],
+  "max_godot": [
+   0.324,
+   0.2,
+   0.324
+  ],
+  "bytes": 100904,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "log_stack_maple": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 936,
+  "tex": 256,
+  "size_godot": [
+   0.596,
+   0.406,
+   0.66
+  ],
+  "min_godot": [
+   -0.298,
+   0.002,
+   -0.33
+  ],
+  "max_godot": [
+   0.298,
+   0.408,
+   0.33
+  ],
+  "bytes": 151340,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "leaf_pile": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 296,
+  "tex": 128,
+  "size_godot": [
+   0.477,
+   0.13,
+   0.527
+  ],
+  "min_godot": [
+   -0.244,
+   -0.057,
+   -0.315
+  ],
+  "max_godot": [
+   0.232,
+   0.073,
+   0.212
+  ],
+  "bytes": 37008,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "bush_autumn": {
+  "folder": "maple",
+  "units": "kenney",
+  "tris": 218,
+  "tex": 256,
+  "size_godot": [
+   0.524,
+   0.29,
+   0.382
+  ],
+  "min_godot": [
+   -0.245,
+   0.0,
+   -0.187
+  ],
+  "max_godot": [
+   0.279,
+   0.29,
+   0.196
+  ],
+  "bytes": 72476,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "item_maple_log": {
+  "folder": "items",
+  "units": "world",
+  "tris": 140,
+  "tex": 256,
+  "size_godot": [
+   0.95,
+   0.32,
+   0.32
+  ],
+  "min_godot": [
+   -0.475,
+   -0.0,
+   -0.16
+  ],
+  "max_godot": [
+   0.475,
+   0.32,
+   0.16
+  ],
+  "bytes": 68544,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "item_beam": {
+  "folder": "items",
+  "units": "world",
+  "tris": 108,
+  "tex": 256,
+  "size_godot": [
+   1.15,
+   0.27,
+   0.27
+  ],
+  "min_godot": [
+   -0.575,
+   0.0,
+   -0.135
+  ],
+  "max_godot": [
+   0.575,
+   0.27,
+   0.135
+  ],
+  "bytes": 61076,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "item_floorboard": {
+  "folder": "items",
+  "units": "world",
+  "tris": 100,
+  "tex": 128,
+  "size_godot": [
+   0.96,
+   0.06,
+   0.232
+  ],
+  "min_godot": [
+   -0.48,
+   0.0,
+   -0.107
+  ],
+  "max_godot": [
+   0.48,
+   0.06,
+   0.125
+  ],
+  "bytes": 26700,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "item_cabin_kit": {
+  "folder": "items",
+  "units": "world",
+  "tris": 724,
+  "tex": 256,
+  "size_godot": [
+   0.88,
+   0.56,
+   0.937
+  ],
+  "min_godot": [
+   -0.44,
+   0.0,
+   -0.46
+  ],
+  "max_godot": [
+   0.44,
+   0.56,
+   0.477
+  ],
+  "bytes": 136592,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "beam_saw": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1008,
+  "tex": 512,
+  "size_godot": [
+   3.9,
+   1.66,
+   1.85
+  ],
+  "min_godot": [
+   -1.95,
+   0.0,
+   -1.25
+  ],
+  "max_godot": [
+   1.95,
+   1.66,
+   0.6
+  ],
+  "bytes": 262152,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "beam_saw_blade": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 464,
+  "tex": 128,
+  "size_godot": [
+   1.153,
+   1.143,
+   0.06
+  ],
+  "min_godot": [
+   -0.576,
+   -0.572,
+   -0.03
+  ],
+  "max_godot": [
+   0.576,
+   0.572,
+   0.03
+  ],
+  "bytes": 49384,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "planer_mill": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1248,
+  "tex": 512,
+  "size_godot": [
+   3.6,
+   2.923,
+   2.471
+  ],
+  "min_godot": [
+   -1.8,
+   -0.003,
+   -1.771
+  ],
+  "max_godot": [
+   1.8,
+   2.92,
+   0.7
+  ],
+  "bytes": 260404,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "planer_roller": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 116,
+  "tex": 128,
+  "size_godot": [
+   0.26,
+   0.245,
+   1.0
+  ],
+  "min_godot": [
+   -0.13,
+   -0.123,
+   -0.5
+  ],
+  "max_godot": [
+   0.13,
+   0.123,
+   0.5
+  ],
+  "bytes": 20100,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "kit_factory": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 2548,
+  "tex": 512,
+  "size_godot": [
+   5.0,
+   3.265,
+   4.135
+  ],
+  "min_godot": [
+   -2.5,
+   -0.0,
+   -2.135
+  ],
+  "max_godot": [
+   2.5,
+   3.265,
+   2.0
+  ],
+  "bytes": 351464,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "kit_factory_press": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 92,
+  "tex": 128,
+  "size_godot": [
+   1.12,
+   1.045,
+   1.1
+  ],
+  "min_godot": [
+   -0.56,
+   -0.145,
+   -0.55
+  ],
+  "max_godot": [
+   0.56,
+   0.9,
+   0.55
+  ],
+  "bytes": 15288,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "forklift": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 928,
+  "tex": 256,
+  "size_godot": [
+   1.2,
+   2.25,
+   2.65
+  ],
+  "min_godot": [
+   -0.6,
+   0.0,
+   -1.075
+  ],
+  "max_godot": [
+   0.6,
+   2.25,
+   1.575
+  ],
+  "bytes": 127324,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "rail_straight_4m": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 276,
+  "tex": 256,
+  "size_godot": [
+   1.6,
+   0.18,
+   4.0
+  ],
+  "min_godot": [
+   -0.8,
+   0.0,
+   -2.0
+  ],
+  "max_godot": [
+   0.8,
+   0.18,
+   2.0
+  ],
+  "bytes": 81452,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "rail_bumper": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 348,
+  "tex": 128,
+  "size_godot": [
+   1.6,
+   0.865,
+   0.78
+  ],
+  "min_godot": [
+   -0.8,
+   0.0,
+   -0.635
+  ],
+  "max_godot": [
+   0.8,
+   0.865,
+   0.145
+  ],
+  "bytes": 49528,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "handcar": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 444,
+  "tex": 256,
+  "size_godot": [
+   1.3,
+   1.364,
+   1.6
+  ],
+  "min_godot": [
+   -0.65,
+   0.18,
+   -0.8
+  ],
+  "max_godot": [
+   0.65,
+   1.544,
+   0.8
+  ],
+  "bytes": 103012,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "handcar_tile": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 264,
+  "tex": 128,
+  "size_godot": [
+   1.6,
+   0.075,
+   1.6
+  ],
+  "min_godot": [
+   -0.8,
+   0.0,
+   -0.8
+  ],
+  "max_godot": [
+   0.8,
+   0.075,
+   0.8
+  ],
+  "bytes": 37496,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "handcar_stop": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 532,
+  "tex": 256,
+  "size_godot": [
+   4.2,
+   2.57,
+   0.48
+  ],
+  "min_godot": [
+   -1.9,
+   0.0,
+   -0.08
+  ],
+  "max_godot": [
+   2.3,
+   2.57,
+   0.4
+  ],
+  "bytes": 97236,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "lantern_post": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 144,
+  "tex": 128,
+  "size_godot": [
+   0.4,
+   2.545,
+   0.4
+  ],
+  "min_godot": [
+   -0.2,
+   0.0,
+   -0.2
+  ],
+  "max_godot": [
+   0.2,
+   2.545,
+   0.2
+  ],
+  "bytes": 19764,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "train_loco": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1020,
+  "tex": 512,
+  "size_godot": [
+   1.8,
+   2.302,
+   4.7
+  ],
+  "min_godot": [
+   -0.9,
+   0.188,
+   -2.55
+  ],
+  "max_godot": [
+   0.9,
+   2.49,
+   2.15
+  ],
+  "bytes": 225204,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "train_wagon": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 584,
+  "tex": 256,
+  "size_godot": [
+   1.8,
+   1.145,
+   3.6
+  ],
+  "min_godot": [
+   -0.9,
+   0.18,
+   -1.8
+  ],
+  "max_godot": [
+   0.9,
+   1.325,
+   1.8
+  ],
+  "bytes": 109232,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "rail_platform": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 676,
+  "tex": 512,
+  "size_godot": [
+   4.05,
+   2.732,
+   6.042
+  ],
+  "min_godot": [
+   -1.65,
+   0.0,
+   -3.042
+  ],
+  "max_godot": [
+   2.4,
+   2.732,
+   3.0
+  ],
+  "bytes": 261828,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "highland_office": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 708,
+  "tex": 512,
+  "size_godot": [
+   4.3,
+   4.212,
+   4.467
+  ],
+  "min_godot": [
+   -2.15,
+   0.0,
+   -1.867
+  ],
+  "max_godot": [
+   2.15,
+   4.212,
+   2.6
+  ],
+  "bytes": 236416,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "market_canopy_teal": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1424,
+  "tex": 256,
+  "size_godot": [
+   1.021,
+   2.491,
+   10.3
+  ],
+  "min_godot": [
+   0.449,
+   0.0,
+   -5.15
+  ],
+  "max_godot": [
+   1.47,
+   2.491,
+   5.15
+  ],
+  "bytes": 161976,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "house_cottage": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1192,
+  "tex": 512,
+  "size_godot": [
+   5.1,
+   4.72,
+   4.599
+  ],
+  "min_godot": [
+   -2.55,
+   0.0,
+   -2.169
+  ],
+  "max_godot": [
+   2.55,
+   4.72,
+   2.43
+  ],
+  "bytes": 272252,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU",
+  "stages": {
+   "stage1": 88,
+   "stage2": 440,
+   "stage3": 320,
+   "stage4": 344
+  }
+ },
+ "house_farmhouse": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1328,
+  "tex": 512,
+  "size_godot": [
+   5.9,
+   4.863,
+   5.406
+  ],
+  "min_godot": [
+   -2.95,
+   0.0,
+   -2.368
+  ],
+  "max_godot": [
+   2.95,
+   4.863,
+   3.039
+  ],
+  "bytes": 269192,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU",
+  "stages": {
+   "stage1": 88,
+   "stage2": 440,
+   "stage3": 320,
+   "stage4": 480
+  }
+ },
+ "house_barn": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1268,
+  "tex": 512,
+  "size_godot": [
+   5.85,
+   5.031,
+   5.9
+  ],
+  "min_godot": [
+   -2.55,
+   0.0,
+   -2.95
+  ],
+  "max_godot": [
+   3.3,
+   5.031,
+   2.95
+  ],
+  "bytes": 276100,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU",
+  "stages": {
+   "stage1": 44,
+   "stage2": 440,
+   "stage3": 388,
+   "stage4": 396
+  }
+ },
+ "house_school": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1400,
+  "tex": 512,
+  "size_godot": [
+   6.1,
+   6.599,
+   4.997
+  ],
+  "min_godot": [
+   -3.05,
+   0.0,
+   -2.367
+  ],
+  "max_godot": [
+   3.05,
+   6.599,
+   2.63
+  ],
+  "bytes": 284552,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU",
+  "stages": {
+   "stage1": 88,
+   "stage2": 440,
+   "stage3": 456,
+   "stage4": 416
+  }
+ },
+ "house_inn": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1572,
+  "tex": 512,
+  "size_godot": [
+   6.1,
+   7.229,
+   5.653
+  ],
+  "min_godot": [
+   -3.05,
+   0.0,
+   -2.568
+  ],
+  "max_godot": [
+   3.05,
+   7.229,
+   3.085
+  ],
+  "bytes": 291892,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU",
+  "stages": {
+   "stage1": 88,
+   "stage2": 528,
+   "stage3": 632,
+   "stage4": 324
+  }
+ },
+ "clock_tower": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 1816,
+  "tex": 512,
+  "size_godot": [
+   4.0,
+   12.255,
+   4.55
+  ],
+  "min_godot": [
+   -2.0,
+   -0.005,
+   -2.0
+  ],
+  "max_godot": [
+   2.0,
+   12.25,
+   2.55
+  ],
+  "bytes": 268908,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU",
+  "stages": {
+   "stage1": 88,
+   "stage2": 352,
+   "stage3": 400,
+   "stage4": 568,
+   "stage5": 300,
+   "stage6": 108
+  }
+ },
+ "highland_gate": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 824,
+  "tex": 512,
+  "size_godot": [
+   5.5,
+   4.259,
+   2.132
+  ],
+  "min_godot": [
+   -2.75,
+   0.0,
+   -0.966
+  ],
+  "max_godot": [
+   2.75,
+   4.259,
+   1.166
+  ],
+  "bytes": 306620,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "highland_gate_doors": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 392,
+  "tex": 256,
+  "size_godot": [
+   2.66,
+   2.5,
+   0.213
+  ],
+  "min_godot": [
+   -1.33,
+   0.05,
+   -0.06
+  ],
+  "max_godot": [
+   1.33,
+   2.55,
+   0.153
+  ],
+  "bytes": 107620,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "build_plot": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 398,
+  "tex": 128,
+  "size_godot": [
+   5.08,
+   0.74,
+   4.9
+  ],
+  "min_godot": [
+   -2.45,
+   -0.04,
+   -2.45
+  ],
+  "max_godot": [
+   2.63,
+   0.7,
+   2.45
+  ],
+  "bytes": 40200,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ },
+ "beam_cart": {
+  "folder": "maple",
+  "units": "world",
+  "tris": 632,
+  "tex": 256,
+  "size_godot": [
+   1.07,
+   0.985,
+   2.144
+  ],
+  "min_godot": [
+   -0.535,
+   0.0,
+   -1.444
+  ],
+  "max_godot": [
+   0.535,
+   0.985,
+   0.7
+  ],
+  "bytes": 132352,
+  "device": "OPTIX: NVIDIA GeForce RTX 3060 Laptop GPU"
+ }
+}

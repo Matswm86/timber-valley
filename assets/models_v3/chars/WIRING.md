@@ -50,7 +50,7 @@ upperleg/lowerleg/foot/toes .l/.r, plus non-deforming IK helpers (kneeIK, heelIK
 control-*, elbowIK, handIK). The helpers have animation tracks but move nothing.
 
 ## Suggested roles (already matches the names used in code)
-Player `male-e` (bald, ginger beard, red shirt: the only red Barbarian); lumberjacks `male-a/c/d`,
+Player `male-e` (2026-10-01: friendly Knight-based lumberjack: brown hair under a mustard knit beanie, red-and-black plaid shirt, raised brows and a smile; the only red and the only cap. Same rig, bone names, `handslot.r` axes, animation names, rig scale 0.3456 and body budget, so no code change). Unused candidates: `character-player-alt-1/3/4.glb` (review sheet `tools/lookdev/player_options.png`); lumberjacks `male-a/c/d`,
 `female-a`; haulers `male-b`, `female-b/c/d`; cashier `female-e`; customers any. Every variant has
 the axe meshes, so any model can chop.
 

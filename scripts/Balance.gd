@@ -153,3 +153,10 @@ const BIG_PADS := [
 ]
 ## Landmarks that finish a valley and show the "Valley complete" card.
 const LANDMARKS := {"lodge": 1, "r2_boathouse": 2}
+## Valley gateways: the pad that opens the next valley (later gates go here too). Outside the
+## tutorials the guide arrow always points at an unpaid gateway, affordable or not.
+## "gate" = the closed gate in the valley wall that glows; "path" = the route the glow takes
+## into the new valley once the gateway is paid.
+const GATEWAYS := {
+	"r2_bridge": {"region": 2, "gate": Vector3(-23.2, 0, -6), "path": [Vector3(-20.5, 0, -6), Vector3(-30.2, 0, -6), Vector3(-41.0, 0, -6)]},
+}

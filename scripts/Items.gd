@@ -18,6 +18,7 @@ const DEFS := {
 }
 
 static var _cache: Dictionary = {}
+static var _meshes: Dictionary = {}
 static var _coin_mesh: Mesh
 static var _coin_mat: StandardMaterial3D
 
@@ -38,12 +39,17 @@ static func make(type: String) -> Node3D:
 		var mi := MeshInstance3D.new()
 		mi.mesh = _coin()
 		mi.material_override = _coin_mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.position.y = 0.035
 		root.add_child(mi)
 		return root
 	var info: Dictionary = _load(type)
 	root.add_child(_build(info.scene, d))
 	(root.get_child(0) as Node3D).position = info.offset
+	# A loose item is only seen in flight (piles and belts draw landed items in MultiMeshes,
+	# which keep the shadows): its own shadow would be a shadow-pass draw per item.
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		(mi as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return root
 
 
@@ -111,3 +117,50 @@ static func aabb_of(n: Node, xf: Transform3D) -> AABB:
 			out = a if first else out.merge(a)
 			first = false
 	return out
+
+
+## One mesh per item type in the item root's space (every surface keeps its material), for the
+## MultiMeshes that draw landed piles and riding belt items.
+static func mesh_of(type: String) -> ArrayMesh:
+	if _meshes.has(type):
+		return _meshes[type]
+	var root := make(type)
+	var am := ArrayMesh.new()
+	_bake_into(root, Transform3D.IDENTITY, am, true)
+	root.free()
+	_meshes[type] = am
+	return am
+
+
+static func _bake_into(n: Node, xf: Transform3D, am: ArrayMesh, is_root: bool) -> void:
+	if n is Node3D and not is_root:
+		xf = xf * (n as Node3D).transform
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		for s in mi.mesh.get_surface_count():
+			var arr := mi.mesh.surface_get_arrays(s)
+			var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+			var nb := xf.basis.inverse().transposed()
+			for i in verts.size():
+				verts[i] = xf * verts[i]
+			for i in norms.size():
+				norms[i] = (nb * norms[i]).normalized()
+			arr[Mesh.ARRAY_VERTEX] = verts
+			arr[Mesh.ARRAY_NORMAL] = norms
+			# Tangents would need the same rotation; the item materials use no normal maps.
+			arr[Mesh.ARRAY_TANGENT] = null
+			am.add_surface_from_arrays(mesh_primitive(mi.mesh, s), arr)
+			am.surface_set_material(am.get_surface_count() - 1, mi.get_active_material(s))
+	for c in n.get_children():
+		_bake_into(c, xf, am, false)
+
+
+static func mesh_primitive(m: Mesh, s: int) -> Mesh.PrimitiveType:
+	return (m as ArrayMesh).surface_get_primitive_type(s) if m is ArrayMesh else Mesh.PRIMITIVE_TRIANGLES
+
+
+## Only bulky items (logs, furniture, canoes) cast shadows; thin sheets, planks and coins would
+## add a shadow-pass draw per pile for a sliver of shadow.
+static func casts_shadow(type: String) -> bool:
+	return float(DEFS[type].layer) >= 0.3

@@ -60,6 +60,7 @@ func setup(prod: String, road_x_global: float, vehicle_kind: String = "truck", r
 	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + product.to_upper() + "S", Color(0.7, 1.0, 0.8))
 	zone.position = Vector3(-1.6, 0, 0)
 	add_child(zone)
+	MeshMerge.merge(self)
 	truck = Node3D.new()
 	var model: Node3D = load("res://assets/models/car/truck-flat.glb").instantiate()
 	model.scale = Vector3.ONE * 1.7
@@ -75,6 +76,7 @@ func _setup_barge(cap: int) -> TruckDock:
 	var landing := Models.make("barge_landing")
 	landing.position = Vector3(0.6, 0, 0)
 	add_child(landing)
+	MeshMerge.merge(self)
 	pile = ItemStack.new().setup(product, 24, 2, 3, "dock:" + product)
 	pile.position = Vector3(0.6, 0.4, 0)
 	add_child(pile)

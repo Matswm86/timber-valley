@@ -86,7 +86,7 @@ Wiring for Godot: `chars/WIRING.md`. The axe tris count once, because only one a
 
 | File | Source | Licence | Tris | Texture |
 |---|---|---|---|---|
-| `chars/character-male-e.glb` | KayKit Character Pack: Adventurers 1.0, `Barbarian.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2695 body + 2x150 axe | 512x512 |
+| `chars/character-male-e.glb` (player, 2026-10-01: own face edit + own knit beanie + procedural plaid) | KayKit Character Pack: Adventurers 1.0, `Knight.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2695 body + 2x150 axe | 512x512 |
 | `chars/character-male-a.glb` | KayKit Character Pack: Adventurers 1.0, `Barbarian.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2695 body + 2x150 axe | 512x512 |
 | `chars/character-male-b.glb` | KayKit Character Pack: Adventurers 1.0, `Knight.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2694 body + 2x150 axe | 512x512 |
 | `chars/character-male-c.glb` | KayKit Character Pack: Adventurers 1.0, `Knight.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2694 body + 2x150 axe | 512x512 |
@@ -97,6 +97,9 @@ Wiring for Godot: `chars/WIRING.md`. The axe tris count once, because only one a
 | `chars/character-female-c.glb` | KayKit Character Pack: Adventurers 1.0, `Rogue_Hooded.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2697 body + 2x150 axe | 512x512 |
 | `chars/character-female-d.glb` | KayKit Character Pack: Adventurers 1.0, `Rogue.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2691 body + 2x150 axe | 512x512 |
 | `chars/character-female-e.glb` | KayKit Character Pack: Adventurers 1.0, `Rogue.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2691 body + 2x150 axe | 512x512 |
+| `chars/character-player-alt-1.glb` (candidate, Knight, plaid, face edit) | KayKit Character Pack: Adventurers 1.0, `Knight.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2694 body + 2x150 axe | 512x512 |
+| `chars/character-player-alt-3.glb` (candidate, Mage, plaid, face edit) | KayKit Character Pack: Adventurers 1.0, `Mage.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2694 body + 2x150 axe | 512x512 |
+| `chars/character-player-alt-4.glb` (candidate, Barbarian, own beanie, face edit) | KayKit Character Pack: Adventurers 1.0, `Barbarian.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2692 body + 2x150 axe | 512x512 |
 | `chars/character-female-f.glb` | KayKit Character Pack: Adventurers 1.0, `Rogue_Hooded.glb` - https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (commit 672074b) | CC0 (Kay Lousberg) | 2697 body + 2x150 axe | 512x512 |
 
 ## M1 Birch Bend + item models (models_v3/birch, models_v3/items), icons, ground tiles, imposters
@@ -146,3 +149,94 @@ Use and placement: `assets/models_v3/ASSETS_M1.md`.
 | `assets/icons/*.png` (9 items x 256/128/64) | Rendered from the `items/*.glb` above (tools/lookdev/make_icons_m1.py) | CC0 (released with this repo) | - | - |
 | `assets/textures/ground/{grass_v1,grass_birch,dirt_path}.png` | Own procedural Blender material (tools/lookdev/make_ground_m1.py) | CC0 (released with this repo) | - | 512x512 |
 | `assets/textures/imposters/border_trees_atlas.png` | Rendered from `nature/*_far.glb` (KayKit-derived CC0 and own pines) and `birch/*_far.glb` | CC0 (Kay Lousberg for the KayKit-derived trees; rest own work) | 2 per card | 2048x2048 |
+
+## Leftover replacements (models_v3/shared, models_v3/home), road tile (2026-10-01)
+
+Own work from Blender primitives in `tools/lookdev/build_leftover.py` (same bake as build_v3.py / build_m1.py), released CC0
+with the repo. No third-party asset, texture or font is inside these files. Placement: `assets/models_v3/ASSETS_LEFTOVER.md`.
+They replace the last Kenney models loaded by scripts/ (crane, truck-flat, bridge_wood, chest, structure-yellow-tall,
+workbench, workbench-grind, signpost-single, chair, machine-window, screen-small, cog-a, lever-single, machine-fortified,
+machine, hopper-square, robot-arm-a/b, bench, loungeChair). The Kenney files stay in `assets/models/` (CC0) until the code stops loading them.
+
+| File | Source | Licence | Tris | Texture |
+|---|---|---|---|---|
+| `shared/belt_rails.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 300 | 128x128 |
+| `home/saw_blade.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 496 | 128x128 |
+| `shared/belt_legs.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 220 | 128x128 |
+| `shared/belt_end.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 460 | 128x128 |
+| `shared/palisade_post.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 56 | 128x128 |
+| `shared/bridge_river.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1788 | 512x512 |
+| `shared/shop_counter.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 308 | 256x256 |
+| `shared/shop_till.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 668 | 256x256 |
+| `shared/market_canopy.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1424 | 256x256 |
+| `shared/truck_flatbed.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1796 | 512x512 |
+| `shared/truck_dock.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 588 | 256x256 |
+| `home/sawmill_body_orange.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1412 | 512x512 |
+| `home/sawmill_body_green.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1412 | 512x512 |
+| `home/office_hut.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1592 | 512x512 |
+| `home/carpentry_shed.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1704 | 512x512 |
+| `home/cnc_router.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1232 | 512x512 |
+| `home/cnc_cog.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 360 | 128x128 |
+| `home/bookcase_factory.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1820 | 512x512 |
+| `home/factory_arm.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 608 | 128x128 |
+| `home/grand_lodge.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 2228 | 512x512 |
+| `home/lodge_windows.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 8 | emissive material, no texture |
+| `home/megasaw_body.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 1520 | 512x512 |
+| `home/megasaw_crane.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 844 | 256x256 |
+| `home/crane_hook.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 208 | 128x128 |
+| `home/road_sign.glb` | Built in tools/lookdev/build_leftover.py, own work | CC0 (released with this repo) | 580 | 256x256 |
+| `assets/textures/ground/road_tile.png` | Own numpy noise + dash (tools/lookdev/make_road_tile.py) | CC0 (released with this repo) | - | 512x512 |
+
+## M2 Maple Highlands (models_v3/maple, models_v3/items), icons, ground, imposters (2026-10-01)
+
+Own work from Blender primitives in `tools/lookdev/build_m2.py`, released CC0 with the repo. No third-party asset inside.
+Exception: cells 12-15 of the imposter atlas render `nature/tree_pineTallB_detailed_far.glb` (own pine, CC0).
+Placement: `assets/models_v3/ASSETS_M2.md`.
+
+| File | Source | Licence | Tris | Texture |
+|---|---|---|---|---|
+| `maple/tree_mapleA.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 686 | 512x512 |
+| `maple/tree_mapleB.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 686 | 512x512 |
+| `maple/tree_mapleC.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 686 | 512x512 |
+| `maple/tree_mapleA_far.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 173 | 256x256 |
+| `maple/tree_mapleB_far.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 173 | 256x256 |
+| `maple/tree_mapleC_far.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 173 | 256x256 |
+| `maple/stump_maple.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 428 | 256x256 |
+| `maple/log_stack_maple.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 936 | 256x256 |
+| `maple/leaf_pile.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 296 | 128x128 |
+| `maple/bush_autumn.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 218 | 256x256 |
+| `items/item_maple_log.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 140 | 256x256 |
+| `items/item_beam.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 108 | 256x256 |
+| `items/item_floorboard.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 100 | 128x128 |
+| `items/item_cabin_kit.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 724 | 256x256 |
+| `maple/beam_saw.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1008 | 512x512 |
+| `maple/beam_saw_blade.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 464 | 128x128 |
+| `maple/planer_mill.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1248 | 512x512 |
+| `maple/planer_roller.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 116 | 128x128 |
+| `maple/kit_factory.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 2548 | 512x512 |
+| `maple/kit_factory_press.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 92 | 128x128 |
+| `maple/forklift.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 928 | 256x256 |
+| `maple/rail_straight_4m.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 276 | 256x256 |
+| `maple/rail_bumper.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 348 | 128x128 |
+| `maple/handcar.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 444 | 256x256 |
+| `maple/handcar_tile.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 264 | 128x128 |
+| `maple/handcar_stop.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 532 | 256x256 |
+| `maple/lantern_post.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 144 | 128x128 |
+| `maple/train_loco.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1020 | 512x512 |
+| `maple/train_wagon.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 584 | 256x256 |
+| `maple/rail_platform.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 676 | 512x512 |
+| `maple/highland_office.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 708 | 512x512 |
+| `maple/market_canopy_teal.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1424 | 256x256 |
+| `maple/house_cottage.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1192 (stage1 88, stage2 440, stage3 320, stage4 344) | 512x512 |
+| `maple/house_farmhouse.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1328 (stage1 88, stage2 440, stage3 320, stage4 480) | 512x512 |
+| `maple/house_barn.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1268 (stage1 44, stage2 440, stage3 388, stage4 396) | 512x512 |
+| `maple/house_school.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1400 (stage1 88, stage2 440, stage3 456, stage4 416) | 512x512 |
+| `maple/house_inn.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1572 (stage1 88, stage2 528, stage3 632, stage4 324) | 512x512 |
+| `maple/clock_tower.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 1816 (stage1 88, stage2 352, stage3 400, stage4 568, stage5 300, stage6 108) | 512x512 |
+| `maple/highland_gate.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 824 | 512x512 |
+| `maple/highland_gate_doors.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 392 | 256x256 |
+| `maple/build_plot.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 398 | 128x128 |
+| `maple/beam_cart.glb` | Built in tools/lookdev/build_m2.py, own work | CC0 (released with this repo) | 632 | 256x256 |
+| `assets/icons/{maple_log,beam,floorboard,cabin_kit}{,_128,_64}.png` | Rendered from the item GLBs (tools/lookdev/make_icons_m2.py) | CC0 (released with this repo) | - | - |
+| `assets/textures/ground/grass_maple.png` | Own procedural Blender material (tools/lookdev/make_ground_m2.py) | CC0 (released with this repo) | - | 512x512 |
+| `assets/textures/imposters/border_trees_atlas_m2.png` | Rendered from `maple/*_far.glb` + `nature/tree_pineTallB_detailed_far.glb` (tools/lookdev/make_imposters_m2.py) | CC0 (released with this repo) | 2 per card | 1024x1024 |

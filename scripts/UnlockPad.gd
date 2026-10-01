@@ -18,6 +18,9 @@ var _fill: MeshInstance3D
 var _bar_w: float = 2.0
 var _tile: MeshInstance3D
 var _arrow: MeshInstance3D
+## Icon of the product the pad title names, next to the price (null when none).
+var _icon: Sprite3D
+var _price_x: float = 0.0
 var _t: float = 0.0
 
 
@@ -69,6 +72,16 @@ func setup(pad_id: String, price: int, text: String, size: Vector2 = Vector2(2.6
 	_price.outline_modulate = Color(0.1, 0.3, 0.08, 1.0)
 	_price.pixel_size = 0.0075
 	add_child(_price)
+	var item := Models.item_in_title(text, pad_id.begins_with("r2_"))
+	var tex := Models.hud_icon(item) if item != "" else null
+	if tex:
+		_icon = Sprite3D.new()
+		_icon.texture = tex
+		_icon.pixel_size = 0.0078
+		_icon.rotation_degrees = Vector3(-90, 0, 0)
+		_icon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_icon.position = _price.position + Vector3(0, 0.005, 0)
+		add_child(_icon)
 	_arrow = MeshInstance3D.new()
 	var cm := CylinderMesh.new()
 	cm.top_radius = 0.28
@@ -82,12 +95,20 @@ func setup(pad_id: String, price: int, text: String, size: Vector2 = Vector2(2.6
 	am.emission = Color(0.6, 0.4, 0.0)
 	_arrow.material_override = am
 	add_child(_arrow)
+	# Plus sign and price bar bake into one mesh; the tile pulses and the fill grows, so they stay.
+	MeshMerge.merge(self, [_tile, _fill, _arrow])
 	_refresh()
 	return self
 
 
 func _refresh() -> void:
 	_price.text = Game.fmt(cost - paid_amount)
+	if _icon:
+		# Icon and price sit side by side, centred on the bar together.
+		var w := _price.font.get_string_size(_price.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _price.font_size).x * _price.pixel_size
+		var iw := 0.5
+		_price.position.x = (iw + 0.08) * 0.5
+		_icon.position.x = _price.position.x - w * 0.5 - 0.08 - iw * 0.5
 	var f := clampf(float(paid_amount) / float(cost), 0.0, 1.0)
 	# The bright bar starts full-width but empty-coloured; it grows from the left as you pay.
 	_fill.scale = Vector3(maxf(f, 0.001), 1, 1)

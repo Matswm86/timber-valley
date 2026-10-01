@@ -62,6 +62,27 @@ const ICONS := {
 }
 
 
+## Shop and price-tag icons (128 px), same names as ICONS.
+static func shop_icon(item: String) -> Texture2D:
+	var p := str(ICONS.get(item, "")).replace("_64.png", "_128.png")
+	return load(p) as Texture2D if p != "" and ResourceLoader.exists(p) else null
+
+
+static func hud_icon(item: String) -> Texture2D:
+	var p := str(ICONS.get(item, ""))
+	return load(p) as Texture2D if p != "" and ResourceLoader.exists(p) else null
+
+
+## The product a pad title names ("Carpentry: Chairs", "Hire a Plank Carrier"), or "".
+## Birch Bend's logs are birch logs.
+static func item_in_title(title: String, birch: bool = false) -> String:
+	var t := " " + title.to_lower().replace(":", " ") + " "
+	for item in ["bookcase", "plywood", "veneer", "canoe", "chair", "table", "plank", "log"]:
+		if t.contains(" %s " % item) or t.contains(" %ss " % item):
+			return "birch_log" if item == "log" and birch else item
+	return ""
+
+
 static func path(key: String) -> String:
 	return str(PATHS[key])
 

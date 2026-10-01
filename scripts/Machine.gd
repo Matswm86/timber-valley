@@ -110,6 +110,8 @@ func add_saw_blade(pos: Vector3, radius: float) -> Node3D:
 		tooth.position = Vector3(cos(a), sin(a), 0) * radius * 0.62
 		tooth.rotation.z = a
 		pivot.add_child(tooth)
+	# Blade and teeth spin together: bake them into the pivot's own mesh.
+	MeshMerge.merge(pivot, [], false)
 	body.add_child(pivot)
 	spinners.append(pivot)
 	return pivot
@@ -117,6 +119,7 @@ func add_saw_blade(pos: Vector3, radius: float) -> Node3D:
 
 func add_dust(pos: Vector3, c: Color) -> void:
 	dust = CPUParticles3D.new()
+	dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	dust.amount = 24
 	dust.lifetime = 0.9
 	dust.emitting = false
@@ -139,6 +142,7 @@ func add_dust(pos: Vector3, c: Color) -> void:
 
 func add_smoke(pos: Vector3) -> void:
 	smoke = CPUParticles3D.new()
+	smoke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	smoke.amount = 14
 	smoke.lifetime = 3.0
 	smoke.emitting = false

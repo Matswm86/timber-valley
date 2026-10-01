@@ -78,7 +78,10 @@ func setup() -> MegaSaw:
 	body.add_child(mound)
 	_log = Shapes.log_node(body, LOG_R, LOG_LEN, Vector3.ZERO, Vector3(0, 0, 90), Shapes.log_material(LOG_R))
 	_place_log(0.0)
+	# Bed, rails, belt, gantry, crane and mound bake into a few meshes; the log and hook move.
+	MeshMerge.merge(body, [_log, _crane_hook])
 	_chips = CPUParticles3D.new()
+	_chips.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_chips.amount = 70
 	_chips.lifetime = 1.2
 	_chips.direction = Vector3(0.7, 1, 0.5)

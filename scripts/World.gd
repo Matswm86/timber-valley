@@ -14,6 +14,10 @@ const RIVER_HALF := 3.2
 const CHUNK_SIZE := 16.0
 ## Chunks further than this from the camera are hidden (m).
 const CHUNK_VIS_END := 60.0
+## Ground-scatter atlas: cells of DECO_CELL px with a DECO_PAD gutter, DECO_COLS per row.
+const DECO_CELL := 256
+const DECO_PAD := 8
+const DECO_COLS := 5
 
 ## Pads live in Balance.UNLOCKS (kept here as an alias for older callers).
 const UNLOCKS := Balance.UNLOCKS
@@ -87,10 +91,18 @@ var _cur_region: int = 1
 ## Camera offset from the focus point (GDD 10: unchanged at (0, 8.4, 6.6)).
 var cam_offset: Vector3 = Vector3(0, 8.4, 6.6)
 var _chip_timer: float = 0.0
+## Ground scatter collected by _scatter_deco*, baked once by _build_deco: [path, xforms, shadows].
+var _deco: Array = []
+## Gateway glow (arch over the pad, glowing gate, floating motes) per gateway pad id.
+var _gateway_fx: Dictionary = {}
+## Camera pan to the next gateway after the valley card closes: 0 = on the player, 1 = on the pad.
+var _pan_w: float = 0.0
+var _pan_to: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
 	Game.world = self
+	add_child(ShadowCull.new())
 	rng.seed = 20260929
 	rng2.seed = 20261001
 	_environment()
@@ -115,6 +127,7 @@ func _ready() -> void:
 	_refresh_pads()
 	_scatter_deco()
 	_scatter_deco_v2()
+	_build_deco()
 	_update_ground_uniforms()
 	_bounds()
 	_palisades()
@@ -222,6 +235,8 @@ func _ground() -> void:
 		mi.mesh = pm
 		mi.material_override = mat
 		mi.position = Vector3((x0 + x1) * 0.5, 0, -15)
+		# The ground only receives shadows; casting would add a shadow-pass draw for nothing.
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
 		grounds[rid] = {"mat": mat, "paths": [], "plazas": []}
 	ground_mat = grounds[1].mat
@@ -248,10 +263,14 @@ func _river() -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	# A little wooden bridge and some reeds along the bank.
+	var bridge := Node3D.new()
+	bridge.name = "Bridge"
+	add_child(bridge)
 	for z in [-6.0]:
 		for i in 5:
-			var b := _model("res://assets/models/nature/bridge_wood.glb", Vector3(RIVER_X - 3.2 + i * 1.6, 0, z), 1.6, 90)
+			var b := _model("res://assets/models/nature/bridge_wood.glb", Vector3(RIVER_X - 3.2 + i * 1.6, 0, z), 1.6, 90, bridge)
 			b.name = "bridge"
+	MeshMerge.merge(bridge)
 
 
 func _road() -> void:
@@ -268,6 +287,9 @@ func _road() -> void:
 	add_child(mi)
 	var line_mat := StandardMaterial3D.new()
 	line_mat.albedo_color = Color(0.95, 0.9, 0.7)
+	var dashes := Node3D.new()
+	dashes.name = "RoadDashes"
+	add_child(dashes)
 	for i in 40:
 		var dash := MeshInstance3D.new()
 		var dm := PlaneMesh.new()
@@ -276,7 +298,8 @@ func _road() -> void:
 		dash.material_override = line_mat
 		dash.position = Vector3(ROAD_X, 0.05, 60 - i * 4.0)
 		dash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(dash)
+		dashes.add_child(dash)
+	MeshMerge.merge(dashes)
 	paths.append([Vector4(ROAD_X, 70, ROAD_X, -100), 2.6])
 
 
@@ -442,6 +465,104 @@ func _multimesh(path: String, xforms: Array, shadows: bool = true, parent: Node3
 		(parent if parent else self).add_child(mmi)
 
 
+## Ground scatter (grass, flowers, small rocks, bushes, reeds, lily pads) is baked per 16 m chunk
+## into two meshes that share one texture atlas: one double-sided without shadows, one with
+## shadows (bushes, big rocks). Was one MultiMesh per kind per chunk (14+ draws per chunk).
+func _build_deco() -> void:
+	var kinds := {}
+	for e in _deco:
+		var path: String = e[0]
+		if kinds.has(path):
+			continue
+		var info := _first_mesh(path)
+		if info.is_empty():
+			continue
+		kinds[path] = {"mesh": info[0], "local": info[1]}
+	var atlas := _deco_atlas(kinds)
+	if atlas == null:
+		for e in _deco:
+			_multimesh(e[0], e[1], e[2])
+		return
+	var size := Vector2(atlas.get_width(), atlas.get_height())
+	var inner := float(DECO_CELL - DECO_PAD * 2)
+	var base_mat: BaseMaterial3D = null
+	for path in kinds:
+		var k: Dictionary = kinds[path]
+		var src: Mesh = k.mesh
+		if base_mat == null:
+			base_mat = src.surface_get_material(0) as BaseMaterial3D
+		var arr := src.surface_get_arrays(0)
+		var uvs: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
+		var cell: Vector2 = k.cell
+		for i in uvs.size():
+			uvs[i] = (cell + uvs[i] * inner) / size
+		arr[Mesh.ARRAY_TEX_UV] = uvs
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		k["remapped"] = am
+	var tools := {}
+	for e in _deco:
+		if not kinds.has(e[0]):
+			continue
+		var k: Dictionary = kinds[e[0]]
+		var sh: int = 1 if e[2] else 0
+		for x in e[1]:
+			var xf: Transform3D = x
+			var key := Vector3i(floori(xf.origin.x / CHUNK_SIZE), floori(xf.origin.z / CHUNK_SIZE), sh)
+			if not tools.has(key):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				tools[key] = st
+			(tools[key] as SurfaceTool).append_from(k.remapped, 0, xf * (k.local as Transform3D))
+	var mat_open := base_mat.duplicate() as BaseMaterial3D
+	mat_open.albedo_texture = atlas
+	mat_open.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mat_solid := base_mat.duplicate() as BaseMaterial3D
+	mat_solid.albedo_texture = atlas
+	mat_solid.cull_mode = BaseMaterial3D.CULL_BACK
+	for key in tools:
+		var kk: Vector3i = key
+		var mi := MeshInstance3D.new()
+		mi.name = "Deco_%d_%d_%d" % [kk.x, kk.y, kk.z]
+		mi.mesh = (tools[key] as SurfaceTool).commit()
+		mi.material_override = mat_solid if kk.z == 1 else mat_open
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kk.z == 1 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.visibility_range_end = CHUNK_VIS_END
+		add_child(mi)
+		ShadowCull.track(mi)
+	_deco.clear()
+
+
+## Packs every scatter kind's texture into one atlas (DECO_CELL cells; each cell's gutter is the
+## same texture stretched, so mip levels do not bleed in a neighbour's colours). Null on failure.
+func _deco_atlas(kinds: Dictionary) -> ImageTexture:
+	var rows := ceili(float(kinds.size()) / DECO_COLS)
+	var img := Image.create_empty(DECO_COLS * DECO_CELL, rows * DECO_CELL, false, Image.FORMAT_RGBA8)
+	var inner := DECO_CELL - DECO_PAD * 2
+	var i := 0
+	for path in kinds:
+		var m := (kinds[path].mesh as Mesh).surface_get_material(0) as BaseMaterial3D
+		if m == null or m.albedo_texture == null:
+			return null
+		var src := m.albedo_texture.get_image()
+		if src == null:
+			return null
+		if src.is_compressed():
+			src.decompress()
+		src.convert(Image.FORMAT_RGBA8)
+		var o := Vector2i((i % DECO_COLS) * DECO_CELL, (i / DECO_COLS) * DECO_CELL)
+		var bg := src.duplicate() as Image
+		bg.resize(DECO_CELL, DECO_CELL, Image.INTERPOLATE_BILINEAR)
+		img.blit_rect(bg, Rect2i(0, 0, DECO_CELL, DECO_CELL), o)
+		var fg := src.duplicate() as Image
+		fg.resize(inner, inner, Image.INTERPOLATE_LANCZOS)
+		img.blit_rect(fg, Rect2i(0, 0, inner, inner), o + Vector2i(DECO_PAD, DECO_PAD))
+		kinds[path]["cell"] = Vector2(o + Vector2i(DECO_PAD, DECO_PAD))
+		i += 1
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
 func _busy(p: Vector2, margin: float) -> bool:
 	var lines: Array = _reserved_lines.duplicate()
 	var rects: Array = _reserved_rects.duplicate()
@@ -597,7 +718,7 @@ func _scatter_deco() -> void:
 				continue
 			var sc: float = s[2] * rng.randf_range(0.75, 1.3)
 			list.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(p.x, 0, p.y)))
-		_multimesh("res://assets/models_v3/nature/%s.glb" % s[0], list, s[3])
+		_deco.append(["res://assets/models_v3/nature/%s.glb" % s[0], list, s[3]])
 	# Tall rocks and reeds on the river banks.
 	var rocks := []
 	for i in 26:
@@ -605,15 +726,19 @@ func _scatter_deco() -> void:
 		var side := -1.0 if rng.randf() < 0.5 else 1.0
 		var x := RIVER_X + side * (RIVER_HALF + rng.randf_range(0.2, 0.9))
 		rocks.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.6, 2.6)), Vector3(x, -0.05, z)))
-	_multimesh("res://assets/models_v3/nature/rock_smallD.glb", rocks, false)
-	# A few props around the starting yard.
-	_model("res://assets/models_v3/nature/log_stackLarge.glb", Vector3(-3.6, 0, -6.8), 2.2, 10, r1)
-	_model("res://assets/models_v3/survival/barrel.glb", Vector3(3.8, 0, -6.4), 2.4, 0, r1)
-	_model("res://assets/models_v3/survival/box-large.glb", Vector3(4.6, 0, -6.6), 2.2, 20, r1)
-	_model("res://assets/models_v3/survival/signpost.glb", Vector3(1.4, 0, 6.0), 2.6, -20, r1)
-	_model("res://assets/models_v3/nature/campfire_logs.glb", Vector3(-4.5, 0, 12.5), 3.0, 0, r1)
+	_deco.append(["res://assets/models_v3/nature/rock_smallD.glb", rocks, false])
+	# A few props around the starting yard (baked into one mesh per texture).
+	var props := Node3D.new()
+	props.name = "YardProps"
+	r1.add_child(props)
+	_model("res://assets/models_v3/nature/log_stackLarge.glb", Vector3(-3.6, 0, -6.8), 2.2, 10, props)
+	_model("res://assets/models_v3/survival/barrel.glb", Vector3(3.8, 0, -6.4), 2.4, 0, props)
+	_model("res://assets/models_v3/survival/box-large.glb", Vector3(4.6, 0, -6.6), 2.2, 20, props)
+	_model("res://assets/models_v3/survival/signpost.glb", Vector3(1.4, 0, 6.0), 2.6, -20, props)
+	_model("res://assets/models_v3/nature/campfire_logs.glb", Vector3(-4.5, 0, 12.5), 3.0, 0, props)
 	for i in 6:
-		_model("res://assets/models_v3/nature/fence_simple.glb", Vector3(-12.5 + i * 2.0, 0, 13.5), 2.0, 0, r1)
+		_model("res://assets/models_v3/nature/fence_simple.glb", Vector3(-12.5 + i * 2.0, 0, 13.5), 2.0, 0, props)
+	MeshMerge.merge(props)
 
 
 func _build_forest(key: String, center: Vector3, cols: int, rows: int, spacing: float, kind: String, animate: bool = false, region: int = 1) -> void:
@@ -707,6 +832,7 @@ func _dress_sawmill(m: Machine, frame: Color) -> void:
 	m.dust.lifetime = 1.0
 	(m.dust.mesh as BoxMesh).size = Vector3(0.09, 0.04, 0.05)
 	m.add_blocker(Vector3(4.4, 1.2, 1.3), Vector3(0, 0, 0.2))
+	MeshMerge.merge(m.body)
 
 
 ## Log palisade fences: rows of upright logs around the valley and behind the first forest.
@@ -870,6 +996,7 @@ func _apply_unlock(id: String, animate: bool) -> void:
 			lbl.pixel_size = 0.006
 			lbl.position = Vector3(0, 2.1, 0.09)
 			sg.add_child(lbl)
+			MeshMerge.merge(sg)
 			if animate:
 				Fx.pop_in(sg, 0.6)
 		"belt_planks":
@@ -921,6 +1048,7 @@ func _build_office(animate: bool) -> void:
 	col.position.y = 1
 	sb.add_child(col)
 	root.add_child(sb)
+	MeshMerge.merge(root)
 	office_zone = Zone.new().setup(Zone.Kind.CUSTOM, null, Vector2(2.4, 2.0), "UPGRADES", Color(0.6, 0.95, 1.0))
 	office_zone.position = Vector3(-3.5, 0, 10.0)
 	office_zone.on_enter = func(_c: Node) -> void:
@@ -947,6 +1075,7 @@ func _build_carpentry(animate: bool) -> void:
 	m.mouth_out = Vector3(1.0, 1.0, 0.2)
 	m.add_dust(Vector3(0, 1.1, 0.3), Color(0.9, 0.75, 0.5))
 	m.add_blocker(Vector3(3.6, 2.2, 2.6))
+	MeshMerge.merge(m.body, m.spinners)
 	r1.add_child(m)
 	plazas.append(Vector4(2, -13, 4.3, 2.0))
 	if animate:
@@ -966,6 +1095,7 @@ func _build_cnc(animate: bool) -> void:
 	m.mouth_out = Vector3(1.1, 0.8, 0)
 	m.add_dust(Vector3(0, 1.4, 0.8), Color(0.95, 0.85, 0.65))
 	m.add_blocker(Vector3(3.0, 2.2, 2.6))
+	MeshMerge.merge(m.body, m.spinners)
 	r1.add_child(m)
 	plazas.append(Vector4(9, -24, 4.3, 2.0))
 	paths.append([Vector4(0, -24, 9, -24), 0.7])
@@ -987,12 +1117,16 @@ func _build_factory(animate: bool) -> void:
 	var arm2 := m.add_model("res://assets/models/factory/robot-arm-b.glb", Vector3(2.4, 0.22, 1.2), 0.9)
 	m.arms.append(arm1)
 	m.arms.append(arm2)
+	# Each robot arm turns as a whole: bake its 8 parts into one mesh under the turning root.
+	for a in m.arms:
+		MeshMerge.merge(a, [], false)
 	var chimney := m.add_model("res://assets/models/factory/structure-yellow-tall.glb", Vector3(-1.9, 0.22, -1.5), 1.6)
 	chimney.name = "chimney"
 	m.add_smoke(Vector3(-1.9, 3.6, -1.5))
 	m.mouth_in = Vector3(-2.2, 1.4, -0.4)
 	m.mouth_out = Vector3(2.2, 0.9, 0.4)
 	m.add_blocker(Vector3(5.0, 2.4, 3.2))
+	MeshMerge.merge(m.body, m.spinners + m.arms)
 	r1.add_child(m)
 	plazas.append(Vector4(0, -36, 5.6, 2.6))
 	if animate:
@@ -1067,6 +1201,7 @@ func _build_lodge(animate: bool) -> void:
 	_model("res://assets/models/furniture/bench.glb", Vector3(-2.6, 0.25, d * 0.5 + 1.2), 2.4, 0, root)
 	_model("res://assets/models/furniture/loungeChair.glb", Vector3(2.0, 0.25, d * 0.5 + 0.8), 2.2, 180, root)
 	var smoke := CPUParticles3D.new()
+	smoke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(smoke)
 	smoke.position = Vector3(2.2, h + rise + 1.5, -0.8)
 	smoke.amount = 10
@@ -1091,6 +1226,7 @@ func _build_lodge(animate: bool) -> void:
 	col.position.y = 2
 	sb.add_child(col)
 	root.add_child(sb)
+	MeshMerge.merge(root)
 	plazas.append(Vector4(-12, -37.5, 5.0, 4.0))
 	if animate:
 		Fx.pop_in(root, 1.0)
@@ -1115,6 +1251,8 @@ func _refresh_pads() -> void:
 		_pad_region(id).add_child(pad)
 		pad.paid.connect(func(pid: String) -> void: Game.unlock(pid))
 		pads[id] = pad
+		if Balance.GATEWAYS.has(id):
+			_build_gateway_fx(id)
 		if not _loading:
 			Fx.pop_in(pad, 0.5)
 
@@ -1125,6 +1263,8 @@ func _on_unlocked(id: String) -> void:
 		if is_instance_valid(pad) and not pad.is_queued_for_deletion() and pad.paid_amount < pad.cost:
 			pad.queue_free()
 		pads.erase(id)
+	if _gateway_fx.has(id):
+		_open_gateway_fx(id)
 	_apply_unlock(id, true)
 	var title := id
 	for u in UNLOCKS:
@@ -1143,8 +1283,9 @@ func _on_unlocked(id: String) -> void:
 			get_tree().create_timer(0.3 * i).timeout.connect(func() -> void:
 				Fx.confetti(self, where + Vector3(randf_range(-4, 4), 5, randf_range(-3, 3))))
 		if Game.hud:
-			var next := "The River Bridge to Birch Bend is ready to build." if id == "lodge" else "Your crews keep working in both valleys, even while you are away."
-			Game.hud.show_valley_card(int(Balance.LANDMARKS[id]), next)
+			if not Game.hud.valley_card_closed.is_connected(pan_to_gateway):
+				Game.hud.valley_card_closed.connect(pan_to_gateway)
+			Game.hud.show_valley_card(int(Balance.LANDMARKS[id]), gateway_line(id))
 
 
 func _camera() -> void:
@@ -1164,9 +1305,126 @@ func _place_camera(t: float) -> void:
 	var portrait := vp.y > vp.x
 	camera.keep_aspect = Camera3D.KEEP_WIDTH if portrait else Camera3D.KEEP_HEIGHT
 	camera.fov = 45.0 if portrait else 36.0
-	_cam_pos = _cam_pos.lerp(player.global_position, t)
+	var focus := player.global_position
+	if _pan_w > 0.0:
+		focus = focus.lerp(_pan_to, _pan_w)
+		t = 1.0
+	_cam_pos = _cam_pos.lerp(focus, t)
 	camera.global_position = _cam_pos + cam_offset
 	camera.look_at(_cam_pos + Vector3(0, 0.6, 0), Vector3.UP)
+
+
+# ---------------------------------------------------------------- valley gateways
+
+## The unpaid gateway pad that is on the map now, or null.
+func gateway_pad() -> UnlockPad:
+	for id in Balance.GATEWAYS:
+		if pads.has(id) and is_instance_valid(pads[id]) and not Game.is_unlocked(id):
+			return pads[id]
+	return null
+
+
+## Valley card line after a landmark: names the gateway it opens and its price.
+func gateway_line(landmark: String) -> String:
+	for u in UNLOCKS:
+		if Balance.GATEWAYS.has(u.id) and landmark in u.req and not Game.is_unlocked(u.id):
+			return "Next: %s, %s.\nFollow the arrow." % [u.title, Game.fmt(u.cost)]
+	return "Your crews keep working in both valleys, even while you are away."
+
+
+## About 1.5 s: the camera glides to the gateway pad, holds, and comes back to the player.
+func pan_to_gateway() -> void:
+	var gate := gateway_pad()
+	if gate == null:
+		return
+	_pan_to = gate.global_position
+	var tw := create_tween()
+	tw.tween_property(self, "_pan_w", 1.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_interval(0.4)
+	tw.tween_property(self, "_pan_w", 0.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## Lit archway over the gateway pad, a glowing frame on the closed gate and floating motes.
+## One emissive material, no shadow casters; the arch and frame bake into one mesh.
+func _build_gateway_fx(id: String) -> void:
+	if _gateway_fx.has(id):
+		return
+	var info: Dictionary = Balance.GATEWAYS[id]
+	var pad_pos: Vector3 = (pads[id] as Node3D).position
+	var gate: Vector3 = info.gate
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.66, 0.16)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.55, 0.1)
+	mat.emission_energy_multiplier = 1.8
+	mat.roughness = 0.6
+	var root := Node3D.new()
+	root.name = "Gateway_" + id
+	_pad_region(id).add_child(root)
+	var frame := Node3D.new()
+	root.add_child(frame)
+	# Arch at the back edge of the pad, facing the camera.
+	var back := pad_pos + Vector3(0, 0, -1.85)
+	var parts := [
+		[Vector3(0.26, 3.0, 0.26), back + Vector3(-1.95, 1.5, 0)],
+		[Vector3(0.26, 3.0, 0.26), back + Vector3(1.95, 1.5, 0)],
+		[Vector3(4.5, 0.3, 0.34), back + Vector3(0, 3.1, 0)],
+		[Vector3(1.0, 0.36, 0.4), back + Vector3(0, 3.42, 0)],
+		# Frame around the closed gate in the river wall (the gate runs along z).
+		[Vector3(0.2, 2.4, 0.2), gate + Vector3(0, 1.2, -1.5)],
+		[Vector3(0.2, 2.4, 0.2), gate + Vector3(0, 1.2, 1.5)],
+		[Vector3(0.22, 0.2, 3.2), gate + Vector3(0, 2.4, 0)],
+	]
+	for p in parts:
+		var mi := Shapes.box_node(frame, p[0], p[1], mat, 0.08)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	MeshMerge.merge(frame)
+	var motes := CPUParticles3D.new()
+	motes.name = "Motes"
+	motes.position = pad_pos + Vector3(0, 0.3, 0)
+	motes.amount = 18
+	motes.lifetime = 1.8
+	motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	motes.emission_box_extents = Vector3(1.4, 0.1, 1.4)
+	motes.direction = Vector3.UP
+	motes.spread = 12.0
+	motes.gravity = Vector3.ZERO
+	motes.initial_velocity_min = 0.6
+	motes.initial_velocity_max = 1.2
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.4))
+	curve.add_point(Vector2(0.3, 1.0))
+	curve.add_point(Vector2(1, 0.0))
+	motes.scale_amount_curve = curve
+	var sm := SphereMesh.new()
+	sm.radius = 0.07
+	sm.height = 0.14
+	sm.radial_segments = 6
+	sm.rings = 3
+	sm.material = mat
+	motes.mesh = sm
+	motes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(motes)
+	_gateway_fx[id] = root
+
+
+## Paid: the arch and frame shrink away and the motes drift along the bridge into the new valley.
+func _open_gateway_fx(id: String) -> void:
+	var root: Node3D = _gateway_fx[id]
+	_gateway_fx.erase(id)
+	var motes: CPUParticles3D = root.get_node("Motes")
+	motes.reparent(self)
+	var path: Array = Balance.GATEWAYS[id].path
+	var tw := motes.create_tween()
+	for i in range(1, path.size()):
+		var seg: float = (path[i] as Vector3).distance_to(path[i - 1])
+		tw.tween_property(motes, "global_position", (path[i] as Vector3) + Vector3(0, 0.6, 0), seg / 9.0)
+	tw.tween_callback(func() -> void: motes.emitting = false)
+	tw.tween_interval(motes.lifetime)
+	tw.tween_callback(motes.queue_free)
+	var fade := root.create_tween()
+	fade.tween_property(root, "scale", Vector3(1, 0.01, 1), 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	fade.tween_callback(root.queue_free)
 
 
 func _guide_arrow() -> void:
@@ -1201,6 +1459,10 @@ func _goal() -> Array:
 		if cheapest == null or pad.cost - pad.paid_amount < cheapest.cost - cheapest.paid_amount:
 			cheapest = pad
 	var v2_tutorial := _cur_region == 2 and not Game.is_unlocked("r2_jack1")
+	# The way into the next valley is always shown, even before the player can pay for it.
+	var gate := gateway_pad()
+	if gate and not tutorial and not v2_tutorial:
+		return [gate.global_position, "Next valley: %s - %s" % [gate.title, Game.fmt(gate.cost - gate.paid_amount)]]
 	if cheapest and Game.money >= cheapest.cost - cheapest.paid_amount:
 		return [cheapest.global_position, "Buy %s!" % cheapest.title if (tutorial or v2_tutorial) else ""]
 	if v2_tutorial:
@@ -1520,6 +1782,7 @@ func _build_lathe(animate: bool) -> void:
 	m.mouth_out = Vector3(0.6, 0.9, 0.78)
 	m.add_dust(Vector3(0, 1.1, 0.5), Color(0.96, 0.9, 0.75))
 	m.add_blocker(Vector3(3.0, 1.6, 1.95))
+	MeshMerge.merge(m.body, m.spinners)
 	r2.add_child(m)
 	_plaza2(Vector2(V2_LATHE.x, V2_LATHE.z), Vector2(4.8, 2.2))
 	_model(Models.path("log_stack_birch"), V2_LATHE + Vector3(-1.4, 0, -2.4), 2.2, 10, r2)
@@ -1534,6 +1797,7 @@ func _build_press(id: String, pos: Vector3, animate: bool) -> void:
 	m.mouth_in = Vector3(-0.9, 0.8, 0)
 	m.mouth_out = Vector3(0.9, 0.75, 0)
 	m.add_blocker(Vector3(2.2, 3.2, 1.67))
+	MeshMerge.merge(m.body, m.plates)
 	r2.add_child(m)
 	_plaza2(Vector2(pos.x, pos.z), Vector2(4.8, 2.2))
 	if animate:
@@ -1551,6 +1815,7 @@ func _build_boatshop(animate: bool) -> void:
 	m.mouth_out = Vector3(1.6, 0.9, 0.6)
 	m.add_dust(Vector3(0, 1.2, 0.6), Color(0.95, 0.85, 0.65))
 	m.add_blocker(Vector3(4.5, 2.8, 3.0))
+	MeshMerge.merge(m.body)
 	r2.add_child(m)
 	_plaza2(Vector2(V2_BOATSHOP.x, V2_BOATSHOP.z), Vector2(5.6, 2.4))
 	if animate:
@@ -1581,6 +1846,7 @@ func _build_office2(animate: bool) -> void:
 	root.position = V2_OFFICE
 	r2.add_child(root)
 	root.add_child(Models.make("riverside_office"))
+	MeshMerge.merge(root)
 	var lbl := Label3D.new()
 	lbl.font = Fx.font()
 	lbl.text = "OFFICE"
@@ -1633,6 +1899,7 @@ func _build_flume(animate: bool) -> void:
 	var end := Models.make("flume_end")
 	end.position = Vector3(-48.7, 0, -6)
 	root.add_child(end)
+	MeshMerge.merge(root)
 	flume_chute = ItemStack.new().setup("birch_log", 16, 2, 2, "flume:in")
 	flume_chute.position = V2_CHUTE + Vector3(0, 0.75, 0)
 	r2.add_child(flume_chute)
@@ -1653,6 +1920,7 @@ func _build_boathouse(animate: bool) -> void:
 	root.position = V2_BOATHOUSE
 	r2.add_child(root)
 	root.add_child(Models.make("boathouse"))
+	MeshMerge.merge(root)
 	var sb := StaticBody3D.new()
 	var col := CollisionShape3D.new()
 	var bs := BoxShape3D.new()
@@ -1689,21 +1957,21 @@ func _scatter_deco_v2() -> void:
 				continue
 			var sc: float = s[2] * rng2.randf_range(0.75, 1.3)
 			list.append(Transform3D(Basis(Vector3.UP, rng2.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(p.x, 0, p.y)))
-		_multimesh("res://assets/models_v3/nature/%s.glb" % s[0], list, s[3])
+		_deco.append(["res://assets/models_v3/nature/%s.glb" % s[0], list, s[3]])
 	var reeds := []
 	for i in 40:
 		var z := rng2.randf_range(-46, 15)
 		if absf(z - BRIDGE_Z) < 2.0 or absf(z - V2_BARGE.z) < 3.5:
 			continue
 		reeds.append(Transform3D(Basis(Vector3.UP, rng2.randf() * TAU).scaled(Vector3.ONE * rng2.randf_range(2.2, 3.0)), Vector3(RIVER_X - RIVER_HALF - rng2.randf_range(-0.2, 0.6), 0, z)))
-	_multimesh(Models.path("reeds"), reeds, false)
+	_deco.append([Models.path("reeds"), reeds, false])
 	var pads_x := []
 	for i in 14:
 		var z := rng2.randf_range(-60, 15)
 		if absf(z - BRIDGE_Z) < 2.0:
 			continue
 		pads_x.append(Transform3D(Basis(Vector3.UP, rng2.randf() * TAU).scaled(Vector3.ONE * rng2.randf_range(2.0, 2.8)), Vector3(RIVER_X + rng2.randf_range(-2.4, -1.2), 0.09, z)))
-	_multimesh(Models.path("lilypads"), pads_x, false)
+	_deco.append([Models.path("lilypads"), pads_x, false])
 
 
 ## Log palisade around Birch Bend (sleeps with the valley), plus the closed gate at the bridge.

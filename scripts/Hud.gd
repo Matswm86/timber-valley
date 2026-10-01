@@ -3,6 +3,9 @@ extends CanvasLayer
 
 ## Screen overlay: money counter, hints, toasts, upgrade shop, menu, finish screen and joystick.
 
+## Emitted when the player closes the "Valley complete" card (World pans to the next gateway).
+signal valley_card_closed
+
 const CREAM := Color(1.0, 0.97, 0.9)
 const INK := Color(0.2, 0.15, 0.1)
 const GREEN := Color(0.33, 0.66, 0.34)
@@ -28,6 +31,11 @@ var menu_panel: PanelContainer
 var finish_panel: PanelContainer
 var sound_btn: Button
 var joy_base: Control
+## Carried stack: item icon + "count/capacity" (top left, hidden when empty).
+var carry_pill: PanelContainer
+var carry_icon: TextureRect
+var carry_label: Label
+var _carry_key: String = ""
 var joy_knob: Control
 var _shown_money: float = 0.0
 var _touch_index: int = -1
@@ -146,6 +154,7 @@ func _build_top(root: Control) -> void:
 	toast_label = _label("", 46, Color.WHITE)
 	toast_pill.add_child(toast_label)
 	toast_pill.modulate.a = 0.0
+	_build_carry(root)
 	var menu_btn := _button("Menu", Color(0.25, 0.3, 0.22, 0.85), 34)
 	menu_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	menu_btn.offset_left = -190
@@ -154,6 +163,55 @@ func _build_top(root: Control) -> void:
 	menu_btn.offset_bottom = 150
 	menu_btn.pressed.connect(func() -> void: menu_panel.visible = not menu_panel.visible)
 	root.add_child(menu_btn)
+
+
+func _build_carry(root: Control) -> void:
+	carry_pill = PanelContainer.new()
+	carry_pill.add_theme_stylebox_override("panel", _style(CREAM, 34, 8))
+	carry_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	carry_pill.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	carry_pill.offset_left = 30
+	carry_pill.offset_top = 70
+	carry_pill.custom_minimum_size = Vector2(0, 80)
+	carry_pill.visible = false
+	root.add_child(carry_pill)
+	var r := HBoxContainer.new()
+	r.add_theme_constant_override("separation", 10)
+	r.alignment = BoxContainer.ALIGNMENT_CENTER
+	carry_pill.add_child(r)
+	carry_icon = TextureRect.new()
+	carry_icon.custom_minimum_size = Vector2(64, 64)
+	carry_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	carry_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	carry_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	r.add_child(carry_icon)
+	carry_label = _label("", 44)
+	r.add_child(carry_label)
+
+
+## Called every frame: shows what the player carries, "MAX" in deep red when the stack is full.
+func _update_carry() -> void:
+	if Game.player == null or not is_instance_valid(Game.player):
+		return
+	var p: Player = Game.player as Player
+	if p == null or p.stack == null:
+		return
+	var n: int = p.stack.count()
+	var t: String = p.stack.top_type()
+	var cap: int = p.capacity()
+	var key := "%s|%d|%d" % [t, n, cap]
+	if key == _carry_key:
+		return
+	_carry_key = key
+	carry_pill.visible = n > 0
+	if n == 0:
+		return
+	carry_icon.texture = Models.hud_icon(t)
+	carry_icon.visible = carry_icon.texture != null
+	var full: bool = n >= cap
+	carry_label.text = ("MAX %d" % n) if full else ("%d/%d" % [n, cap])
+	# Contrast on cream (my calc): deep red about 7:1, ink about 14:1.
+	carry_label.add_theme_color_override("font_color", Color(0.66, 0.13, 0.08) if full else INK)
 
 
 func _build_joystick(root: Control) -> void:
@@ -431,7 +489,7 @@ func _build_valley_card(root: Control) -> void:
 	v.add_child(body)
 	var ok := _button("Keep going", GREEN, 42)
 	ok.custom_minimum_size.y = 110
-	ok.pressed.connect(func() -> void: valley_card.visible = false)
+	ok.pressed.connect(close_valley_card)
 	v.add_child(ok)
 
 
@@ -445,6 +503,13 @@ func show_valley_card(region: int, next_line: String) -> void:
 	valley_card.visible = true
 	Sfx.play("upgrade", 0.0)
 	get_tree().create_timer(0.35).timeout.connect(func() -> void: Sfx.play("upgrade", 0.0))
+
+
+func close_valley_card() -> void:
+	if not valley_card.visible:
+		return
+	valley_card.visible = false
+	valley_card_closed.emit()
 
 
 func set_valley(text: String) -> void:
@@ -492,6 +557,7 @@ func _process(delta: float) -> void:
 	else:
 		_shown_money = target
 	_update_money_text()
+	_update_carry()
 
 
 func _update_money_text() -> void:

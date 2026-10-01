@@ -32,6 +32,8 @@ func setup(model_name: String) -> CharacterModel:
 	var inst: Node3D = scene.instantiate()
 	inst.scale = Vector3.ONE * SCALE
 	add_child(inst)
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		ShadowCull.track(mi as GeometryInstance3D)
 	anim = inst.find_children("*", "AnimationPlayer", true, false)[0]
 	skeleton = inst.find_children("*", "Skeleton3D", true, false)[0]
 	_build_anims()

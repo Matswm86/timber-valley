@@ -2,6 +2,8 @@ class_name ItemStack
 extends Node3D
 
 ## A neat pile of items (logs, planks, coins...). Items fly into place in an arc.
+## Items that have landed are hidden and drawn by one MultiMesh per item type (one draw per
+## pile instead of one per item); the item nodes stay the game objects, and pop() shows them again.
 
 signal changed(count: int)
 
@@ -12,6 +14,9 @@ var rows: int = 2
 var persist_id: String = ""
 var fly_time: float = 0.28
 var items: Array[Node3D] = []
+## item type -> MultiMeshInstance3D drawing the landed items of that type.
+var _mm: Dictionary = {}
+var _dirty: bool = false
 
 
 func setup(type: String, cap: int, c: int, r: int, pid: String = "") -> ItemStack:
@@ -32,6 +37,7 @@ func _ready() -> void:
 			add_child(it)
 			items.append(it)
 			it.transform = slot_transform(i, item_type)
+			_land(it)
 		if n > 0:
 			changed.emit(items.size())
 
@@ -104,6 +110,7 @@ func push(item: Node3D, animate: bool = true) -> void:
 	changed.emit(items.size())
 	if not animate:
 		item.transform = target
+		_land(item)
 		return
 	var start := item.position
 	var start_basis := item.transform.basis
@@ -120,12 +127,17 @@ func push(item: Node3D, animate: bool = true) -> void:
 	).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(item, "scale", Vector3(1.15, 0.85, 1.15), 0.05)
 	tw.tween_property(item, "scale", Vector3.ONE, 0.08)
+	tw.tween_callback(_land.bind(item))
 
 
 func pop() -> Node3D:
 	if items.is_empty():
 		return null
 	var it: Node3D = items.pop_back()
+	if it.has_meta("landed"):
+		it.remove_meta("landed")
+		it.visible = true
+		_mark_dirty()
 	changed.emit(items.size())
 	return it
 
@@ -148,3 +160,53 @@ func take_and_free() -> String:
 
 func top_global() -> Vector3:
 	return global_transform * Vector3(0, height(), 0)
+
+
+## The item has finished its flight into this pile: hide the node, draw it in the MultiMesh.
+func _land(item: Node3D) -> void:
+	if not is_instance_valid(item) or item.get_parent() != self or not items.has(item):
+		return
+	item.set_meta("landed", true)
+	item.visible = false
+	_mark_dirty()
+
+
+func _mark_dirty() -> void:
+	if not _dirty:
+		_dirty = true
+		_rebuild.call_deferred()
+
+
+func _rebuild() -> void:
+	_dirty = false
+	if not is_inside_tree():
+		return
+	var by_type := {}
+	for it in items:
+		if is_instance_valid(it) and it.has_meta("landed"):
+			var t := str(it.get_meta("item"))
+			if not by_type.has(t):
+				by_type[t] = []
+			(by_type[t] as Array).append(it.transform)
+	for t in _mm.keys():
+		if not by_type.has(t):
+			(_mm[t] as MultiMeshInstance3D).multimesh.instance_count = 0
+	for t in by_type:
+		var list: Array = by_type[t]
+		var mmi: MultiMeshInstance3D = _mm.get(t)
+		if mmi == null:
+			mmi = MultiMeshInstance3D.new()
+			mmi.name = "Pile_" + str(t)
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = Items.mesh_of(t)
+			mmi.multimesh = mm
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if Items.casts_shadow(t) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mmi)
+			ShadowCull.track(mmi)
+			_mm[t] = mmi
+		var m := mmi.multimesh
+		if m.instance_count != list.size():
+			m.instance_count = list.size()
+		for i in list.size():
+			m.set_instance_transform(i, list[i])

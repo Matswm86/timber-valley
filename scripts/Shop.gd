@@ -46,6 +46,8 @@ func setup(region_id: int = 1, mirror: float = 1.0) -> Shop:
 	_wood_dark.roughness = 0.85
 	_build_till()
 	_build_canopy()
+	# Canopy stripes, posts and till bake into a few meshes (shelves bake when they open).
+	MeshMerge.merge(self)
 	return self
 
 
@@ -79,9 +81,27 @@ func _sign(root: Node3D, product: String) -> void:
 	# Mirrored markets push the sign toward the player side so the canopy does not cover it.
 	l.position = Vector3(-0.2 if side > 0.0 else 0.6, 1.9, 0.9)
 	root.add_child(l)
+	# Product icon on the price tag, left of the text (job 2, Models.ICONS 128 px).
+	var tex := Models.shop_icon(product)
+	var icon: Sprite3D = null
+	if tex:
+		icon = Sprite3D.new()
+		icon.texture = tex
+		icon.pixel_size = 0.0036
+		icon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		l.add_child(icon)
+		_place_sign_icon(l, icon)
 	Game.upgraded.connect(func(id: String, _lv: int) -> void:
 		if id == "prices" or id == "r%d_fame" % region:
-			l.text = "%sS  %s" % [product.to_upper(), Game.fmt(Game.price_of(product))])
+			l.text = "%sS  %s" % [product.to_upper(), Game.fmt(Game.price_of(product))]
+			if icon:
+				_place_sign_icon(l, icon))
+
+
+## Icon just left of the sign text, vertically centred on it.
+func _place_sign_icon(l: Label3D, icon: Sprite3D) -> void:
+	var w := l.font.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.font_size).x * l.pixel_size
+	icon.position = Vector3(-w * 0.5 - 0.3, 0.0, 0.0)
 
 
 func _box(size: Vector3, pos: Vector3, mat: Material, parent: Node3D) -> MeshInstance3D:
@@ -153,6 +173,7 @@ func open_shelf(product: String, animate: bool) -> void:
 	var s: Dictionary = shelves[product]
 	var root: Node3D = s.root
 	root.visible = true
+	MeshMerge.merge(root)
 	if animate:
 		root.scale = Vector3.ONE * 0.05
 		var tw := create_tween()

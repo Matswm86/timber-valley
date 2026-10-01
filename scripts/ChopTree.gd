@@ -53,6 +53,8 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 	_stump.scale = Vector3.ONE * 2.2
 	_stump.visible = false
 	add_child(_stump)
+	for mi in _stump.find_children("*", "MeshInstance3D", true, false):
+		ShadowCull.track(mi as GeometryInstance3D)
 	var body := StaticBody3D.new()
 	var col := CollisionShape3D.new()
 	var cyl := CylinderShape3D.new()
@@ -76,6 +78,8 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 
 func _make_particles(c: Color, size: float, amount: int) -> CPUParticles3D:
 	var p := CPUParticles3D.new()
+	# Chips and leaves are a few cm: no shadow pass draw.
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.emitting = false
 	p.one_shot = true
 	p.amount = amount
@@ -97,6 +101,23 @@ func _make_particles(c: Color, size: float, amount: int) -> CPUParticles3D:
 	p.position.y = 0.8
 	add_child(p)
 	return p
+
+
+## Inside a valley the tree model is drawn by the valley's TreeBatch (one draw per model).
+func _enter_tree() -> void:
+	var batch := TreeBatch.find_for(self)
+	for mi in _tree.find_children("*", "MeshInstance3D", true, false):
+		if batch:
+			batch.add(mi as MeshInstance3D)
+		else:
+			ShadowCull.track(mi as GeometryInstance3D)
+
+
+func _exit_tree() -> void:
+	var batch := TreeBatch.find_for(self)
+	if batch:
+		for mi in _tree.find_children("*", "MeshInstance3D", true, false):
+			batch.remove(mi as MeshInstance3D)
 
 
 func is_ready() -> bool:

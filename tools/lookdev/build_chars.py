@@ -42,18 +42,35 @@ GINGER, BLOND, BLACKH = "#c56a2f", "#e6c27a", "#2e2622"
 
 # name: (base model, {(row, col) atlas cell: colour}, role note)
 PLAN = {
-    "character-male-e":   ("Barbarian", {(1, 0): RED, (1, 1): RED_D, (0, 1): GINGER, (2, 3): DENIM}, "player"),
+    # player (2026-10-01): was the bald ginger Barbarian; now the friendliest candidate (= character-player-alt-2 spec)
+    "character-male-e":   ("Knight", {(0, 1): BROWN, (0, 7): DKBROWN, (1, 7): DENIM, (0, 3): DKBROWN, (0, 6): BROWN},
+                           "player", dict(face=True, beanie="#e8a33a", plaid=dict(cells=[(0, 3)], z_min=0.48, colours=("#c8342b", "#26201f")))),
     "character-male-a":   ("Barbarian", {(1, 0): MUSTARD, (1, 1): MUSTARD_D, (0, 1): DKBROWN, (2, 3): BROWN}, "lumberjack"),
     "character-male-b":   ("Knight", {(0, 3): TAN, (0, 7): BROWN, (1, 7): DKBROWN, (0, 1): BROWN}, "hauler"),
     "character-male-c":   ("Knight", {(0, 3): BLUE, (0, 7): DENIM, (1, 7): SLATE}, "lumberjack"),
     "character-male-d":   ("Mage", {(1, 0): ORANGE, (1, 7): DKBROWN}, "lumberjack"),
     "character-male-f":   ("Mage", {(1, 0): TEAL, (1, 7): SLATE, (0, 1): BROWN}, "customer"),
-    "character-female-a": ("Rogue", {(1, 0): RED_D, (1, 1): RED}, "lumberjack"),
+    "character-female-a": ("Rogue", {(1, 0): TEAL, (1, 1): CREAM}, "lumberjack"),   # was red: only the player wears red now
     "character-female-b": ("Rogue", {(1, 0): "#c0606e", (1, 1): PINK, (0, 1): BLOND}, "hauler"),
     "character-female-c": ("Rogue_Hooded", {(1, 0): ORANGE_D, (1, 1): ORANGE}, "hauler"),
     "character-female-d": ("Rogue", {(1, 0): BLUE, (1, 1): SKY, (0, 1): DKBROWN}, "hauler"),
     "character-female-e": ("Rogue", {(1, 0): BROWN, (1, 1): CREAM, (0, 1): BLACKH}, "cashier"),
-    "character-female-f": ("Rogue_Hooded", {(1, 0): DENIM, (1, 1): MUSTARD}, "customer"),
+    "character-female-f": ("Rogue_Hooded", {(1, 0): DENIM, (1, 1): CREAM}, "customer"),   # hood was mustard: too close to the player cap
+}
+# Player candidates (2026-10-01, Mats: the bald ginger Barbarian reads "grumpy"). 4th element = options:
+#   face: friendlier brows (inner ends raised, thinner) + a dark smile;  plaid: procedural red/black check on the
+#   listed shirt cells above z_min (rest pose);  beanie: knit cap (colour) modelled on the head bone.
+PLAID_RED = ("#c8342b", "#26201f")
+PLAYER_ALTS = {
+    "character-player-alt-1": ("Knight", {(0, 1): DKBROWN, (0, 7): DKBROWN, (1, 7): DENIM, (0, 3): DKBROWN, (0, 6): BROWN},
+                               "player", dict(face=True, plaid=dict(cells=[(0, 3)], z_min=0.48, colours=PLAID_RED))),
+    # alt-2 shipped as character-male-e (see PLAN); kept here so all candidates rebuild
+    "character-player-alt-2": ("Knight", {(0, 1): BROWN, (0, 7): DKBROWN, (1, 7): DENIM, (0, 3): DKBROWN, (0, 6): BROWN},
+                               "player", dict(face=True, beanie="#e8a33a", plaid=dict(cells=[(0, 3)], z_min=0.48, colours=PLAID_RED))),
+    "character-player-alt-3": ("Mage", {(0, 1): "#3b2a22", (1, 7): DENIM, (2, 3): DKBROWN, (0, 3): BROWN, (0, 5): DKBROWN},
+                               "player", dict(face=True, plaid=dict(cells=[(1, 0)], z_min=0.5, colours=PLAID_RED))),
+    "character-player-alt-4": ("Barbarian", {(0, 1): DKBROWN, (2, 3): DENIM, (1, 7): DENIM},
+                               "player", dict(face=True, beanie="#c8342b", plaid=dict(cells=[(1, 0), (1, 1)], z_min=0.5, colours=("#e9b23f", "#3a2a22")))),
 }
 AXE_GOLD = {(1, 3): "#f2c14e", (1, 5): "#8a4b2a"}  # upgraded axe: gold head, dark handle
 
@@ -98,7 +115,49 @@ def select_only(objs, active=None):
     bpy.context.view_layer.objects.active = active or objs[0]
 
 
-def emission_setup(mat, img, grad_lo, height):
+def _m(nodes, links, op, a, b=None, val=None):
+    n = nodes.new("ShaderNodeMath"); n.operation = op
+    for i, x in enumerate((a, b)):
+        if x is None:
+            continue
+        if isinstance(x, (int, float)):
+            n.inputs[i].default_value = x
+        else:
+            links.new(x, n.inputs[i])
+    return n.outputs[0]
+
+
+def plaid_socket(nodes, links, colour_in, plaid):
+    """Mix a red/black check (rest-pose world X/Z, period 1/freq) over the given atlas cells above z_min."""
+    uvn = nodes.new("ShaderNodeUVMap"); sep = nodes.new("ShaderNodeSeparateXYZ"); links.new(uvn.outputs[0], sep.inputs[0])
+    col = _m(nodes, links, "FLOOR", _m(nodes, links, "MULTIPLY", sep.outputs["X"], 8.0))
+    row = _m(nodes, links, "FLOOR", _m(nodes, links, "MULTIPLY", _m(nodes, links, "SUBTRACT", 1.0, sep.outputs["Y"]), 4.0))
+    mask = None
+    for (r, c) in plaid["cells"]:
+        mc = _m(nodes, links, "LESS_THAN", _m(nodes, links, "ABSOLUTE", _m(nodes, links, "SUBTRACT", col, float(c))), 0.5)
+        mr = _m(nodes, links, "LESS_THAN", _m(nodes, links, "ABSOLUTE", _m(nodes, links, "SUBTRACT", row, float(r))), 0.5)
+        mm = _m(nodes, links, "MULTIPLY", mc, mr)
+        mask = mm if mask is None else _m(nodes, links, "MAXIMUM", mask, mm)
+    geo = nodes.new("ShaderNodeNewGeometry"); gs = nodes.new("ShaderNodeSeparateXYZ"); links.new(geo.outputs["Position"], gs.inputs[0])
+    mask = _m(nodes, links, "MULTIPLY", mask, _m(nodes, links, "GREATER_THAN", gs.outputs["Z"], plaid["z_min"]))
+    f = plaid.get("freq", 5.0) * 6.2832
+    s1 = _m(nodes, links, "GREATER_THAN", _m(nodes, links, "SINE", _m(nodes, links, "MULTIPLY", _m(nodes, links, "ADD", gs.outputs["X"], gs.outputs["Y"]), f)), 0.0)
+    s2 = _m(nodes, links, "GREATER_THAN", _m(nodes, links, "SINE", _m(nodes, links, "MULTIPLY", gs.outputs["Z"], f)), 0.0)
+    k = _m(nodes, links, "MULTIPLY", _m(nodes, links, "ADD", s1, s2), 0.5)
+    ramp = nodes.new("ShaderNodeValToRGB"); ramp.color_ramp.interpolation = "CONSTANT"
+    a, b = (hex_rgb(h) for h in plaid["colours"])
+    lin = lambda c: [float(x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4) for x in c]
+    e0, e1 = ramp.color_ramp.elements
+    e0.position = 0.0; e0.color = (*lin(a), 1)
+    e1.position = 0.4; e1.color = (*lin(a * 0.55), 1)
+    e2 = ramp.color_ramp.elements.new(0.9); e2.color = (*lin(b), 1)
+    links.new(k, ramp.inputs["Fac"])
+    mix = nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
+    links.new(mask, mix.inputs["Factor"]); links.new(colour_in, mix.inputs["A"]); links.new(ramp.outputs["Color"], mix.inputs["B"])
+    return mix.outputs["Result"]
+
+
+def emission_setup(mat, img, grad_lo, height, plaid=None):
     """High-poly material -> emission of atlas(img) x height gradient (world Z in rest pose)."""
     nt = mat.node_tree; nodes, links = nt.nodes, nt.links
     tex = next(n for n in nodes if n.type == "TEX_IMAGE")
@@ -110,7 +169,7 @@ def emission_setup(mat, img, grad_lo, height):
     mr.inputs["To Min"].default_value = grad_lo
     links.new(sep.outputs["Z"], mr.inputs["Value"])
     mul = nodes.new("ShaderNodeMix"); mul.data_type = "RGBA"; mul.blend_type = "MULTIPLY"; mul.inputs["Factor"].default_value = 1
-    links.new(tex.outputs["Color"], mul.inputs["A"])
+    links.new(plaid_socket(nodes, links, tex.outputs["Color"], plaid) if plaid else tex.outputs["Color"], mul.inputs["A"])
     cmb = nodes.new("ShaderNodeCombineColor")
     for k in ("Red", "Green", "Blue"):
         links.new(mr.outputs["Result"], cmb.inputs[k])
@@ -204,8 +263,128 @@ def bake(low, highs, height, name):
     return m
 
 
+def _islands(bm):
+    seen, out = set(), []
+    for v in bm.verts:
+        if v.index in seen:
+            continue
+        stack, comp = [v], []
+        seen.add(v.index)
+        while stack:
+            a = stack.pop(); comp.append(a)
+            for e in a.link_edges:
+                b = e.other_vert(a)
+                if b.index not in seen:
+                    seen.add(b.index); stack.append(b)
+        out.append(comp)
+    return out
+
+
+def friendly_face(head):
+    """Rest-pose edit of the KayKit head template: brows thinner, raised 2.5 cm, inner ends higher than outer
+    (KayKit's slope down toward the nose reads angry); the skin-coloured mouth strip becomes a dark smile."""
+    import bmesh
+    M = head.matrix_world; Mi = M.inverted()
+    bm = bmesh.new(); bm.from_mesh(head.data); bm.verts.ensure_lookup_table()
+    uv = bm.loops.layers.uv.active
+    eye_uv = None
+    brows, mouths = {-1: [], 1: []}, []
+    for comp in _islands(bm):
+        ws = [M @ v.co for v in comp]
+        c = sum(ws, Vector()) / len(ws)
+        us = [l[uv].uv.copy() for v in comp for l in v.link_loops]
+        mu = sum((Vector((u.x, u.y)) for u in us), Vector((0, 0))) / len(us)
+        cell = (int((1 - mu.y) * 4), int(mu.x * 8))
+        if cell == (0, 2) and eye_uv is None:
+            eye_uv = mu.copy()
+        if cell == (0, 1) and c.y < -0.3 and 0.05 < abs(c.x) < 0.4 and 1.64 < c.z < 1.86 and len(comp) < 80:
+            brows[1 if c.x > 0 else -1].append((comp, ws))
+        if cell == (0, 0) and c.y < -0.38 and abs(c.x) < 0.01 and 1.36 < c.z < 1.43 and len(comp) <= 10:
+            mouths.append((comp, ws))
+    for side, isl in brows.items():
+        pts = [w for _, ws in isl for w in ws]
+        if not pts:
+            continue
+        ax = [abs(p.x) for p in pts]; zs = [p.z for p in pts]
+        mx, mz = sum(ax) / len(ax), sum(zs) / len(zs)
+        slope = sum((a - mx) * (z - mz) for a, z in zip(ax, zs)) / max(sum((a - mx) ** 2 for a in ax), 1e-6)
+        for comp, ws in isl:
+            for v, w in zip(comp, ws):
+                a = abs(w.x)
+                fit = mz + slope * (a - mx)
+                nz = mz + 0.025 + (w.z - fit) * 0.6 - 0.14 * (a - mx)
+                v.co = Mi @ Vector((w.x, w.y, nz))
+    for comp, ws in mouths:
+        zc = sum(w.z for w in ws) / len(ws)
+        for v, w in zip(comp, ws):
+            x = w.x * 0.45
+            v.co = Mi @ Vector((x, w.y - 0.006, zc - 0.035 + (w.z - zc) * 0.4 + 5.0 * x * x))
+            for l in v.link_loops:
+                l[uv].uv = eye_uv
+    bm.to_mesh(head.data); bm.free()
+    return len(brows[1]) + len(brows[-1]), len(mouths)
+
+
+def add_beanie(rig, head, colour, name):
+    """Knit cap on the head bone: dome with vertical ribs (texture), rolled brim, pompom. Own work (CC0)."""
+    import bmesh
+    # tuck the hair under the cap: hair above the brim line moves inward and down, so the bake cannot pick it up
+    M = head.matrix_world; Mi = M.inverted()
+    uvl = head.data.uv_layers.active.data
+    hair = set()
+    for p in head.data.polygons:
+        u = sum(uvl[i].uv.x for i in p.loop_indices) / p.loop_total; v = sum(uvl[i].uv.y for i in p.loop_indices) / p.loop_total
+        if (int((1 - v) * 4), int(u * 8)) == (0, 1):
+            hair.update(p.vertices)
+    for i in hair:
+        w = M @ head.data.vertices[i].co
+        if w.z > 1.86:
+            k = min((w.z - 1.86) / 0.3, 1.0)
+            head.data.vertices[i].co = Mi @ Vector((w.x * (1 - 0.12 * k), w.y * (1 - 0.12 * k), 1.86 + (w.z - 1.86) * 0.55))
+    zs = [(head.matrix_world @ v.co).z for v in head.data.vertices]
+    top = max(zs)
+    parts = []
+    dome = bpy.data.meshes.new("beanie")
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=8, radius=1.0, calc_uvs=True)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < -0.05], context="VERTS")
+    for v in bm.verts:
+        v.co = Vector((v.co.x * 0.545, v.co.y * 0.545, 1.84 + max(v.co.z, 0.0) * max(top + 0.1 - 1.84, 0.38)))
+    bm.to_mesh(dome); bm.free()
+    for d, n in ((dome, "BeanieDome"),):
+        ob = bpy.data.objects.new(n, d); bpy.context.collection.objects.link(ob); parts.append(ob)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.54, minor_radius=0.075, major_segments=14, minor_segments=5, location=(0, 0, 1.88))
+    brim = bpy.context.object; brim.scale = (1.0, 1.0, 1.15); bpy.ops.object.transform_apply(scale=True); parts.append(brim)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=5, radius=0.13, location=(0, 0, 1.84 + max(top + 0.1 - 1.84, 0.38) + 0.07))
+    parts.append(bpy.context.object)
+    w, h = 64, 8
+    img = bpy.data.images.new(name + "_beanie", w, h, alpha=True)
+    c = hex_rgb(colour)
+    px = np.zeros((h, w, 4), np.float32); px[..., 3] = 1
+    for x in range(w):
+        px[:, x, :3] = c
+    img.pixels[:] = px.ravel()
+    mat = bpy.data.materials.new(name + "_beanie"); mat.use_nodes = True
+    tn = mat.node_tree.nodes.new("ShaderNodeTexImage"); tn.image = img
+    mat.node_tree.links.new(tn.outputs["Color"], next(n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED").inputs["Base Color"])
+    for ob in parts:
+        if not ob.data.uv_layers:
+            ob.data.uv_layers.new(name="UVMap")
+        ob.data.materials.clear(); ob.data.materials.append(mat)
+        for p in ob.data.polygons:
+            p.use_smooth = True
+        vg = ob.vertex_groups.new(name="head"); vg.add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
+        ob.parent = rig
+        am = ob.modifiers.new("Armature", "ARMATURE"); am.object = rig
+    select_only(parts)
+    bpy.ops.object.join()
+    ob = bpy.context.view_layer.objects.active; ob.name = "Beanie_Head"
+    return ob, mat, img
+
+
 def build(name, spec, report):
-    base, cells, role = spec
+    base, cells, role = spec[:3]
+    opts = spec[3] if len(spec) > 3 else {}
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"
@@ -233,13 +412,22 @@ def build(name, spec, report):
             bpy.data.objects.remove(o, do_unlink=True)
     rig.data.pose_position = "REST"
     bpy.context.view_layer.update()
+    dg0 = bpy.context.evaluated_depsgraph_get()
+    ref_height = max((p.matrix_world @ v.co).z for p in parts for v in p.evaluated_get(dg0).to_mesh().vertices)  # before head edits
     mat = parts[0].material_slots[0].material
     src_img = next(n for n in mat.node_tree.nodes if n.type == "TEX_IMAGE").image
     atlas = recolour(src_img, cells, name + "_atlas")
+    face_info = None
+    if opts.get("face"):
+        face_info = friendly_face(next(p for p in parts if "_Head" in p.name))
+    beanie = None
+    if opts.get("beanie"):
+        beanie = add_beanie(rig, next(p for p in parts if "_Head" in p.name), opts["beanie"], name)
+        parts.append(beanie[0])
     # height of the rest pose
     dg = bpy.context.evaluated_depsgraph_get()
-    zs = [(p.matrix_world @ v.co).z for p in parts for v in p.evaluated_get(dg).to_mesh().vertices]
-    height = max(zs)
+    zs = [(p.matrix_world @ v.co).z for p in parts if not p.name.startswith("Beanie") for v in p.evaluated_get(dg).to_mesh().vertices]
+    height = ref_height  # same rig scale as the unedited base (the cap and the hair tuck do not change body size)
 
     # low body = joined copy of the parts, decimated (vertex weights are interpolated by the collapse)
     # the head carries the silhouette: it keeps 90% of its triangles, the rest of the body shares what is left
@@ -276,7 +464,9 @@ def build(name, spec, report):
         decimate(lo, AXE_TRIS)
         select_only([lo]); bpy.ops.object.shade_smooth_by_angle(angle=math.radians(40))
         axe_lows[tag] = lo
-    emission_setup(mat, atlas, 0.85, height)
+    emission_setup(mat, atlas, 0.85, height, plaid=opts.get("plaid"))
+    if beanie:
+        emission_setup(beanie[1], beanie[2], 0.85, height)
 
     # bake body + both axes into one texture: join temporarily, split by vertex group afterwards
     for tag, lo in axe_lows.items():
@@ -341,7 +531,9 @@ def build(name, spec, report):
                               export_yup=True, export_image_format="AUTO")
     report[name] = dict(base=base, role=role, body_tris=body_tris, axe_tris=report_axe, tex=TEX,
                         rest_height=round(height * s, 3), rig_scale=round(s, 4), missing_anims=missing,
-                        anims=sorted(a.name for a in bpy.data.actions), bytes=os.path.getsize(path))
+                        anims=sorted(a.name for a in bpy.data.actions), bytes=os.path.getsize(path),
+                        options={k: v for k, v in opts.items() if k != "plaid"} | ({"plaid": True} if opts.get("plaid") else {}),
+                        face_edit=face_info)
     print("BUILT", name, report[name])
 
 
@@ -349,7 +541,7 @@ def main():
     only = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     rep_path = f"{REPO}/tools/lookdev/build_chars_report.json"
     report = json.load(open(rep_path)) if os.path.exists(rep_path) else {}
-    for name, spec in PLAN.items():
+    for name, spec in {**PLAN, **PLAYER_ALTS}.items():
         if only and name not in only:
             continue
         build(name, spec, report)

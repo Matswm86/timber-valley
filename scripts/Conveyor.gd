@@ -27,6 +27,8 @@ var _riding: Array = []
 var _timer: float = 0.0
 var _length: float = 0.0
 var _height: float = HEIGHT
+## item type -> MultiMeshInstance3D drawing the items riding the belt (their nodes are hidden).
+var _rider_mm: Dictionary = {}
 
 
 func setup(src: ItemStack, dst: ItemStack, pts: PackedVector3Array) -> Conveyor:
@@ -37,6 +39,8 @@ func setup(src: ItemStack, dst: ItemStack, pts: PackedVector3Array) -> Conveyor:
 		_length += pts[i - 1].distance_to(pts[i])
 		if not flume:
 			_build_segment(pts[i - 1], pts[i])
+	# Belt, rails and legs bake into three meshes for the whole belt (was ~25 nodes per segment).
+	MeshMerge.merge(self)
 	return self
 
 
@@ -114,6 +118,7 @@ func add_split(dst2: ItemStack, full_pts: PackedVector3Array, build_from: int) -
 		_length2 += full_pts[i - 1].distance_to(full_pts[i])
 		if i > build_from:
 			_build_segment(full_pts[i - 1], full_pts[i])
+	MeshMerge.merge(self)
 
 
 func _room(route: int) -> int:
@@ -160,6 +165,7 @@ func _process(delta: float) -> void:
 		add_child(it)
 		it.global_transform = gxf
 		it.scale = Vector3.ONE
+		it.visible = false
 		_riding.append({"node": it, "d": -0.6, "r": route})
 	for r in _riding.duplicate():
 		var it: Node3D = r.node
@@ -170,8 +176,42 @@ func _process(delta: float) -> void:
 			continue
 		if r.d >= (_length if rt == 0 else _length2):
 			_riding.erase(r)
+			it.visible = true
 			(dest if rt == 0 else dest2).push(it)
 			continue
 		it.global_position = to_global(_point_on(rt, r.d))
 		if flume:
 			it.global_position.y += sin(_clock * TAU * bob_hz + r.d * 2.0) * bob_m
+	_draw_riders()
+
+
+## Riding items are drawn by one MultiMesh per item type, rebuilt each frame from the hidden nodes.
+func _draw_riders() -> void:
+	var by_type := {}
+	for r in _riding:
+		var it: Node3D = r.node
+		var t := str(it.get_meta("item"))
+		if not by_type.has(t):
+			by_type[t] = []
+		(by_type[t] as Array).append(it.transform)
+	for t in _rider_mm:
+		if not by_type.has(t):
+			(_rider_mm[t] as MultiMeshInstance3D).multimesh.instance_count = 0
+	for t in by_type:
+		var list: Array = by_type[t]
+		var mmi: MultiMeshInstance3D = _rider_mm.get(t)
+		if mmi == null:
+			mmi = MultiMeshInstance3D.new()
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = Items.mesh_of(t)
+			mmi.multimesh = mm
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if Items.casts_shadow(t) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mmi)
+			ShadowCull.track(mmi)
+			_rider_mm[t] = mmi
+		var m := mmi.multimesh
+		if m.instance_count != list.size():
+			m.instance_count = list.size()
+		for i in list.size():
+			m.set_instance_transform(i, list[i])

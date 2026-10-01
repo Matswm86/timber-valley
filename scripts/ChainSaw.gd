@@ -8,7 +8,8 @@ const TEETH := 26
 var machine: Machine
 var bar_len: float = 1.9
 var bar_h: float = 0.42
-var _teeth: Array[MeshInstance3D] = []
+## All teeth in one MultiMesh (one draw instead of 26).
+var _teeth: MultiMeshInstance3D
 var _phase: float = 0.0
 var _speed: float = 0.0
 var always_on: bool = false
@@ -24,14 +25,20 @@ func setup(m: Machine, frame: Color) -> ChainSaw:
 	var motor := Shapes.box_node(self, Vector3(0.6, 0.7, 0.55), Vector3(0, 0.0, -bar_len * 0.5 - 0.2), Shapes.mat(frame, 0.45), 0.14)
 	motor.name = "motor"
 	Shapes.box_node(self, Vector3(0.64, 0.12, 0.3), Vector3(0, 0.0, -bar_len * 0.5 - 0.25), dark, 0.05)
+	# The bar, guide and motor bake into one mesh before the teeth are added.
+	MeshMerge.merge(self)
 	var tm := BoxMesh.new()
 	tm.size = Vector3(0.1, 0.07, 0.09) * (bar_h / 0.42)
-	for i in TEETH:
-		var t := MeshInstance3D.new()
-		t.mesh = tm
-		t.material_override = dark
-		add_child(t)
-		_teeth.append(t)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = tm
+	mm.instance_count = TEETH
+	_teeth = MultiMeshInstance3D.new()
+	_teeth.multimesh = mm
+	_teeth.material_override = dark
+	# Teeth are 7 cm: no visible shadow of their own.
+	_teeth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_teeth)
 	_place_teeth()
 	return self
 
@@ -57,11 +64,11 @@ func _outline(u: float) -> Array:
 
 
 func _place_teeth() -> void:
-	for i in _teeth.size():
+	var mm := _teeth.multimesh
+	for i in TEETH:
 		var o := _outline(_phase + float(i) / TEETH)
 		var p: Vector3 = o[0]
-		_teeth[i].position = p * 1.08
-		_teeth[i].rotation.x = -float(o[1])
+		mm.set_instance_transform(i, Transform3D(Basis(Vector3.RIGHT, -float(o[1])), p * 1.08))
 
 
 func _process(delta: float) -> void:
