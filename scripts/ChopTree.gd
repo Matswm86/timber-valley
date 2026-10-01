@@ -11,7 +11,7 @@ const BROADLEAF := ["tree_default", "tree_oak", "tree_detailed", "tree_fat"]
 
 ## Tree kind from Balance.TREES ("broad", "pine", "birch", ...).
 var kind: String = "broad"
-## Item the tree drops ("log" in Valley 1, "birch_log" in Birch Bend).
+## Item the tree drops ("log" in Valley 1, "birch_log" in Birch Bend, "maple_log" in the Highlands).
 var log_type: String = "log"
 var logs_given: int = 3
 var hits_needed: int = 3
@@ -25,6 +25,8 @@ var _stump: Node3D
 var _progress: Dictionary = {}
 var _chips: CPUParticles3D
 var _leaves: CPUParticles3D
+## Chips and leaves are hidden between hits: an idle CPUParticles3D still costs a draw.
+var _fx_hits: int = 0
 
 
 func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
@@ -38,18 +40,22 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 	var paths: Array = []
 	if kind == "birch":
 		paths = Models.PATHS.birch_trees
+	elif kind == "maple":
+		paths = Models.PATHS.maple_trees
 	else:
 		for m in (MODELS if kind == "pine" else BROADLEAF):
 			paths.append("res://assets/models_v3/nature/%s.glb" % m)
 	var mpath: String = paths[rng.randi() % paths.size()]
 	_tree = Node3D.new()
 	var inst: Node3D = load(mpath).instantiate()
-	var s := rng.randf_range(2.3, 2.8) * (1.15 if kind == "pine" else 1.0) * float(d.scale)
+	var model_name := mpath.get_file().get_basename()
+	var kind_scale := float(Balance.TREE_SCALE_OVERRIDE.get(model_name, d.scale))
+	var s := rng.randf_range(2.3, 2.8) * (1.15 if kind == "pine" else 1.0) * kind_scale
 	inst.scale = Vector3.ONE * s
 	inst.rotation.y = rng.randf() * TAU
 	_tree.add_child(inst)
 	add_child(_tree)
-	_stump = Models.make("birch_stump" if kind == "birch" else "default_stump")
+	_stump = Models.make("birch_stump" if kind == "birch" else ("maple_stump" if kind == "maple" else "default_stump"))
 	_stump.scale = Vector3.ONE * 2.2
 	_stump.visible = false
 	add_child(_stump)
@@ -70,7 +76,12 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 	zone.on_carrier = _on_carrier
 	add_child(zone)
 	_chips = _make_particles(Color(0.85, 0.66, 0.42), 0.09, 14)
-	_leaves = _make_particles(Color(0.64, 0.82, 0.34) if kind == "birch" else Color(0.36, 0.62, 0.3), 0.12, 10)
+	var leaf := Color(0.36, 0.62, 0.3)
+	if kind == "birch":
+		leaf = Color(0.64, 0.82, 0.34)
+	elif kind == "maple":
+		leaf = Color(0.93, 0.54, 0.17)
+	_leaves = _make_particles(leaf, 0.12, 10)
 	_leaves.position.y = 2.2
 	_leaves.gravity = Vector3(0, -2.5, 0)
 	return self
@@ -99,6 +110,7 @@ func _make_particles(c: Color, size: float, amount: int) -> CPUParticles3D:
 	m.material = mat
 	p.mesh = m
 	p.position.y = 0.8
+	p.visible = false
 	add_child(p)
 	return p
 
@@ -108,7 +120,7 @@ func _enter_tree() -> void:
 	var batch := TreeBatch.find_for(self)
 	for mi in _tree.find_children("*", "MeshInstance3D", true, false):
 		if batch:
-			batch.add(mi as MeshInstance3D)
+			batch.add(mi as MeshInstance3D, global_position)
 		else:
 			ShadowCull.track(mi as GeometryInstance3D)
 
@@ -157,6 +169,7 @@ func _face(carrier: Node) -> void:
 func _hit(carrier: Node) -> void:
 	hp -= 1
 	Sfx.play("chop", -4.0, randf_range(0.95, 1.1))
+	_show_fx()
 	_chips.restart()
 	_chips.emitting = true
 	if hp > 0:
@@ -169,6 +182,17 @@ func _hit(carrier: Node) -> void:
 		tw.tween_property(_tree, "rotation", Vector3.ZERO, 0.15).set_trans(Tween.TRANS_ELASTIC)
 		return
 	_fall(carrier)
+
+
+func _show_fx() -> void:
+	_chips.visible = true
+	_leaves.visible = true
+	_fx_hits += 1
+	var hit := _fx_hits
+	get_tree().create_timer(_chips.lifetime + 0.3, false).timeout.connect(func() -> void:
+		if hit == _fx_hits:
+			_chips.visible = false
+			_leaves.visible = false)
 
 
 func _fall(carrier: Node) -> void:
@@ -198,7 +222,10 @@ func _fall(carrier: Node) -> void:
 		it.global_position = global_position + away * (1.0 + i * 0.5) + Vector3.UP * 0.4
 		it.rotation.y = randf() * TAU
 		back.push(it)
-	get_tree().create_timer(regrow_time).timeout.connect(_regrow)
+	var regrow := regrow_time
+	if kind == "birch" and Game.is_unlocked("r2_jack3"):
+		regrow *= float(Balance.FORESTER_CAMP.birch_regrow_mult)
+	get_tree().create_timer(regrow).timeout.connect(_regrow)
 
 
 func _regrow() -> void:

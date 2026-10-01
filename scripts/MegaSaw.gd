@@ -24,13 +24,8 @@ func setup() -> MegaSaw:
 	name = "MegaSaw"
 	body = Node3D.new()
 	add_child(body)
-	var blue := Shapes.mat(Color(0.2, 0.5, 0.88), 0.45)
-	var yellow := Shapes.mat(Color(1.0, 0.76, 0.18), 0.45)
-	var red := Shapes.mat(Color(0.9, 0.28, 0.2), 0.45)
-	var steel := Shapes.mat(Color(0.55, 0.58, 0.62), 0.4, 0.6)
-	Shapes.box_node(body, Vector3(8.4, 0.8, 2.6), Vector3(-0.6, 0.4, 0), blue, 0.12)
-	for z in [-1.25, 1.25]:
-		Shapes.box_node(body, Vector3(8.5, 0.2, 0.2), Vector3(-0.6, 0.85, z), yellow, 0.06)
+	# v3 body (ASSETS_LEFTOVER.md 2.8): bed, rails, gantry and sawdust mound in one model.
+	body.add_child(Models.make("megasaw_body"))
 	var belt := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = Vector3(2.2, 0.06, 8.2)
@@ -43,11 +38,7 @@ func setup() -> MegaSaw:
 	belt.position = Vector3(-0.6, 0.82, 0)
 	belt.rotation_degrees.y = 90
 	body.add_child(belt)
-	# Gantry over the belt carrying an upright giant chainsaw.
-	# One pillar behind the belt with a cantilever arm, so the camera sees the blade.
-	Shapes.box_node(body, Vector3(0.6, 4.8, 0.6), Vector3(SAW_X, 2.4, -1.8), red, 0.14)
-	Shapes.box_node(body, Vector3(0.7, 0.6, 2.4), Vector3(SAW_X, 4.5, -0.7), red, 0.14)
-	Shapes.box_node(body, Vector3(0.8, 0.12, 2.5), Vector3(SAW_X, 4.86, -0.7), yellow, 0.05)
+	# Upright giant chainsaw on the gantry arm (the gantry is part of the body model).
 	var saw := ChainSaw.new()
 	saw.bar_len = 3.2
 	saw.bar_h = 0.8
@@ -56,29 +47,19 @@ func setup() -> MegaSaw:
 	saw.position = Vector3(SAW_X, 2.35, 0)
 	saw.always_on = true
 	body.add_child(saw)
-	# Crane that brings in the next log.
-	var crane: Node3D = load("res://assets/models/factory/crane.glb").instantiate()
-	crane.scale = Vector3.ONE * 1.5
+	# Tower crane that brings in the next log: jib (+X, tip x 4.4) over the log drop path.
+	var crane := Models.make("megasaw_crane")
 	crane.position = Vector3(-4.2, 0, -2.2)
-	crane.rotation_degrees.y = 90
+	crane.rotation_degrees.y = -20
 	body.add_child(crane)
 	_crane_hook = Node3D.new()
 	body.add_child(_crane_hook)
-	Shapes.box_node(_crane_hook, Vector3(0.12, 3.0, 0.12), Vector3(0, 1.5, 0), steel, 0.04)
+	# Hook origin = hook bottom; the cable runs up 3 m like the old box.
+	_crane_hook.add_child(Models.make("crane_hook"))
 	_crane_hook.visible = false
-	# Sawdust mound under the blade.
-	var mound := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 1.1
-	sm.height = 0.9
-	mound.mesh = sm
-	mound.material_override = Shapes.mat(Color(0.98, 0.84, 0.58), 0.95)
-	mound.position = Vector3(SAW_X + 0.9, 0.0, 1.9)
-	mound.scale = Vector3(1.2, 0.6, 0.8)
-	body.add_child(mound)
 	_log = Shapes.log_node(body, LOG_R, LOG_LEN, Vector3.ZERO, Vector3(0, 0, 90), Shapes.log_material(LOG_R))
 	_place_log(0.0)
-	# Bed, rails, belt, gantry, crane and mound bake into a few meshes; the log and hook move.
+	# Body, belt and crane bake into a few meshes; the log and hook move.
 	MeshMerge.merge(body, [_log, _crane_hook])
 	_chips = CPUParticles3D.new()
 	_chips.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

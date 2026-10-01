@@ -39,8 +39,13 @@ func setup(src: ItemStack, dst: ItemStack, pts: PackedVector3Array) -> Conveyor:
 		_length += pts[i - 1].distance_to(pts[i])
 		if not flume:
 			_build_segment(pts[i - 1], pts[i])
-	# Belt, rails and legs bake into three meshes for the whole belt (was ~25 nodes per segment).
+	if not flume and pts.size() >= 2:
+		_build_end(pts[1], pts[0])
+		_build_end(pts[-2], pts[-1])
+	# Belt, rails, legs and end rollers bake into one mesh per material for the whole belt, and
+	# the valley's StaticBatch merges those across all its belts.
 	MeshMerge.merge(self)
+	StaticBatch.register(self)
 	return self
 
 
@@ -71,32 +76,25 @@ func _build_segment(a: Vector3, b: Vector3) -> void:
 	belt.material_override = mat
 	belt.position.y = HEIGHT - 0.06
 	seg.add_child(belt)
-	var rail_mat := StandardMaterial3D.new()
-	rail_mat.albedo_color = Color(0.95, 0.68, 0.18)
-	rail_mat.roughness = 0.5
-	for side in [-0.45, 0.45]:
-		var rail := MeshInstance3D.new()
-		var rm := BoxMesh.new()
-		rm.size = Vector3(0.1, 0.2, len + 0.8)
-		rail.mesh = rm
-		rail.material_override = rail_mat
-		rail.position = Vector3(side, HEIGHT, 0)
-		seg.add_child(rail)
-	var leg_mat := StandardMaterial3D.new()
-	leg_mat.albedo_color = Color(0.3, 0.33, 0.35)
-	leg_mat.metallic = 0.6
-	leg_mat.roughness = 0.4
+	# Rails and legs are the v3 modular pieces (ASSETS_LEFTOVER.md 2.1): the 1 m rail piece
+	# stretches along Z, and one leg pair stands at every station.
+	var rails: Node3D = load(Models.path("belt_rails")).instantiate()
+	rails.scale = Vector3(1, 1, len + 0.8)
+	seg.add_child(rails)
 	var n := int(len / 1.6) + 1
 	for i in n + 1:
 		var z := -len * 0.5 + len * float(i) / maxf(n, 1)
-		for side in [-0.35, 0.35]:
-			var leg := MeshInstance3D.new()
-			var lm := BoxMesh.new()
-			lm.size = Vector3(0.08, HEIGHT - 0.1, 0.08)
-			leg.mesh = lm
-			leg.material_override = leg_mat
-			leg.position = Vector3(side, (HEIGHT - 0.1) * 0.5, z)
-			seg.add_child(leg)
+		var lg: Node3D = load(Models.path("belt_legs")).instantiate()
+		lg.position = Vector3(0, 0, z)
+		seg.add_child(lg)
+
+
+## End roller just past `end`, on the line from `from`: hides the square belt end at a pile.
+func _build_end(from: Vector3, end: Vector3) -> void:
+	var dir := (end - from).normalized()
+	var cap: Node3D = load(Models.path("belt_end")).instantiate()
+	cap.transform = Transform3D(Basis.looking_at(end - from, Vector3.UP), end + dir * 0.4)
+	add_child(cap)
 
 
 func _point_at(dist: float) -> Vector3:
@@ -118,7 +116,10 @@ func add_split(dst2: ItemStack, full_pts: PackedVector3Array, build_from: int) -
 		_length2 += full_pts[i - 1].distance_to(full_pts[i])
 		if i > build_from:
 			_build_segment(full_pts[i - 1], full_pts[i])
+	if full_pts.size() >= 2:
+		_build_end(full_pts[-2], full_pts[-1])
 	MeshMerge.merge(self)
+	StaticBatch.register(self)
 
 
 func _room(route: int) -> int:

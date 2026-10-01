@@ -28,11 +28,12 @@ static func find_for(n: Node) -> TreeBatch:
 
 
 ## Takes over drawing mi (a tree model mesh); mi stays in place for transforms and visibility.
-func add(mi: MeshInstance3D) -> void:
+## at = the tree's world position (mi is not inside the tree yet while its ChopTree enters).
+func add(mi: MeshInstance3D, at: Vector3 = Vector3.INF) -> void:
 	var mesh := mi.mesh
 	if mesh == null:
 		return
-	var p := mi.global_position
+	var p := at if at != Vector3.INF else mi.global_position
 	var key := [mesh, Vector2i(floori(p.x / CELL_M), floori(p.z / CELL_M))]
 	if not _mms.has(key):
 		var mm := MultiMesh.new()

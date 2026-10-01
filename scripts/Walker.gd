@@ -13,10 +13,17 @@ var cap: int = 6
 
 
 func init_walker(model_name: String) -> void:
-	model = CharacterModel.new().setup(model_name)
-	add_child(model)
-	stack = ItemStack.new().setup("", 999, 1, 1)
-	stack.position = Vector3(0, 0.62, 0.42)
+	if model_name == "forklift":
+		model = ForkliftModel.new().setup_forklift()
+		add_child(model)
+		# Loads sit on the fork tines (ASSETS_M2.md 1.3), two items side by side.
+		stack = ItemStack.new().setup("", 999, 1, 2)
+		stack.position = Vector3(0, 0.2, 1.05)
+	else:
+		model = CharacterModel.new().setup(model_name)
+		add_child(model)
+		stack = ItemStack.new().setup("", 999, 1, 1)
+		stack.position = Vector3(0, 0.62, 0.42)
 	stack.fly_time = 0.22
 	model.add_child(stack)
 

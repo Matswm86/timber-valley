@@ -3,7 +3,8 @@ extends RefCounted
 
 ## Item catalogue: how each carried item looks and how tall it stacks.
 
-## v3 item models (assets/models_v3/ASSETS_M1.md section 2), world units at scale 1.0.
+## v3 item models (assets/models_v3/ASSETS_M1.md section 2, ASSETS_M2.md), world units at scale 1.0.
+## "max_drawn": piles draw at most this many of the item (the rest stay counted, not drawn).
 const DEFS := {
 	"log": {"path": "res://assets/models_v3/items/item_log.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.31, "cell": Vector2(1.05, 0.36)},
 	"plank": {"path": "res://assets/models_v3/items/item_plank.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.11, "cell": Vector2(1.0, 0.4)},
@@ -14,6 +15,10 @@ const DEFS := {
 	"veneer": {"path": "res://assets/models_v3/items/item_veneer.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.05, "cell": Vector2(1.0, 0.5)},
 	"plywood": {"path": "res://assets/models_v3/items/item_plywood.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.12, "cell": Vector2(1.0, 0.6)},
 	"canoe": {"path": "res://assets/models_v3/items/item_canoe.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.35, "cell": Vector2(0.7, 2.0)},
+	"maple_log": {"path": "res://assets/models_v3/items/item_maple_log.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.31, "cell": Vector2(1.05, 0.36)},
+	"beam": {"path": "res://assets/models_v3/items/item_beam.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.28, "cell": Vector2(1.2, 0.3)},
+	"floorboard": {"path": "res://assets/models_v3/items/item_floorboard.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.07, "cell": Vector2(1.0, 0.25)},
+	"cabin_kit": {"path": "res://assets/models_v3/items/item_cabin_kit.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.6, "cell": Vector2(1.0, 1.0), "max_drawn": Balance.KIT_PILE_DRAWN},
 	"coin": {"path": "", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.075, "cell": Vector2(0.36, 0.36)},
 }
 

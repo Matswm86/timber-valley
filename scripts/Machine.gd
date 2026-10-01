@@ -14,6 +14,13 @@ var input: ItemStack
 var output: ItemStack
 var in_zone: Zone
 var out_zone: Zone
+## Assembler (GDD 7.4): optional second input with its own pile and DROP square. A cycle starts
+## when both piles hold enough.
+var in_type_b: String = ""
+var in_per_cycle_b: int = 0
+var input_b: ItemStack
+var in_zone_b: Zone
+var mouth_in_b := Vector3(-0.9, 1.0, 0)
 var spinners: Array[Node3D] = []
 var arms: Array[Node3D] = []
 ## Press plates: travel down and back up once per cycle while busy (local y).
@@ -60,6 +67,18 @@ func setup(id: String, i_type: String, o_type: String, i_n: int, o_n: int, t: fl
 	return self
 
 
+## Makes this an Assembler: a second input pile (persisted as "<id>:in2") at `pos`.
+func add_second_input(i_type: String, i_n: int, pos: Vector3) -> void:
+	in_type_b = i_type
+	in_per_cycle_b = i_n
+	input_b = ItemStack.new().setup(i_type, 36, 2, 3, name + ":in2")
+	input_b.position = pos
+	add_child(input_b)
+	in_zone_b = Zone.new().setup(Zone.Kind.DROP, input_b, Vector2(2.2, 2.4), ("%sS" % i_type.to_upper()).replace("_", " "), Color(1, 1, 1))
+	in_zone_b.position = pos
+	add_child(in_zone_b)
+
+
 func add_blocker(size: Vector3, offset: Vector3 = Vector3.ZERO) -> void:
 	var sb := StaticBody3D.new()
 	var col := CollisionShape3D.new()
@@ -83,35 +102,10 @@ func add_model(path: String, pos: Vector3, scl: float, rot_y_deg: float = 0.0) -
 func add_saw_blade(pos: Vector3, radius: float) -> Node3D:
 	var pivot := Node3D.new()
 	pivot.position = pos
-	var mi := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = radius
-	cyl.bottom_radius = radius
-	cyl.height = 0.04
-	cyl.radial_segments = 28
-	mi.mesh = cyl
-	mi.rotation_degrees = Vector3(90, 0, 0)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.78, 0.8, 0.83)
-	mat.metallic = 0.9
-	mat.roughness = 0.25
-	mi.material_override = mat
-	pivot.add_child(mi)
-	# Teeth marks make the spin visible.
-	for i in 8:
-		var tooth := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(radius * 0.5, 0.06, 0.05)
-		tooth.mesh = bm
-		var tm := StandardMaterial3D.new()
-		tm.albedo_color = Color(0.9, 0.35, 0.15)
-		tooth.material_override = tm
-		var a := TAU * i / 8.0
-		tooth.position = Vector3(cos(a), sin(a), 0) * radius * 0.62
-		tooth.rotation.z = a
-		pivot.add_child(tooth)
-	# Blade and teeth spin together: bake them into the pivot's own mesh.
-	MeshMerge.merge(pivot, [], false)
+	# v3 blade (ASSETS_LEFTOVER.md 2.4): r 0.3, disc normal = local Z, so the spin about FORWARD works.
+	var blade: Node3D = load(Models.path("saw_blade")).instantiate()
+	blade.scale = Vector3.ONE * (radius / 0.3)
+	pivot.add_child(blade)
 	body.add_child(pivot)
 	spinners.append(pivot)
 	return pivot
@@ -180,7 +174,8 @@ func add_smoke(pos: Vector3) -> void:
 
 func _process(delta: float) -> void:
 	var speed := Game.machine_speed(region)
-	if not _busy and input.count() >= in_per_cycle and output.count() + out_per_cycle <= output.capacity:
+	var b_ok := input_b == null or input_b.count() >= in_per_cycle_b
+	if not _busy and b_ok and input.count() >= in_per_cycle and output.count() + out_per_cycle <= output.capacity:
 		_start_cycle()
 	if _busy:
 		_t += delta * speed
@@ -214,6 +209,13 @@ func _start_cycle() -> void:
 		if it == null:
 			break
 		_fly_and_free(it, to_global(mouth_in), i)
+	if input_b:
+		for i in in_per_cycle_b:
+			var it := input_b.pop()
+			if it == null:
+				break
+			_fly_and_free(it, to_global(mouth_in_b), i)
+		Sfx.play("wood", -10.0, 0.8)
 
 
 func _finish_cycle() -> void:

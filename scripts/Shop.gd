@@ -24,48 +24,38 @@ var side: float = 1.0
 ## Unlock that boosts shoppers x1.7 ("" = none).
 var sign_unlock: String = "roadsign"
 var customer_cap: int = Balance.CUSTOMERS_PER_REGION
+## Extra shopper rate (Maple Highlands: +10% per finished village house).
+var spawn_bonus: float = 1.0
 ## Optional shopper route (local spawn/exit points plus a world waypoint on the lane).
 var spawn_local: Vector3 = Vector3.INF
 var exit_local: Vector3 = Vector3.INF
 var lane_via: Vector3 = Vector3.INF
 var _spawn_timer: float = 0.5
 var _cashier_timer: float = 0.0
-var _wood_mat: StandardMaterial3D
-var _wood_dark: StandardMaterial3D
+## Shoppers out of this market, and item type -> MultiMeshInstance3D drawing what they carry.
+var _customers: Array[Customer] = []
+var _carry_mm: Dictionary = {}
 
 
 func setup(region_id: int = 1, mirror: float = 1.0) -> Shop:
 	name = "Shop" if region_id == 1 else "Shop%d" % region_id
 	region = region_id
 	side = mirror
-	_wood_mat = StandardMaterial3D.new()
-	_wood_mat.albedo_color = Color(0.78, 0.55, 0.34)
-	_wood_mat.roughness = 0.8
-	_wood_dark = StandardMaterial3D.new()
-	_wood_dark.albedo_color = Color(0.52, 0.34, 0.2)
-	_wood_dark.roughness = 0.85
 	_build_till()
 	_build_canopy()
-	# Canopy stripes, posts and till bake into a few meshes (shelves bake when they open).
+	# Canopy and till bake into a few meshes (shelves bake when they open).
 	MeshMerge.merge(self)
 	return self
 
 
-## Striped shade cloth over the customer side of the market, low and narrow so shoppers stay visible.
+## Shade cloth over the customer side of the market (v3 canopy, ASSETS_LEFTOVER.md 2.9):
+## 10.1 m long, centred between the first counter and the till; teal in Maple Highlands.
 func _build_canopy() -> void:
-	var red := StandardMaterial3D.new()
-	red.albedo_color = Color(0.86, 0.33, 0.26)
-	var cream := StandardMaterial3D.new()
-	cream.albedo_color = Color(0.98, 0.93, 0.82)
-	var z0 := 3.9
-	var z1 := till_z - 1.0
-	var stripes := 12
-	var w := (z0 - z1) / stripes
-	for i in stripes:
-		var cloth := _box(Vector3(0.9, 0.06, w), Vector3(0.95 * side, 2.35, z0 - w * (i + 0.5)), red if i % 2 == 0 else cream, self)
-		cloth.rotation_degrees.z = -14 * side
-	for z in [z0, (z0 + z1) * 0.5, z1]:
-		_box(Vector3(0.12, 2.45, 0.12), Vector3(0.55 * side, 1.22, z), _wood_dark, self)
+	var c: Node3D = load(Models.path("market_canopy_teal" if region == 3 else "market_canopy")).instantiate()
+	c.position = Vector3(0, 0, (3.9 + till_z - 1.0) * 0.5)
+	# 180 deg = the mirrored layout (cloth on the other side).
+	c.rotation_degrees.y = 0.0 if side > 0.0 else 180.0
+	add_child(c)
 
 
 func _sign(root: Node3D, product: String) -> void:
@@ -104,17 +94,6 @@ func _place_sign_icon(l: Label3D, icon: Sprite3D) -> void:
 	icon.position = Vector3(-w * 0.5 - 0.3, 0.0, 0.0)
 
 
-func _box(size: Vector3, pos: Vector3, mat: Material, parent: Node3D) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.material_override = mat
-	mi.position = pos
-	parent.add_child(mi)
-	return mi
-
-
 func _blocker(size: Vector3, pos: Vector3, parent: Node3D) -> void:
 	var sb := StaticBody3D.new()
 	var col := CollisionShape3D.new()
@@ -130,13 +109,8 @@ func _build_till() -> void:
 	var root := Node3D.new()
 	root.position = Vector3(SHELF_X, 0, till_z)
 	add_child(root)
-	_box(Vector3(1.3, 0.9, 1.6), Vector3(0, 0.45, 0), _wood_mat, root)
-	_box(Vector3(1.45, 0.08, 1.75), Vector3(0, 0.92, 0), _wood_dark, root)
-	var chest: Node3D = load("res://assets/models/survival/chest.glb").instantiate()
-	chest.scale = Vector3.ONE * 2.2
-	chest.position = Vector3(0, 0.96, 0.3)
-	chest.rotation_degrees.y = 90
-	root.add_child(chest)
+	# Counter with the cash chest on top (symmetric, so mirrored markets need no flip).
+	root.add_child(Models.make("shop_till"))
 	_blocker(Vector3(1.3, 1.5, 1.6), Vector3(0, 0.75, 0), root)
 	coins = ItemStack.new().setup("coin", 400, 3, 3)
 	coins.position = Vector3(SHELF_X + (PLAYER_SIDE - 0.2) * side, 0, till_z)
@@ -152,8 +126,8 @@ func add_shelf(product: String, z: float) -> void:
 	var root := Node3D.new()
 	root.position = Vector3(SHELF_X, 0, z)
 	add_child(root)
-	_box(Vector3(1.2, 0.55, 2.0), Vector3(0, 0.275, 0), _wood_mat, root)
-	_box(Vector3(1.3, 0.06, 2.1), Vector3(0, 0.58, 0), _wood_dark, root)
+	# v3 counter: top at y 0.62, the ItemStack height.
+	root.add_child(Models.make("shop_counter"))
 	_blocker(Vector3(1.2, 1.5, 2.0), Vector3(0, 0.75, 0), root)
 	_sign(root, product)
 	var st := ItemStack.new().setup(product, 30, 1, 2, "shelf:" + product)
@@ -174,6 +148,8 @@ func open_shelf(product: String, animate: bool) -> void:
 	var root: Node3D = s.root
 	root.visible = true
 	MeshMerge.merge(root)
+	# Counters share one texture: the valley's StaticBatch draws them together.
+	StaticBatch.register(root)
 	if animate:
 		root.scale = Vector3.ONE * 0.05
 		var tw := create_tween()
@@ -264,6 +240,7 @@ func hire_cashier(animate: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	_draw_carried()
 	if has_cashier:
 		cashier.animate()
 		_cashier_timer -= delta
@@ -279,7 +256,7 @@ func _process(delta: float) -> void:
 				stock += shelf(p).count()
 		var rush := 1.0 + clampf(stock / 12.0, 0.0, 2.5)
 		var sign := 1.7 if sign_unlock != "" and Game.is_unlocked(sign_unlock) else 1.0
-		_spawn_timer = randf_range(0.9, 1.7) / (rush * sign * (1.0 + 0.1 * Game.level("prices")) * Game.fame_mult(region))
+		_spawn_timer = randf_range(0.9, 1.7) / (rush * sign * spawn_bonus * (1.0 + 0.1 * Game.level("prices")) * Game.fame_mult(region))
 		_try_spawn()
 
 
@@ -314,3 +291,51 @@ func _try_spawn() -> void:
 		exit_pt = to_global(exit_local)
 	var c := Customer.new().setup(self, prod, n, spawn, entry, exit_pt, lane_via)
 	get_parent().add_child(c)
+	_customers.append(c)
+
+
+## Draw-call reduction: what all shoppers carry is drawn by one MultiMesh per item type (was one
+## per shopper). Their landed items stay hidden nodes; flying items still draw themselves.
+func _draw_carried() -> void:
+	var inv := global_transform.affine_inverse()
+	var by_type := {}
+	for i in range(_customers.size() - 1, -1, -1):
+		var c := _customers[i]
+		if not is_instance_valid(c) or c.is_queued_for_deletion():
+			_customers.remove_at(i)
+			continue
+		for it in c.stack.items:
+			if is_instance_valid(it) and it.has_meta("landed"):
+				var t := str(it.get_meta("item"))
+				if not by_type.has(t):
+					by_type[t] = []
+				(by_type[t] as Array).append(inv * it.global_transform)
+	for t in _carry_mm:
+		if not by_type.has(t):
+			(_carry_mm[t] as MultiMeshInstance3D).multimesh.visible_instance_count = 0
+	for t in by_type:
+		var list: Array = by_type[t]
+		var mmi: MultiMeshInstance3D = _carry_mm.get(t)
+		if mmi == null:
+			mmi = MultiMeshInstance3D.new()
+			mmi.name = "Carried_" + str(t)
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = Items.mesh_of(t)
+			mmi.multimesh = mm
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if Items.casts_shadow(t) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mmi)
+			_carry_mm[t] = mmi
+		var m := mmi.multimesh
+		if m.instance_count < list.size():
+			m.instance_count = list.size() + 16
+		var box := AABB()
+		var aabb := m.mesh.get_aabb()
+		for i in list.size():
+			var xf: Transform3D = list[i]
+			m.set_instance_transform(i, xf)
+			var b := xf * aabb
+			box = b if i == 0 else box.merge(b)
+		m.visible_instance_count = list.size()
+		if not list.is_empty():
+			mmi.custom_aabb = box

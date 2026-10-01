@@ -27,6 +27,8 @@ const IMPOSTER_KINDS := [
 	"tree_pineRoundA", "tree_pineRoundC", "tree_default_dark", "tree_default", "tree_detailed", "tree_oak",
 	"tree_fat", "tree_pineDefaultB", "tree_birchA", "tree_birchB", "tree_birchC",
 ]
+## Maple Highlands edge atlas (border_trees_atlas_m2.json): 4 x 4 cells, cell = kind_index * 4 + facing.
+const IMPOSTER_KINDS_M2 := ["tree_mapleA", "tree_mapleB", "tree_mapleC", "tree_pineTallB_detailed"]
 ## false = the old chunked _far meshes (fallback).
 const USE_IMPOSTERS := true
 ## Birch Bend layout (world coords, GDD 9.2; nudged off paths where noted).
@@ -50,11 +52,34 @@ const BRIDGE_Z := -6.0
 const BRIDGE_HALF := 1.3
 ## Offline earnings coin pile next to the Valley 1 office.
 const OFFLINE_PILE := Vector3(-0.6, 0, 11.0)
+## Maple Highlands layout (world coords, GDD 9.2 and the CSV, nudged as listed in GDD "M2 layout").
+const V3_GROVE1 := Vector3(-7, 0, -65)
+const V3_GROVE2 := Vector3(-8, 0, -72)
+const V3_GROVE_NORTH := Vector3(-7, 0, -101)
+const V3_GROVE_RIDGE := Vector3(2, 0, -114)
+const V3_BEAMSAW := Vector3(2.5, 0, -64.5)
+const V3_PLANER := Vector3(2.5, 0, -78)
+const V3_KITFACTORY := Vector3(6, 0, -90)
+const V3_MARKET := Vector3(11.5, 0, -66)
+const V3_OFFICE := Vector3(6.5, 0, -59.5)
+## Rail platform turned 90 deg (designer flag a): the track runs east-west at z V3_RAIL_Z, north of
+## the road end, instead of along the road. The train comes in from the east and backs out.
+const V3_RAIL_DOCK := Vector3(9.5, 0, -101.5)
+const V3_RAIL_Z := -105.0
+const V3_RAIL_WEST := 1.0
+## Highland Gate in the Home Valley north palisade; the corridor through the border forest.
+const GATE3 := Vector3(0, 0, -46.6)
+const GATE3_HALF := 1.4
+const V3_SOUTH := -55.0
+const V3_NORTH := -119.0
 
 var rng := RandomNumberGenerator.new()
 var shop: Shop
 var machines: Dictionary = {}
-var forests: Dictionary = {"a": [], "pine": [], "birch": [], "birch_north": [], "birch_west": []}
+var forests: Dictionary = {
+	"a": [], "pine": [], "birch": [], "birch_north": [], "birch_west": [],
+	"maple": [], "maple_north": [], "maple_ridge": [],
+}
 var pads: Dictionary = {}
 var ground_mat: ShaderMaterial
 var paths: Array = []
@@ -70,6 +95,7 @@ var _noise_tex: NoiseTexture2D
 var regions: Dictionary = {}
 var r1: Region
 var r2: Region
+var r3: Region
 ## Per-valley ground: {"mat": ShaderMaterial, "paths": [], "plazas": []}. paths/plazas above = Valley 1's.
 var grounds: Dictionary = {}
 ## Future belts, flume and buildings in Birch Bend: kept clear of grass and rocks.
@@ -98,6 +124,19 @@ var _gateway_fx: Dictionary = {}
 ## Camera pan to the next gateway after the valley card closes: 0 = on the player, 1 = on the pad.
 var _pan_w: float = 0.0
 var _pan_to: Vector3 = Vector3.ZERO
+## Maple Highlands (Valley 3).
+var rng3 := RandomNumberGenerator.new()
+var shop3: Shop
+var office3_zone: Zone
+var sites: Dictionary = {}
+var forklift: Worker
+var _gate3_body: StaticBody3D
+var _gate3_doors: Node3D
+var _rent_t: float = 0.0
+var _rent_carry: float = 0.0
+## Handcar stops by valley id (built with the Highland Gate) and the tile hold timers.
+var _stops: Dictionary = {}
+var _tile_hold: Dictionary = {}
 
 
 func _ready() -> void:
@@ -105,6 +144,7 @@ func _ready() -> void:
 	add_child(ShadowCull.new())
 	rng.seed = 20260929
 	rng2.seed = 20261001
+	rng3.seed = 20261002
 	_environment()
 	_make_regions()
 	_ground()
@@ -112,6 +152,7 @@ func _ready() -> void:
 	_road()
 	_base_paths()
 	_reserve_v2()
+	_reserve_v3()
 	_border_forest()
 	_build_forest("a", Vector3(-9, 0, 1.0), 3, 2, 2.5, "broad")
 	_build_sawmill1()
@@ -127,11 +168,13 @@ func _ready() -> void:
 	_refresh_pads()
 	_scatter_deco()
 	_scatter_deco_v2()
+	_scatter_deco_v3()
 	_build_deco()
 	_update_ground_uniforms()
 	_bounds()
 	_palisades()
 	_palisades_v2()
+	_palisades_v3()
 	_build_offline_pile()
 	_update_regions(0.0, true)
 	Game.unlocked.connect(_on_unlocked)
@@ -194,10 +237,12 @@ func _make_regions() -> void:
 		regions[int(rid)] = r
 	r1 = regions[1]
 	r2 = regions[2]
+	r3 = regions[3]
 
 
 ## One ground plane and material per valley (the shader holds 32 paths and 24 plazas each).
-## Valley 1 covers x > river centre, Birch Bend x < river centre; the river hides the seam.
+## Valley 1 covers x > river centre, Birch Bend x < river centre (the river hides the seam), and
+## Maple Highlands everything north of z -47 (the seam runs under the north palisade and gate).
 func _ground() -> void:
 	_noise_tex = NoiseTexture2D.new()
 	_noise_tex.seamless = true
@@ -215,7 +260,11 @@ func _ground() -> void:
 	fn2.frequency = 0.12
 	fn2.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	detail.noise = fn2
-	var planes := {1: [RIVER_X, 80.0], 2: [-110.0, RIVER_X]}
+	var planes := {
+		1: Rect2(RIVER_X, -47.0, 80.0 - RIVER_X, 117.0),
+		2: Rect2(-110.0, -47.0, RIVER_X + 110.0, 117.0),
+		3: Rect2(-110.0, -145.0, 190.0, 98.0),
+	}
 	for rid in planes:
 		var mat := ShaderMaterial.new()
 		mat.shader = GROUND_SHADER
@@ -227,14 +276,14 @@ func _ground() -> void:
 		mat.set_shader_parameter("dirt_tex", load(Models.GROUND["dirt"]))
 		var mi := MeshInstance3D.new()
 		var pm := PlaneMesh.new()
-		var x0: float = planes[rid][0]
-		var x1: float = planes[rid][1]
-		pm.size = Vector2(x1 - x0, 170)
+		var rect: Rect2 = planes[rid]
+		pm.size = rect.size
 		pm.subdivide_width = 2
 		pm.subdivide_depth = 2
 		mi.mesh = pm
 		mi.material_override = mat
-		mi.position = Vector3((x0 + x1) * 0.5, 0, -15)
+		var c := rect.get_center()
+		mi.position = Vector3(c.x, 0, c.y)
 		# The ground only receives shadows; casting would add a shadow-pass draw for nothing.
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
@@ -252,25 +301,21 @@ func _ground() -> void:
 func _river() -> void:
 	var mi := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(RIVER_HALF * 2.0 + 1.0, 170)
-	pm.subdivide_depth = 60
+	# Runs on north past the Highlands (z 70 to -145) so it never ends in view.
+	pm.size = Vector2(RIVER_HALF * 2.0 + 1.0, 215)
+	pm.subdivide_depth = 76
 	mi.mesh = pm
 	var mat := ShaderMaterial.new()
 	mat.shader = WATER_SHADER
 	mat.set_shader_parameter("noise_tex", _noise_tex)
 	mi.material_override = mat
-	mi.position = Vector3(RIVER_X, 0.06, -15)
+	mi.position = Vector3(RIVER_X, 0.06, -37.5)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
-	# A little wooden bridge and some reeds along the bank.
-	var bridge := Node3D.new()
+	# One-piece v3 bridge (ASSETS_LEFTOVER.md 2.12): deck top y 0.10, 2.6 m walkway, handrails
+	# inside the corridor walls.
+	var bridge := _model(Models.path("bridge_river"), Vector3(RIVER_X, 0, BRIDGE_Z), 1.0)
 	bridge.name = "Bridge"
-	add_child(bridge)
-	for z in [-6.0]:
-		for i in 5:
-			var b := _model("res://assets/models/nature/bridge_wood.glb", Vector3(RIVER_X - 3.2 + i * 1.6, 0, z), 1.6, 90, bridge)
-			b.name = "bridge"
-	MeshMerge.merge(bridge)
 
 
 func _road() -> void:
@@ -278,29 +323,32 @@ func _road() -> void:
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(3.6, 170)
 	mi.mesh = pm
+	# Painted road tile (ASSETS_LEFTOVER.md 2.13): full width x 4 m, one cream dash per tile.
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.5, 0.49, 0.46)
+	mat.albedo_texture = _road_texture()
+	mat.uv1_scale = Vector3(1, 170.0 / 4.0, 1)
+	mat.albedo_color = Color.WHITE
 	mat.roughness = 0.95
 	mi.material_override = mat
 	mi.position = Vector3(ROAD_X, 0.03, -15)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
-	var line_mat := StandardMaterial3D.new()
-	line_mat.albedo_color = Color(0.95, 0.9, 0.7)
-	var dashes := Node3D.new()
-	dashes.name = "RoadDashes"
-	add_child(dashes)
-	for i in 40:
-		var dash := MeshInstance3D.new()
-		var dm := PlaneMesh.new()
-		dm.size = Vector2(0.14, 1.4)
-		dash.mesh = dm
-		dash.material_override = line_mat
-		dash.position = Vector3(ROAD_X, 0.05, 60 - i * 4.0)
-		dash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		dashes.add_child(dash)
-	MeshMerge.merge(dashes)
 	paths.append([Vector4(ROAD_X, 70, ROAD_X, -100), 2.6])
+
+
+## The road tile with mipmaps built here (import settings are not in git), so the dashes do
+## not shimmer in the distance.
+func _road_texture() -> Texture2D:
+	var tex: Texture2D = load(Models.ROAD_TILE)
+	var img := tex.get_image()
+	if img == null:
+		return tex
+	if img.has_mipmaps():
+		return tex
+	if img.is_compressed():
+		img.decompress()
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
 
 
 func _base_paths() -> void:
@@ -320,16 +368,28 @@ func _bounds() -> void:
 	# Both river banks are walls except at the bridge; the corridor walls keep you on the bridge.
 	for x in [bank_e, bank_w]:
 		_wall(Vector2(x, 70), Vector2(x, z1))
-		_wall(Vector2(x, z0), Vector2(x, -100))
+		_wall(Vector2(x, z0), Vector2(x, -125))
 	_wall(Vector2(bank_w, z0 - 0.1), Vector2(bank_e, z0 - 0.1))
 	_wall(Vector2(bank_w, z1 + 0.1), Vector2(bank_e, z1 + 0.1))
-	_wall(Vector2(ROAD_X + 2.2, 70), Vector2(ROAD_X + 2.2, -100))
+	_wall(Vector2(ROAD_X + 2.2, 70), Vector2(ROAD_X + 2.2, -125))
 	_wall(Vector2(-80, 15.5), Vector2(40, 15.5))
-	_wall(Vector2(-80, -47), Vector2(40, -47))
+	# North edge of Home Valley and Birch Bend, open only at the Highland Gate.
+	var gx := GATE3_HALF + 0.5
+	_wall(Vector2(-80, -47), Vector2(-gx, -47))
+	_wall(Vector2(gx, -47), Vector2(40, -47))
 	_wall(Vector2(-79.3, 20), Vector2(-79.3, -50))
+	# Maple Highlands: a corridor through the border forest, the south and north edges.
+	for x in [-gx, gx]:
+		_wall(Vector2(x, -47), Vector2(x, V3_SOUTH))
+	_wall(Vector2(-24, V3_SOUTH), Vector2(-gx, V3_SOUTH))
+	_wall(Vector2(gx, V3_SOUTH), Vector2(ROAD_X + 2.4, V3_SOUTH))
+	_wall(Vector2(-24, V3_NORTH), Vector2(ROAD_X + 2.4, V3_NORTH))
 	# Closed gate in the Valley 1 bank until the River Bridge is bought.
 	if not Game.is_unlocked("r2_bridge"):
 		_gate_body = _wall(Vector2(bank_e, z0), Vector2(bank_e, z1))
+	# Closed Highland Gate until it is bought.
+	if not Game.is_unlocked("r3_gate"):
+		_gate3_body = _wall(Vector2(-gx, -47), Vector2(gx, -47))
 
 
 func _wall(a: Vector2, b: Vector2) -> StaticBody3D:
@@ -377,39 +437,6 @@ func _model(path: String, pos: Vector3, scl: float, rot_y: float = 0.0, parent: 
 	inst.rotation_degrees.y = rot_y
 	(parent if parent else self).add_child(inst)
 	return inst
-
-
-func _mat(c: Color, rough: float = 0.8, metal: float = 0.0) -> StandardMaterial3D:
-	return Shapes.mat(c, rough, metal)
-
-
-func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
-	var r := clampf(minf(size.x, minf(size.y, size.z)) * 0.3, 0.02, 0.12)
-	return Shapes.box_node(parent, size, pos, mat, r, rot)
-
-
-## Open wooden shed: floor, four posts and a pitched roof.
-func _shed(parent: Node3D, w: float, d: float, h: float, roof: Color) -> void:
-	var wood := Shapes.wood(Color(0.86, 0.62, 0.38))
-	var dark := Shapes.wood(Color(0.55, 0.36, 0.22))
-	_box(parent, Vector3(w, 0.2, d), Vector3(0, 0.1, 0), wood)
-	for sx in [-1, 1]:
-		for sz in [-1, 1]:
-			Shapes.log_node(parent, 0.13, h, Vector3(sx * (w * 0.5 - 0.2), h * 0.5, sz * (d * 0.5 - 0.2)), Vector3.ZERO)
-	_box(parent, Vector3(w + 0.2, 0.2, 0.24), Vector3(0, h, -d * 0.5 + 0.2), dark)
-	_box(parent, Vector3(w + 0.2, 0.2, 0.24), Vector3(0, h, d * 0.5 - 0.2), dark)
-	# Lean-to roof over the back half so the machine stays visible from the camera.
-	var rm := ShaderMaterial.new()
-	rm.shader = ROOF_SHADER
-	rm.set_shader_parameter("base", roof)
-	var slope := 18.0
-	var depth := d * 0.62 + 0.4
-	var panel := depth / cos(deg_to_rad(slope))
-	var rise := depth * tan(deg_to_rad(slope))
-	var zc := -d * 0.5 - 0.4 + depth * 0.5
-	_box(parent, Vector3(w + 0.7, 0.16, panel), Vector3(0, h + rise * 0.5 + 0.1, zc), rm, Vector3(-slope, 0, 0))
-	_box(parent, Vector3(w + 0.8, 0.2, 0.22), Vector3(0, h + 0.1, zc + depth * 0.5), _mat(roof.darkened(0.25)))
-	_box(parent, Vector3(w + 0.2, rise + 0.2, 0.18), Vector3(0, h + rise * 0.5, -d * 0.5 + 0.2), _mat(Color(0.6, 0.42, 0.26)))
 
 
 func _first_mesh(path: String) -> Array:
@@ -607,13 +634,19 @@ func _border_forest() -> void:
 	var buckets := {}
 	for k in kinds + birches:
 		buckets[k] = []
-	# Outer edges of the two-valley map plus the strip inside Valley 1's west palisade.
+	for k in IMPOSTER_KINDS_M2:
+		buckets["m2:" + k] = []
+	# Outer edges of the three-valley map plus the strip inside Valley 1's west palisade.
 	var areas := [
 		Rect2(-101, 18, 161, 16),
-		Rect2(-101, -66, 161, 18),
+		Rect2(-101, -66, 70.5, 18),
 		Rect2(-101, -48, 21, 66),
-		Rect2(ROAD_X + 3.2, -66, 30, 98),
+		Rect2(ROAD_X + 3.2, -141, 30, 173),
 		Rect2(RIVER_X + RIVER_HALF + 0.8, -50, 5.0, 66),
+		# The belt between Home Valley and the Highlands, west across the river, and the north edge.
+		Rect2(-23.5, V3_SOUTH, 42.5, 8),
+		Rect2(-60, -141, 29.5, 75),
+		Rect2(-31, -141, 51, 141 + V3_NORTH),
 	]
 	for r in areas:
 		var rect: Rect2 = r
@@ -627,9 +660,17 @@ func _border_forest() -> void:
 			# Keep the way to the River Bridge open.
 			if p.x > RIVER_X and p.x < -15.0 and absf(p.y - BRIDGE_Z) < 3.4:
 				continue
+			# ... and the Highland Gate corridor and the railway into the east forest.
+			if p.y < -45.0 and p.y > V3_SOUTH - 1.0 and absf(p.x - GATE3.x) < 3.4:
+				continue
+			if p.x > ROAD_X and absf(p.y - V3_RAIL_Z) < 2.8:
+				continue
 			var k: String = kinds[rng.randi() % kinds.size()]
-			# Birch Bend's edges are half birch.
-			if p.x < RIVER_X and rng.randf() < 0.5:
+			if p.y < -48.0 and p.x > -60.0:
+				# Around Maple Highlands: maples and tall pines from the M2 atlas.
+				k = "m2:" + str(IMPOSTER_KINDS_M2[rng.randi() % IMPOSTER_KINDS_M2.size()])
+			elif p.x < RIVER_X and rng.randf() < 0.5:
+				# Birch Bend's edges are half birch.
 				k = birches[rng.randi() % birches.size()]
 			var s := rng.randf_range(2.4, 3.6)
 			var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(p.x, 0, p.y))
@@ -638,8 +679,9 @@ func _border_forest() -> void:
 		_imposters(buckets)
 		return
 	for k in buckets:
-		var dir := "birch" if k.begins_with("tree_birch") else "nature"
-		_multimesh("res://assets/models_v3/%s/%s_far.glb" % [dir, k], buckets[k])
+		var name_k: String = str(k).trim_prefix("m2:")
+		var dir := "birch" if name_k.begins_with("tree_birch") else ("maple" if name_k.begins_with("tree_maple") else "nature")
+		_multimesh("res://assets/models_v3/%s/%s_far.glb" % [dir, name_k], buckets[k])
 
 
 ## Camera-facing cards from one atlas (ASSETS_M1.md section 5): one MultiMesh per 16 m chunk,
@@ -662,14 +704,21 @@ func _imposters(buckets: Dictionary) -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = IMPOSTER_SHADER
 	mat.set_shader_parameter("atlas", load(Models.IMPOSTER_ATLAS))
+	mat.set_shader_parameter("grid", 8.0)
+	# Maple Highlands edges use the M2 atlas (4 x 4 cells): a second material.
+	var mat_m2 := ShaderMaterial.new()
+	mat_m2.shader = IMPOSTER_SHADER
+	mat_m2.set_shader_parameter("atlas", load(Models.IMPOSTER_ATLAS_M2))
+	mat_m2.set_shader_parameter("grid", 4.0)
 	var chunks := {}
 	for k in buckets:
-		var base: int = IMPOSTER_KINDS.find(k) * 4
+		var m2 := str(k).begins_with("m2:")
+		var base: int = (IMPOSTER_KINDS_M2.find(str(k).trim_prefix("m2:")) if m2 else IMPOSTER_KINDS.find(k)) * 4
 		for x in buckets[k]:
 			var xf: Transform3D = x
 			# Drop the random yaw: cards must face the camera. Keep the scale.
 			var sc := xf.basis.get_scale().x
-			var key := Vector2i(floori(xf.origin.x / CHUNK_SIZE), floori(xf.origin.z / CHUNK_SIZE))
+			var key := Vector3i(floori(xf.origin.x / CHUNK_SIZE), floori(xf.origin.z / CHUNK_SIZE), 1 if m2 else 0)
 			if not chunks.has(key):
 				chunks[key] = []
 			(chunks[key] as Array).append([Transform3D(Basis().scaled(Vector3.ONE * sc), xf.origin), base + rng.randi() % 4])
@@ -691,7 +740,7 @@ func _imposters(buckets: Dictionary) -> void:
 		mm.custom_aabb = box
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
-		mmi.material_override = mat
+		mmi.material_override = mat_m2 if (key as Vector3i).z == 1 else mat
 		mmi.visibility_range_end = CHUNK_VIS_END
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mmi)
@@ -742,7 +791,7 @@ func _scatter_deco() -> void:
 
 
 func _build_forest(key: String, center: Vector3, cols: int, rows: int, spacing: float, kind: String, animate: bool = false, region: int = 1) -> void:
-	var g := rng if region == 1 else rng2
+	var g := rng if region == 1 else (rng2 if region == 2 else rng3)
 	for r in rows:
 		for c in cols:
 			var p := center + Vector3((c - (cols - 1) * 0.5) * spacing, 0, (r - (rows - 1) * 0.5) * spacing)
@@ -775,12 +824,8 @@ func _dress_sawmill(m: Machine, frame: Color) -> void:
 	m.in_zone.position.x = -3.4
 	m.output.position.x = 3.4
 	m.out_zone.position.x = 3.4
-	var bed := Shapes.mat(Color(0.2, 0.5, 0.86), 0.45)
-	var yellow := Shapes.mat(Color(1.0, 0.76, 0.18), 0.45)
-	var steel := Shapes.mat(Color(0.55, 0.58, 0.62), 0.4, 0.6)
-	_box(m.body, Vector3(4.4, 0.5, 1.15), Vector3(0, 0.25, 0.2), bed)
-	for z in [-0.42, 0.82]:
-		_box(m.body, Vector3(4.5, 0.14, 0.12), Vector3(0, 0.56, z), yellow)
+	# v3 body (ASSETS_LEFTOVER.md 2.2): bed, rails, feet, frame, control box and log pile.
+	m.add_model(Models.path("sawmill_body_orange" if frame.r > 0.6 else "sawmill_body_green"), Vector3.ZERO, 1.0)
 	var belt := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = Vector3(0.8, 0.05, 4.3)
@@ -793,32 +838,12 @@ func _dress_sawmill(m: Machine, frame: Color) -> void:
 	belt.position = Vector3(0, 0.52, 0.2)
 	belt.rotation_degrees.y = 90
 	m.body.add_child(belt)
-	for x in [-1.8, 1.8]:
-		for z in [-0.35, 0.75]:
-			_box(m.body, Vector3(0.14, 0.2, 0.14), Vector3(x, 0.05, z), steel)
-	# Stand for the saw motor behind the belt, then the saw itself across the belt.
-	# Frame over the belt holding an upright chainsaw that rips logs into planks.
-	var fc := Shapes.mat(frame, 0.45)
-	for x in [-0.75, 0.75]:
-		_box(m.body, Vector3(0.24, 2.7, 0.3), Vector3(x, 1.35, -0.45), fc)
-	_box(m.body, Vector3(1.8, 0.3, 0.34), Vector3(0, 2.7, -0.45), fc)
-	_box(m.body, Vector3(1.9, 0.08, 0.4), Vector3(0, 2.88, -0.45), yellow)
 	var saw := ChainSaw.new()
 	saw.bar_len = 1.55
 	saw.setup(m, frame)
 	saw.rotation_degrees = Vector3(90, 90, 0)
 	saw.position = Vector3(0, 1.28, 0.2)
 	m.body.add_child(saw)
-	# Warning stripes and a little control box.
-	_box(m.body, Vector3(0.35, 0.5, 0.3), Vector3(1.4, 0.8, -0.75), yellow)
-	_box(m.body, Vector3(0.22, 0.16, 0.05), Vector3(1.4, 0.92, -0.58), Shapes.mat(Color(0.15, 0.8, 0.35), 0.3))
-	var logs := Node3D.new()
-	logs.position = Vector3(-1.2, 0, -1.25)
-	m.body.add_child(logs)
-	for k in 3:
-		Shapes.log_node(logs, 0.17, 1.3, Vector3(0, 0.17, k * 0.36 - 0.36), Vector3(0, 0, 90))
-	Shapes.log_node(logs, 0.17, 1.3, Vector3(0, 0.47, -0.18), Vector3(0, 0, 90))
-	Shapes.log_node(logs, 0.17, 1.3, Vector3(0, 0.47, 0.18), Vector3(0, 0, 90))
 	m.mouth_in = Vector3(-2.0, 0.55, 0.2)
 	m.mouth_out = Vector3(1.9, 0.55, 0.2)
 	m.cut_point = Vector3(0, 0.55, 0.2)
@@ -839,7 +864,9 @@ func _dress_sawmill(m: Machine, frame: Color) -> void:
 func _palisades() -> void:
 	var lines := [
 		[Vector2(-23.2, 15.3), Vector2(14.8, 15.3)],
-		[Vector2(-23.2, -46.6), Vector2(14.8, -46.6)],
+		# North run, open for the Highland Gate (its model is 5.5 m wide).
+		[Vector2(-23.2, -46.6), Vector2(-2.8, -46.6)],
+		[Vector2(2.8, -46.6), Vector2(14.8, -46.6)],
 		[Vector2(-23.2, 15.3), Vector2(-23.2, BRIDGE_Z + BRIDGE_HALF)],
 		[Vector2(-23.2, BRIDGE_Z - BRIDGE_HALF), Vector2(-23.2, -46.6)],
 		[Vector2(-13.3, -1.5), Vector2(-13.3, 9.5)],
@@ -854,17 +881,9 @@ func _palisades() -> void:
 			var hgt := rng.randf_range(0.95, 1.3)
 			var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1, hgt, 1))
 			basis = Basis(Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)).normalized(), rng.randf_range(0, 0.04)) * basis
-			xforms.append(Transform3D(basis, Vector3(p.x, hgt * 0.5, p.y)))
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = Shapes.log_mesh(0.16, 1.0)
-	mm.instance_count = xforms.size()
-	for k in xforms.size():
-		mm.set_instance_transform(k, xforms[k])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = Shapes.log_material(0.16)
-	r1.add_child(mmi)
+			xforms.append(Transform3D(basis, Vector3(p.x, 0.0, p.y)))
+	# v3 post (ASSETS_LEFTOVER.md 2.11): base at y 0, 56 tris, chunked so off-screen runs cull.
+	_multimesh(Models.path("palisade_post"), xforms, true, r1)
 	var sb := StaticBody3D.new()
 	var col := CollisionShape3D.new()
 	var bs := BoxShape3D.new()
@@ -909,8 +928,11 @@ func _spawn_hauler(look: String, src: ItemStack, src_zone: Zone, dst: ItemStack,
 
 
 func _apply_unlock(id: String, animate: bool) -> void:
-	if id.begins_with("r2_"):
-		_apply_unlock_r2(id, animate)
+	if id.begins_with("r2_") or id.begins_with("r3_"):
+		if id.begins_with("r2_"):
+			_apply_unlock_r2(id, animate)
+		else:
+			_apply_unlock_r3(id, animate)
 		if not _loading:
 			_update_ground_uniforms()
 		return
@@ -983,9 +1005,8 @@ func _apply_unlock(id: String, animate: bool) -> void:
 			var sg := Node3D.new()
 			sg.position = Vector3(15.0, 0, 10.5)
 			r1.add_child(sg)
-			for x in [-0.9, 0.9]:
-				Shapes.log_node(sg, 0.12, 2.6, Vector3(x, 1.3, 0), Vector3.ZERO)
-			_box(sg, Vector3(2.4, 1.1, 0.14), Vector3(0, 2.1, 0), Shapes.wood(Color(0.9, 0.66, 0.4)))
+			# v3 sign (ASSETS_LEFTOVER.md 2.14): board face z +0.07, centre y 2.1.
+			sg.add_child(Models.make("road_sign"))
 			var lbl := Label3D.new()
 			lbl.font = Fx.font()
 			lbl.text = "TIMBER\nVALLEY"
@@ -1036,10 +1057,8 @@ func _build_office(animate: bool) -> void:
 	var root := Node3D.new()
 	root.position = Vector3(-3.5, 0, 12.5)
 	r1.add_child(root)
-	_shed(root, 3.2, 2.4, 2.1, Color(0.3, 0.55, 0.35))
-	_model("res://assets/models/survival/workbench.glb", Vector3(-0.6, 0.2, -0.3), 2.6, 0, root)
-	_model("res://assets/models/survival/chest.glb", Vector3(0.8, 0.2, -0.4), 2.4, 0, root)
-	_model("res://assets/models/survival/signpost-single.glb", Vector3(1.9, 0, 1.3), 2.6, 0, root)
+	# v3 hut (ASSETS_LEFTOVER.md 2.3): desk, cash chest and notice board; same 3.2 x 2.4 footprint.
+	_model(Models.path("office_hut"), Vector3.ZERO, 1.0, 0, root)
 	var sb := StaticBody3D.new()
 	var col := CollisionShape3D.new()
 	var bs := BoxShape3D.new()
@@ -1065,10 +1084,8 @@ func _build_office(animate: bool) -> void:
 
 func _build_carpentry(animate: bool) -> void:
 	var m := _machine("carpentry", Vector3(2, 0, -13), "plank", "chair", 2, 1, 1.4)
-	_shed(m.body, 3.6, 2.6, 2.3, Color(0.35, 0.55, 0.3))
-	m.add_model("res://assets/models/survival/workbench.glb", Vector3(-0.7, 0.2, 0.1), 3.2)
-	m.add_model("res://assets/models/survival/workbench-grind.glb", Vector3(0.8, 0.2, 0.2), 3.2)
-	m.add_model("res://assets/models/furniture/chair.glb", Vector3(0.9, 0.2, -1.0), 2.2, 30)
+	# v3 shed (ASSETS_LEFTOVER.md 2.4): saw bench top y 0.95 with a slot the blade sticks through.
+	m.add_model(Models.path("carpentry_shed"), Vector3.ZERO, 1.0)
 	var saw := m.add_saw_blade(Vector3(0.8, 1.05, 0.35), 0.3)
 	saw.rotation_degrees.y = 90
 	m.mouth_in = Vector3(-0.8, 1.1, 0.2)
@@ -1084,13 +1101,10 @@ func _build_carpentry(animate: bool) -> void:
 
 func _build_cnc(animate: bool) -> void:
 	var m := _machine("cnc", Vector3(9, 0, -24), "plank", "table", 3, 1, 1.6)
-	_box(m.body, Vector3(3.8, 0.2, 2.8), Vector3(0, 0.1, 0), _mat(Color(0.55, 0.57, 0.58), 0.7))
-	m.add_model("res://assets/models/factory/machine-window.glb", Vector3(0, 0.2, 0), 1.7, 90)
-	m.add_model("res://assets/models/factory/screen-small.glb", Vector3(-1.2, 0.2, -1.0), 1.3)
-	var cog := m.add_model("res://assets/models/factory/cog-a.glb", Vector3(0, 2.45, 0), 0.9)
-	cog.rotation_degrees.x = 0
+	# v3 gantry router (ASSETS_LEFTOVER.md 2.5); the cog faces the camera and spins about local Z.
+	m.add_model(Models.path("cnc_router"), Vector3.ZERO, 1.0)
+	var cog := m.add_model(Models.path("cnc_cog"), Vector3(0, 2.45, 0), 1.0)
 	m.spinners.append(cog)
-	m.add_model("res://assets/models/factory/lever-single.glb", Vector3(1.3, 0.2, -0.9), 1.4)
 	m.mouth_in = Vector3(-1.1, 1.0, 0)
 	m.mouth_out = Vector3(1.1, 0.8, 0)
 	m.add_dust(Vector3(0, 1.4, 0.8), Color(0.95, 0.85, 0.65))
@@ -1109,20 +1123,12 @@ func _build_factory(animate: bool) -> void:
 	m.in_zone.position = m.input.position
 	m.output.position = Vector3(3.6, 0, 0.3)
 	m.out_zone.position = m.output.position
-	_box(m.body, Vector3(5.4, 0.22, 3.6), Vector3(0, 0.11, 0), _mat(Color(0.6, 0.6, 0.6), 0.8))
-	m.add_model("res://assets/models/factory/machine-fortified.glb", Vector3(-1.1, 0.22, -0.4), 1.9, 90)
-	m.add_model("res://assets/models/factory/machine.glb", Vector3(1.3, 0.22, -0.4), 1.9, 90)
-	m.add_model("res://assets/models/factory/hopper-square.glb", Vector3(-2.3, 0.22, -0.6), 1.2)
-	var arm1 := m.add_model("res://assets/models/factory/robot-arm-a.glb", Vector3(-2.3, 0.22, 1.2), 0.9)
-	var arm2 := m.add_model("res://assets/models/factory/robot-arm-b.glb", Vector3(2.4, 0.22, 1.2), 0.9)
-	m.arms.append(arm1)
-	m.arms.append(arm2)
-	# Each robot arm turns as a whole: bake its 8 parts into one mesh under the turning root.
-	for a in m.arms:
-		MeshMerge.merge(a, [], false)
-	var chimney := m.add_model("res://assets/models/factory/structure-yellow-tall.glb", Vector3(-1.9, 0.22, -1.5), 1.6)
-	chimney.name = "chimney"
-	m.add_smoke(Vector3(-1.9, 3.6, -1.5))
+	# v3 hall (ASSETS_LEFTOVER.md 2.6): chimney, hopper, saw unit, press and roller table.
+	m.add_model(Models.path("bookcase_factory"), Vector3.ZERO, 1.0)
+	# Arms pivot at the base and reach into the hall (-Z); Machine swings them +-0.9 rad.
+	m.arms.append(m.add_model(Models.path("factory_arm"), Vector3(-2.3, 0.22, 1.2), 1.0))
+	m.arms.append(m.add_model(Models.path("factory_arm"), Vector3(2.4, 0.22, 1.2), 1.0))
+	m.add_smoke(Vector3(-1.9, 3.8, -1.5))
 	m.mouth_in = Vector3(-2.2, 1.4, -0.4)
 	m.mouth_out = Vector3(2.2, 0.9, 0.4)
 	m.add_blocker(Vector3(5.0, 2.4, 3.2))
@@ -1137,73 +1143,18 @@ func _build_lodge(animate: bool) -> void:
 	var root := Node3D.new()
 	root.position = Vector3(-12, 0, -39)
 	r1.add_child(root)
-	var log_mat := _mat(Color(0.62, 0.4, 0.24), 0.85)
-	var end_mat := _mat(Color(0.86, 0.68, 0.45), 0.8)
+	# v3 log cabin (ASSETS_LEFTOVER.md 2.7): 7 x 5 walls, red roof, porch, bench and rocking chair.
+	_model(Models.path("grand_lodge"), Vector3.ZERO, 1.0, 0, root)
+	# Warm window panes are emissive, not baked, and cast no shadow.
+	var win := _model(Models.path("lodge_windows"), Vector3.ZERO, 1.0, 0, root)
+	for mi in win.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var w := 7.0
 	var d := 5.0
-	var h := 3.2
-	var r := 0.22
-	var rows := int(h / (r * 1.8))
-	for i in rows:
-		var y := r + i * r * 1.8
-		for side in [-1, 1]:
-			var lg := MeshInstance3D.new()
-			var cm := CylinderMesh.new()
-			cm.top_radius = r
-			cm.bottom_radius = r
-			cm.height = w + 0.5
-			cm.radial_segments = 10
-			lg.mesh = cm
-			lg.material_override = log_mat
-			lg.rotation_degrees.z = 90
-			lg.position = Vector3(0, y, side * d * 0.5)
-			root.add_child(lg)
-			var lg2 := MeshInstance3D.new()
-			var cm2 := cm.duplicate() as CylinderMesh
-			cm2.height = d + 0.5
-			lg2.mesh = cm2
-			lg2.material_override = log_mat
-			lg2.rotation_degrees.x = 90
-			lg2.position = Vector3(side * w * 0.5, y + r * 0.9, 0)
-			root.add_child(lg2)
-	for sx in [-1, 1]:
-		for sz in [-1, 1]:
-			var cap := MeshInstance3D.new()
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = r * 1.05
-			cyl.bottom_radius = r * 1.05
-			cyl.height = h + 0.3
-			cap.mesh = cyl
-			cap.material_override = end_mat
-			cap.position = Vector3(sx * w * 0.5, (h + 0.3) * 0.5, sz * d * 0.5)
-			root.add_child(cap)
-	var roof := ShaderMaterial.new()
-	roof.shader = ROOF_SHADER
-	roof.set_shader_parameter("base", Color(0.62, 0.24, 0.18))
-	var slope := 32.0
-	var half_d := d * 0.5 + 0.7
-	var panel := half_d / cos(deg_to_rad(slope))
-	var rise := half_d * tan(deg_to_rad(slope))
-	_box(root, Vector3(w + 1.2, 0.25, panel), Vector3(0, h + rise * 0.5 + 0.1, -half_d * 0.5), roof, Vector3(slope, 0, 0))
-	_box(root, Vector3(w + 1.2, 0.25, panel), Vector3(0, h + rise * 0.5 + 0.1, half_d * 0.5), roof, Vector3(-slope, 0, 0))
-	_box(root, Vector3(w - 0.2, rise, 0.3), Vector3(0, h + rise * 0.35, d * 0.5 - 0.2), log_mat)
-	_box(root, Vector3(w - 0.2, rise, 0.3), Vector3(0, h + rise * 0.35, -d * 0.5 + 0.2), log_mat)
-	_box(root, Vector3(0.9, 2.6, 0.9), Vector3(2.2, h + rise * 0.8, -0.8), _mat(Color(0.55, 0.53, 0.5), 0.9))
-	var glow := StandardMaterial3D.new()
-	glow.albedo_color = Color(1.0, 0.85, 0.5)
-	glow.emission_enabled = true
-	glow.emission = Color(1.0, 0.7, 0.3)
-	glow.emission_energy_multiplier = 1.6
-	for x in [-2.4, 2.4]:
-		_box(root, Vector3(1.0, 0.9, 0.1), Vector3(x, 1.7, d * 0.5 + r + 0.02), glow)
-	_box(root, Vector3(1.1, 2.0, 0.12), Vector3(0, 1.0, d * 0.5 + r + 0.02), _mat(Color(0.4, 0.25, 0.15)))
-	_box(root, Vector3(w + 1.6, 0.25, 1.8), Vector3(0, 0.12, d * 0.5 + 1.1), _mat(Color(0.7, 0.5, 0.3)))
-	_model("res://assets/models/furniture/bench.glb", Vector3(-2.6, 0.25, d * 0.5 + 1.2), 2.4, 0, root)
-	_model("res://assets/models/furniture/loungeChair.glb", Vector3(2.0, 0.25, d * 0.5 + 0.8), 2.2, 180, root)
 	var smoke := CPUParticles3D.new()
 	smoke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(smoke)
-	smoke.position = Vector3(2.2, h + rise + 1.5, -0.8)
+	smoke.position = Vector3(2.2, 6.4, -0.8)
 	smoke.amount = 10
 	smoke.lifetime = 3.5
 	smoke.direction = Vector3(0.2, 1, 0)
@@ -1274,18 +1225,28 @@ func _on_unlocked(id: String) -> void:
 		Game.hud.toast(title + "!")
 	_refresh_pads()
 	# Landmarks no longer end the game: they show the "Valley complete" card (GDD 6, rule 2).
-	if Balance.LANDMARKS.has(id):
-		var where: Vector3 = Vector3(-12, 0, -39) if id == "lodge" else V2_BOATHOUSE
-		if id == "lodge":
-			Game.finished = true
-		Game.save_game()
-		for i in 6:
-			get_tree().create_timer(0.3 * i).timeout.connect(func() -> void:
-				Fx.confetti(self, where + Vector3(randf_range(-4, 4), 5, randf_range(-3, 3))))
-		if Game.hud:
-			if not Game.hud.valley_card_closed.is_connected(pan_to_gateway):
-				Game.hud.valley_card_closed.connect(pan_to_gateway)
-			Game.hud.show_valley_card(int(Balance.LANDMARKS[id]), gateway_line(id))
+	# A build-site landmark (Clock Tower) shows it when the building is finished instead.
+	if Balance.LANDMARKS.has(id) and not Balance.BUILD_SITES.has(id):
+		_landmark_done(id)
+
+
+## Valley complete: confetti over the landmark, the card, then the pan to the next gateway.
+func _landmark_done(id: String) -> void:
+	var where: Vector3 = Vector3(-12, 0, -39)
+	if id == "r2_boathouse":
+		where = V2_BOATHOUSE
+	elif Balance.BUILD_SITES.has(id):
+		where = Balance.BUILD_SITES[id].pos
+	if id == "lodge":
+		Game.finished = true
+	Game.save_game()
+	for i in 6:
+		get_tree().create_timer(0.3 * i).timeout.connect(func() -> void:
+			Fx.confetti(self, where + Vector3(randf_range(-4, 4), 5, randf_range(-3, 3))))
+	if Game.hud:
+		if not Game.hud.valley_card_closed.is_connected(pan_to_gateway):
+			Game.hud.valley_card_closed.connect(pan_to_gateway)
+		Game.hud.show_valley_card(int(Balance.LANDMARKS[id]), gateway_line(id))
 
 
 func _camera() -> void:
@@ -1329,7 +1290,7 @@ func gateway_line(landmark: String) -> String:
 	for u in UNLOCKS:
 		if Balance.GATEWAYS.has(u.id) and landmark in u.req and not Game.is_unlocked(u.id):
 			return "Next: %s, %s.\nFollow the arrow." % [u.title, Game.fmt(u.cost)]
-	return "Your crews keep working in both valleys, even while you are away."
+	return "Your crews keep working in every valley, even while you are away."
 
 
 ## About 1.5 s: the camera glides to the gateway pad, holds, and comes back to the player.
@@ -1365,16 +1326,22 @@ func _build_gateway_fx(id: String) -> void:
 	root.add_child(frame)
 	# Arch at the back edge of the pad, facing the camera.
 	var back := pad_pos + Vector3(0, 0, -1.85)
+	var ah := float(info.get("arch_h", 3.0))
 	var parts := [
-		[Vector3(0.26, 3.0, 0.26), back + Vector3(-1.95, 1.5, 0)],
-		[Vector3(0.26, 3.0, 0.26), back + Vector3(1.95, 1.5, 0)],
-		[Vector3(4.5, 0.3, 0.34), back + Vector3(0, 3.1, 0)],
-		[Vector3(1.0, 0.36, 0.4), back + Vector3(0, 3.42, 0)],
-		# Frame around the closed gate in the river wall (the gate runs along z).
-		[Vector3(0.2, 2.4, 0.2), gate + Vector3(0, 1.2, -1.5)],
-		[Vector3(0.2, 2.4, 0.2), gate + Vector3(0, 1.2, 1.5)],
-		[Vector3(0.22, 0.2, 3.2), gate + Vector3(0, 2.4, 0)],
+		[Vector3(0.26, ah, 0.26), back + Vector3(-1.95, ah * 0.5, 0)],
+		[Vector3(0.26, ah, 0.26), back + Vector3(1.95, ah * 0.5, 0)],
+		[Vector3(4.5, 0.3, 0.34), back + Vector3(0, ah + 0.1, 0)],
+		[Vector3(1.0, 0.36, 0.4), back + Vector3(0, ah + 0.42, 0)],
 	]
+	# Frame around the closed gate: the river gate spans z, the Highland Gate spans x.
+	if str(info.get("along", "z")) == "z":
+		parts.append([Vector3(0.2, 2.4, 0.2), gate + Vector3(0, 1.2, -1.5)])
+		parts.append([Vector3(0.2, 2.4, 0.2), gate + Vector3(0, 1.2, 1.5)])
+		parts.append([Vector3(0.22, 0.2, 3.2), gate + Vector3(0, 2.4, 0)])
+	else:
+		parts.append([Vector3(0.2, 2.6, 0.2), gate + Vector3(-1.45, 1.3, 1.25)])
+		parts.append([Vector3(0.2, 2.6, 0.2), gate + Vector3(1.45, 1.3, 1.25)])
+		parts.append([Vector3(3.1, 0.2, 0.22), gate + Vector3(0, 2.6, 1.25)])
 	for p in parts:
 		var mi := Shapes.box_node(frame, p[0], p[1], mat, 0.08)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1459,14 +1426,17 @@ func _goal() -> Array:
 		if cheapest == null or pad.cost - pad.paid_amount < cheapest.cost - cheapest.paid_amount:
 			cheapest = pad
 	var v2_tutorial := _cur_region == 2 and not Game.is_unlocked("r2_jack1")
+	var v3_tutorial := _cur_region == 3 and Game.is_unlocked("r3_gate") and not Game.is_unlocked("r3_jack1")
 	# The way into the next valley is always shown, even before the player can pay for it.
 	var gate := gateway_pad()
-	if gate and not tutorial and not v2_tutorial:
+	if gate and not tutorial and not v2_tutorial and not v3_tutorial:
 		return [gate.global_position, "Next valley: %s - %s" % [gate.title, Game.fmt(gate.cost - gate.paid_amount)]]
 	if cheapest and Game.money >= cheapest.cost - cheapest.paid_amount:
-		return [cheapest.global_position, "Buy %s!" % cheapest.title if (tutorial or v2_tutorial) else ""]
+		return [cheapest.global_position, "Buy %s!" % cheapest.title if (tutorial or v2_tutorial or v3_tutorial) else ""]
 	if v2_tutorial:
 		return _goal_v2(p)
+	if v3_tutorial:
+		return _goal_v3(p)
 	if not tutorial:
 		return [null, ""]
 	if shop.coin_value > 0 and back.is_empty():
@@ -1505,6 +1475,7 @@ func _nearest_tree(p: Vector3, key: String = "a") -> ChopTree:
 func _process(delta: float) -> void:
 	_place_camera(1.0 - exp(-6.0 * delta))
 	_update_regions(delta, false)
+	_pay_rent(delta)
 	var g := _goal()
 	var target = g[0]
 	if Game.hud:
@@ -1549,8 +1520,8 @@ func _update_regions(delta: float, force: bool) -> void:
 			cur = rid
 	if cur != _cur_region:
 		_cur_region = cur
-		if cur == 2 and float(Game.stats(2).get("time", 0.0)) <= 0.0 and Game.hud:
-			Game.hud.toast("Valley 2: Birch Bend")
+		if cur > 1 and float(Game.stats(cur).get("time", 0.0)) <= 0.0 and Game.hud:
+			Game.hud.toast("Valley %d: %s" % [cur, str(Balance.REGIONS[cur].name)])
 	var st := Game.stats(_cur_region)
 	st["time"] = float(st.get("time", 0.0)) + delta
 	_chip_timer -= delta
@@ -1560,6 +1531,8 @@ func _update_regions(delta: float, force: bool) -> void:
 
 
 func region_of_unlock(id: String) -> int:
+	if id.begins_with("r3_"):
+		return 3
 	return 2 if id.begins_with("r2_") else 1
 
 
@@ -1634,6 +1607,8 @@ const V2_BELT_BB := [Vector3(-38.1, 0, -39.4), Vector3(-38.1, 0, -40.2), Vector3
 
 
 func _pad_region(id: String) -> Region:
+	if id.begins_with("r3_") and id != "r3_gate":
+		return r3
 	return r2 if id.begins_with("r2_") and id != "r2_bridge" else r1
 
 
@@ -1736,8 +1711,9 @@ func _apply_unlock_r2(id: String, animate: bool) -> void:
 			var lathe: Machine = machines.lathe
 			var dst: ItemStack = flume_chute if flume_chute else lathe.input
 			var dst_pos: Vector3 = flume_zone.global_position if flume_zone else lathe.in_zone.global_position
-			for k in 2:
-				_spawn_jack_to(["character-male-c", "character-female-d"][k], forests.birch_west, dst, dst_pos, Vector3(-67, 0, -13 - k * 1.5), animate, 2)
+			var looks := ["character-male-c", "character-female-d", "character-male-b"]
+			for k in int(Balance.FORESTER_CAMP.crew):
+				_spawn_jack_to(looks[k % looks.size()], forests.birch_west, dst, dst_pos, Vector3(-67, 0, -13 - k * 1.5), animate, 2)
 			_model(Models.path("log_stack_birch"), Vector3(-65.5, 0, -12.0), 2.4, -15, r2)
 		"r2_boathouse":
 			_build_boathouse(animate)
@@ -1758,9 +1734,9 @@ func _open_bridge(animate: bool) -> void:
 			gp.queue_free()
 
 
-func _machine2(id: String, recipe: String, pos: Vector3) -> Machine:
+func _machine2(id: String, recipe: String, pos: Vector3, region: int = 2) -> Machine:
 	var r: Array = Balance.MACHINES[recipe]
-	var m := Machine.new().setup(id, str(r[0]), str(r[4]), int(r[1]), int(r[5]), float(r[6]), 2, int(Balance.MACHINE_OUT_CAP.get(recipe, 48)))
+	var m := Machine.new().setup(id, str(r[0]), str(r[4]), int(r[1]), int(r[5]), float(r[6]), region, int(Balance.MACHINE_OUT_CAP.get(recipe, 48)))
 	m.position = pos
 	machines[id] = m
 	return m
@@ -1990,17 +1966,8 @@ func _palisades_v2() -> void:
 			var p := a.lerp(b, float(k) / maxf(n, 1))
 			var hgt := rng2.randf_range(0.95, 1.3)
 			var basis := Basis(Vector3.UP, rng2.randf() * TAU).scaled(Vector3(1, hgt, 1))
-			xforms.append(Transform3D(basis, Vector3(p.x, hgt * 0.5, p.y)))
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = Shapes.log_mesh(0.16, 1.0)
-	mm.instance_count = xforms.size()
-	for k in xforms.size():
-		mm.set_instance_transform(k, xforms[k])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = Shapes.log_material(0.16)
-	r2.add_child(mmi)
+			xforms.append(Transform3D(basis, Vector3(p.x, 0.0, p.y)))
+	_multimesh(Models.path("palisade_post"), xforms, true, r2)
 	if not Game.is_unlocked("r2_bridge"):
 		_gate_prop = _model(Models.path("gate_fence"), Vector3(RIVER_X + RIVER_HALF + 0.6, 0, BRIDGE_Z), 2.6, 90, r1)
 
@@ -2031,4 +1998,607 @@ func _goal_v2(p: Vector3) -> Array:
 	var t2 := _nearest_tree(p, "birch")
 	if t2:
 		return [t2.global_position, "Chop the birch trees"]
+	return [null, ""]
+
+
+# ---------------------------------------------------------------- Maple Highlands (Valley 3)
+
+## Belts (GDD 7.6 / CSV): saw and planer to the Yard counters, the two kit-factory feeds, kits to the train.
+const V3_BELT_BEAMS := [Vector3(6.5, 0, -63.4), Vector3(10.6, 0, -63.4)]
+const V3_BELT_FLOOR := [Vector3(6.4, 0, -77.8), Vector3(8.0, 0, -77.8), Vector3(8.0, 0, -66.0), Vector3(10.6, 0, -66.0)]
+const V3_BELT_KIT_BEAMS := [Vector3(5.4, 0, -65.9), Vector3(5.4, 0, -71.0), Vector3(-2.0, 0, -71.0), Vector3(-2.0, 0, -91.45), Vector3(1.0, 0, -91.45)]
+const V3_BELT_KIT_FLOOR := [Vector3(5.4, 0, -79.2), Vector3(5.4, 0, -84.6), Vector3(2.8, 0, -84.6), Vector3(2.8, 0, -86.6)]
+const V3_BELT_KIT_RAIL := [Vector3(9.5, 0, -92.3), Vector3(9.5, 0, -99.5)]
+## Train stop: loco centre (wagons couple behind it to the east) and where it waits out of sight.
+const V3_TRAIN_STOP_X := 4.0
+const V3_TRAIN_AWAY_X := 52.0
+
+## Forklift drops alternate between the counter/export pile and a build site that needs the item.
+var _route_flip: Dictionary = {}
+
+
+## Static sign text joins its valley's GroundLabels atlas (one draw for all of them).
+func _batch_label(l: Label3D) -> void:
+	var gl := GroundLabels.find_for(l)
+	if gl:
+		gl.add(l)
+
+
+func _path3(a: Vector2, b: Vector2, w: float) -> void:
+	(grounds[3].paths as Array).append([Vector4(a.x, a.y, b.x, b.y), w])
+
+
+func _plaza3(c: Vector2, half: Vector2) -> void:
+	(grounds[3].plazas as Array).append(Vector4(c.x, c.y, half.x, half.y))
+
+
+## Keeps grass and rocks off the Highlands' future belts, track, groves, plots and buildings.
+## The road runs through the valley from the start, so its dirt verge is drawn now.
+func _reserve_v3() -> void:
+	_path3(Vector2(ROAD_X, -47), Vector2(ROAD_X, -100), 2.6)
+	var lines := [V3_BELT_BEAMS, V3_BELT_FLOOR, V3_BELT_KIT_BEAMS, V3_BELT_KIT_FLOOR, V3_BELT_KIT_RAIL]
+	for line in lines:
+		for i in range(1, line.size()):
+			var a: Vector3 = line[i - 1]
+			var b: Vector3 = line[i]
+			_reserved_lines.append([Vector4(a.x, a.z, b.x, b.z), 0.8])
+	for l in [
+		[Vector4(V3_RAIL_WEST, V3_RAIL_Z, ROAD_X + 3.0, V3_RAIL_Z), 1.3],
+		[Vector4(0, -47, 0, -104), 1.2], [Vector4(-12, -58, -12, -110), 1.2], [Vector4(-12, -58, 0, -58), 1.0],
+		[Vector4(0, -61.5, 9.0, -61.5), 1.0], [Vector4(0, -102.1, 5.1, -102.1), 1.0],
+	]:
+		_reserved_lines.append(l)
+	for g in [[V3_GROVE1, 3, 3], [V3_GROVE2, 3, 2], [V3_GROVE_NORTH, 4, 3], [V3_GROVE_RIDGE, 4, 2]]:
+		var c: Vector3 = g[0]
+		_reserved_rects.append(Vector4(c.x, c.z, int(g[1]) * 1.3 + 0.4, int(g[2]) * 1.3 + 0.4))
+	for m in [V3_BEAMSAW, V3_PLANER]:
+		_reserved_rects.append(Vector4(m.x, m.z - 0.4, 4.6, 2.2))
+	_reserved_rects.append(Vector4(V3_KITFACTORY.x, V3_KITFACTORY.z, 5.2, 2.6))
+	_reserved_rects.append(Vector4(V3_MARKET.x - 0.5, V3_MARKET.z - 1.5, 3.4, 5.8))
+	_reserved_rects.append(Vector4(V3_OFFICE.x, V3_OFFICE.z + 1.2, 2.6, 3.4))
+	_reserved_rects.append(Vector4(V3_RAIL_DOCK.x - 1.0, V3_RAIL_DOCK.z, 4.6, 2.6))
+	for id in Balance.BUILD_SITES:
+		var p: Vector3 = Balance.BUILD_SITES[id].pos
+		_reserved_rects.append(Vector4(p.x + 1.0, p.z, 4.6, 3.4) if id != "r3_clocktower" else Vector4(p.x, p.z + 2.0, 3.6, 4.0))
+	# Handcar stops (all valleys): sign, tiles and the track beside them stay clear of scatter.
+	for rid in Balance.HANDCAR_STOPS:
+		var st: Vector3 = Balance.HANDCAR_STOPS[rid].pos
+		var side := float(Balance.HANDCAR_STOPS[rid].side)
+		_reserved_rects.append(Vector4(st.x + side * 0.6, st.z, 3.6, 2.0))
+
+
+func _apply_unlock_r3(id: String, animate: bool) -> void:
+	if Balance.BUILD_SITES.has(id):
+		_build_site(id, animate)
+		return
+	match id:
+		"r3_gate":
+			_open_gate3(animate)
+			_build_forest("maple", V3_GROVE1, 3, 3, 2.6, "maple", animate, 3)
+			paths.append([Vector4(0, -44, 0, -47.5), 1.0])
+			_path3(Vector2(0, -46.5), Vector2(0, -104), 1.0)
+			_path3(Vector2(-12, -58), Vector2(-12, -110), 1.0)
+			_path3(Vector2(-12, -58), Vector2(0, -58), 0.9)
+			for rid in Balance.HANDCAR_STOPS:
+				_build_handcar_stop(int(rid), animate)
+		"r3_beamsaw":
+			_build_beamsaw(animate)
+			_build_shop3(animate)
+		"r3_grove2":
+			_build_forest("maple", V3_GROVE2, 3, 2, 2.6, "maple", animate, 3)
+		"r3_office":
+			_build_office3(animate)
+		"r3_jack1":
+			var saw: Machine = machines.beamsaw
+			_spawn_jack_to("character-male-b", forests.maple, saw.input, saw.in_zone.global_position, Vector3(-3, 0, -63), animate, 3)
+		"r3_forklift1":
+			forklift = Worker.new().as_forklift(_forklift_route, Vector3(7.5, 0, -68.5))
+			forklift.region = 3
+			r3.add_child(forklift)
+			for mid in ["beamsaw", "planer", "kitfactory"]:
+				_forklift_source(mid)
+			if animate:
+				Fx.pop_in(forklift)
+		"r3_cashier":
+			shop3.hire_cashier(animate)
+		"r3_planer":
+			_build_planer(animate)
+			shop3.open_shelf("floorboard", animate)
+			_forklift_source("planer")
+		"r3_jack2":
+			_build_forest("maple_north", V3_GROVE_NORTH, 4, 3, 2.6, "maple", animate, 3)
+			var pl: Machine = machines.planer
+			for k in 2:
+				_spawn_jack_to(["character-female-c", "character-male-d"][k], forests.maple_north, pl.input, pl.in_zone.global_position, Vector3(-3.5, 0, -97.0 - k * 1.6), animate, 3)
+		"r3_belt_bp":
+			_belt((machines.beamsaw as Machine).output, shop3.shelf("beam"), V3_BELT_BEAMS, animate, 3)
+			_belt((machines.planer as Machine).output, shop3.shelf("floorboard"), V3_BELT_FLOOR, animate, 3)
+		"r3_kitfactory":
+			_build_kitfactory(animate)
+			_forklift_source("kitfactory")
+		"r3_rail":
+			_build_rail(animate)
+		"r3_belt_kit":
+			var kf: Machine = machines.kitfactory
+			_belt((machines.beamsaw as Machine).output, kf.input, V3_BELT_KIT_BEAMS, animate, 3)
+			_belt((machines.planer as Machine).output, kf.input_b, V3_BELT_KIT_FLOOR, animate, 3)
+			_belt(kf.output, (machines.rail as TruckDock).pile, V3_BELT_KIT_RAIL, animate, 3)
+		"r3_jack3":
+			_build_forest("maple_ridge", V3_GROVE_RIDGE, 4, 2, 2.6, "maple", animate, 3)
+			var looks := ["character-female-a", "character-male-c", "character-female-d"]
+			for k in 3:
+				var m: Machine = machines.beamsaw if k < 2 else machines.planer
+				_spawn_jack_to(looks[k], forests.maple_ridge, m.input, m.in_zone.global_position, Vector3(-2.5 + k * 1.5, 0, -111.0), animate, 3)
+			_model(Models.path("log_stack_maple"), Vector3(-3.0, 0, -113.5), 2.4, 20, r3)
+		"r3_rail2":
+			(machines.rail as TruckDock).add_wagons(Balance.RAIL2_WAGONS)
+
+
+## The Highland Gate stands in the Home Valley north palisade from the start, closed by doors.
+func _palisades_v3() -> void:
+	var gx := GATE3_HALF + 0.5
+	var lines := [
+		[Vector2(-23.2, V3_SOUTH - 0.4), Vector2(-23.2, V3_NORTH + 0.4)],
+		[Vector2(-23.2, V3_NORTH + 0.4), Vector2(14.8, V3_NORTH + 0.4)],
+		[Vector2(-23.2, V3_SOUTH - 0.4), Vector2(-gx, V3_SOUTH - 0.4)],
+		[Vector2(gx, V3_SOUTH - 0.4), Vector2(14.8, V3_SOUTH - 0.4)],
+		# Both sides of the corridor through the border forest.
+		[Vector2(-gx, -47.9), Vector2(-gx, V3_SOUTH - 0.4)],
+		[Vector2(gx, -47.9), Vector2(gx, V3_SOUTH - 0.4)],
+	]
+	var xforms := []
+	for ln in lines:
+		var a: Vector2 = ln[0]
+		var b: Vector2 = ln[1]
+		var n := int(a.distance_to(b) / 0.31)
+		for k in n + 1:
+			var p := a.lerp(b, float(k) / maxf(n, 1))
+			var hgt := rng3.randf_range(0.95, 1.3)
+			var basis := Basis(Vector3.UP, rng3.randf() * TAU).scaled(Vector3(1, hgt, 1))
+			xforms.append(Transform3D(basis, Vector3(p.x, 0.0, p.y)))
+	_multimesh(Models.path("palisade_post"), xforms, true, r3)
+	var gate := _model(Models.path("highland_gate"), GATE3, 1.0, 0, r1)
+	gate.name = "HighlandGate"
+	var lbl := Label3D.new()
+	lbl.font = Fx.font()
+	lbl.text = "MAPLE HIGHLANDS"
+	lbl.font_size = 44
+	lbl.outline_size = 10
+	lbl.modulate = Color(0.25, 0.16, 0.08)
+	lbl.outline_modulate = Color(1, 0.95, 0.75)
+	lbl.pixel_size = 0.005
+	lbl.position = Vector3(0, 2.95, 1.16)
+	gate.add_child(lbl)
+	_batch_label(lbl)
+	if not Game.is_unlocked("r3_gate"):
+		_gate3_doors = _model(Models.path("highland_gate_doors"), GATE3, 1.0, 0, r1)
+
+
+func _open_gate3(animate: bool) -> void:
+	if _gate3_body:
+		_gate3_body.queue_free()
+		_gate3_body = null
+	if _gate3_doors:
+		var gd := _gate3_doors
+		_gate3_doors = null
+		if animate:
+			var tw := gd.create_tween()
+			tw.tween_property(gd, "scale", Vector3.ONE * 0.01, 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+			tw.tween_callback(gd.queue_free)
+		else:
+			gd.queue_free()
+
+
+## Grass, leaf piles and autumn bushes across the Highlands (GDD 9.3 / ASSETS_M2.md section 5):
+## the V2 counts with the flowers swapped for leaf piles and bushes, and half the green grass.
+func _scatter_deco_v3() -> void:
+	var nature := "res://assets/models_v3/nature/%s.glb"
+	var sets := [
+		[nature % "grass", 130, 2.4, false], [nature % "grass_large", 80, 2.4, false],
+		[nature % "grass_leafs", 110, 2.6, false], [Models.path("leaf_pile"), 110, 2.6, false],
+		[Models.path("bush_autumn"), 90, 2.6, true], [nature % "plant_bushDetailed", 40, 2.6, true],
+		[nature % "rock_smallA", 40, 2.2, false], [nature % "rock_smallC", 40, 2.2, false],
+		[nature % "mushroom_redGroup", 25, 2.2, false], [nature % "mushroom_tanGroup", 20, 2.2, false],
+		[nature % "rock_largeA", 10, 2.4, true],
+	]
+	var area := Rect2(-23.0, V3_NORTH + 0.5, 41.5, V3_SOUTH - V3_NORTH - 1.0)
+	var scale_n := area.get_area() / (66.0 * 68.0)
+	for s in sets:
+		var list := []
+		var want := int(float(s[1]) * scale_n)
+		var tries: int = want * 3
+		while list.size() < want and tries > 0:
+			tries -= 1
+			var p := Vector2(rng3.randf_range(area.position.x, area.end.x), rng3.randf_range(area.position.y, area.end.y))
+			if absf(p.x - ROAD_X) < 2.4 or _busy(p, 0.6):
+				continue
+			var sc: float = s[2] * rng3.randf_range(0.75, 1.3)
+			list.append(Transform3D(Basis(Vector3.UP, rng3.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(p.x, 0, p.y)))
+		_deco.append([s[0], list, s[3]])
+
+
+## Every teal machine stands on a dirt plaza (DESIGN.md 13).
+func _build_beamsaw(animate: bool) -> void:
+	var m := _machine2("beamsaw", "beamsaw", V3_BEAMSAW, 3)
+	m.add_model(Models.path("beamsaw"), Vector3.ZERO, 1.0)
+	m.spinners.append(m.add_model(Models.path("beamsaw_blade"), Vector3(0, 0.95, 0.05), 1.0))
+	m.mouth_in = Vector3(-1.6, 0.7, 0)
+	m.cut_point = Vector3(0, 0.7, 0)
+	m.mouth_out = Vector3(1.3, 0.75, 0)
+	m.add_dust(Vector3(0, 0.9, 0.35), Color(0.96, 0.85, 0.66))
+	m.add_blocker(Vector3(3.9, 1.4, 1.4), Vector3(0, 0, -0.1))
+	MeshMerge.merge(m.body, m.spinners)
+	r3.add_child(m)
+	_plaza3(Vector2(V3_BEAMSAW.x, V3_BEAMSAW.z), Vector2(4.8, 2.2))
+	_path3(Vector2(0, -61.5), Vector2(9.0, -61.5), 0.8)
+	_model(Models.path("log_stack_maple"), V3_BEAMSAW + Vector3(-1.4, 0, -2.4), 2.3, 10, r3)
+	if animate:
+		Fx.pop_in(m, 0.7)
+
+
+func _build_planer(animate: bool) -> void:
+	var m := _machine2("planer", "planer", V3_PLANER, 3)
+	m.add_model(Models.path("planer"), Vector3.ZERO, 1.0)
+	m.spinners.append(m.add_model(Models.path("planer_roller"), Vector3(-0.66, 1.0, 0), 1.0))
+	m.mouth_in = Vector3(-1.4, 0.95, 0)
+	m.mouth_out = Vector3(1.2, 0.95, 0)
+	m.add_dust(Vector3(0, 1.1, 0.4), Color(0.96, 0.88, 0.7))
+	m.add_blocker(Vector3(3.6, 1.5, 1.4))
+	m.add_blocker(Vector3(0.9, 3.0, 0.9), Vector3(1.1, 0, -1.15))
+	MeshMerge.merge(m.body, m.spinners)
+	r3.add_child(m)
+	_plaza3(Vector2(V3_PLANER.x, V3_PLANER.z - 0.4), Vector2(4.8, 2.4))
+	if animate:
+		Fx.pop_in(m, 0.7)
+
+
+## Assembler (GDD 7.4): beams in at the back square, floorboards at the front, kits out east.
+func _build_kitfactory(animate: bool) -> void:
+	var r: Array = Balance.MACHINES["kitfactory"]
+	var m := _machine2("kitfactory", "kitfactory", V3_KITFACTORY, 3)
+	m.input.position = Vector3(-3.2, 0, -1.45)
+	m.in_zone.position = m.input.position
+	m.in_zone.half = Vector2(1.1, 1.2)
+	# The beam square's label goes behind it, so it does not land in the floorboard square.
+	if m.in_zone.label:
+		m.in_zone.label.position.z = -1.6
+	m.add_second_input(str(r[2]), int(r[3]), Vector3(-3.2, 0, 1.45))
+	m.output.position = Vector3(3.2, 0, 0)
+	m.out_zone.position = m.output.position
+	m.add_model(Models.path("kitfactory"), Vector3.ZERO, 1.0)
+	m.plates.append(m.add_model(Models.path("kitfactory_press"), Vector3(0.1, 1.75, 0), 1.0))
+	m.plate_up = 1.75
+	m.plate_down = 1.5
+	m.mouth_in = Vector3(-2.1, 0.9, -1.2)
+	m.mouth_in_b = Vector3(-2.1, 0.9, 1.2)
+	m.mouth_out = Vector3(2.3, 0.9, 0)
+	m.add_blocker(Vector3(4.6, 3.2, 4.0))
+	MeshMerge.merge(m.body, m.plates)
+	r3.add_child(m)
+	_plaza3(Vector2(V3_KITFACTORY.x, V3_KITFACTORY.z), Vector2(5.6, 2.8))
+	if animate:
+		Fx.pop_in(m, 0.8)
+
+
+## Highland Railway: platform turned 90 deg so the track runs east-west north of the road end.
+func _build_rail(animate: bool) -> void:
+	var d := TruckDock.new().setup("cabin_kit", 0.0, "train", 3)
+	d.position = V3_RAIL_DOCK
+	d.rotation_degrees.y = 90
+	d.region_node = r3
+	# Export square west of the deck (dock-local -Z = world -X), turned back so its label reads.
+	d.zone.position = Vector3(0.6, 0, -4.4)
+	d.zone.rotation_degrees.y = -90
+	d.set_route(Vector3(V3_TRAIN_STOP_X, 0, V3_RAIL_Z), Vector3(V3_TRAIN_AWAY_X, 0, V3_RAIL_Z), Vector3(V3_TRAIN_AWAY_X, 0, V3_RAIL_Z), PI * 0.5)
+	r3.add_child(d)
+	machines["rail"] = d
+	var track := Node3D.new()
+	track.name = "Track"
+	r3.add_child(track)
+	var xf := []
+	var along_x := Basis(Vector3.UP, PI * 0.5)
+	var x := V3_RAIL_WEST + 2.0
+	while x < V3_TRAIN_AWAY_X + 24.0:
+		xf.append(Transform3D(along_x, Vector3(x, 0, V3_RAIL_Z)))
+		x += 4.0
+	_multimesh(Models.path("rail"), xf, true, track)
+	var bumper := Models.make("rail_bumper")
+	bumper.position = Vector3(V3_RAIL_WEST + 0.4, 0, V3_RAIL_Z)
+	bumper.rotation_degrees.y = 90
+	track.add_child(bumper)
+	MeshMerge.merge(track)
+	_plaza3(Vector2(V3_RAIL_DOCK.x - 1.2, V3_RAIL_DOCK.z - 0.4), Vector2(4.4, 2.4))
+	_path3(Vector2(0, -102.1), Vector2(5.1, -102.1), 0.8)
+	if animate:
+		Fx.pop_in(d, 0.6)
+
+
+func _build_shop3(animate: bool) -> void:
+	# Builders' Yard: shoppers come along the road (x = 17), like Valley 1.
+	shop3 = Shop.new().setup(3, 1.0)
+	shop3.position = V3_MARKET
+	shop3.road_x = ROAD_X - V3_MARKET.x
+	shop3.sign_unlock = ""
+	shop3.region_node = r3
+	shop3.add_shelf("beam", 2.6)
+	shop3.add_shelf("floorboard", 0.0)
+	shop3.spawn_bonus = 1.0 + 0.1 * Game.houses_done()
+	r3.add_child(shop3)
+	shop3.open_shelf("beam", animate)
+	_plaza3(Vector2(V3_MARKET.x - 0.3, V3_MARKET.z - 1.5), Vector2(2.8, 5.8))
+
+
+func _build_office3(animate: bool) -> void:
+	var root := Node3D.new()
+	root.position = V3_OFFICE
+	r3.add_child(root)
+	root.add_child(Models.make("highland_office"))
+	MeshMerge.merge(root)
+	var lbl := Label3D.new()
+	lbl.font = Fx.font()
+	lbl.text = "OFFICE"
+	lbl.font_size = 56
+	lbl.outline_size = 12
+	lbl.modulate = Color(0.25, 0.16, 0.08)
+	lbl.outline_modulate = Color(1, 0.95, 0.75)
+	lbl.pixel_size = 0.006
+	lbl.position = Vector3(0, 2.1, 1.62)
+	root.add_child(lbl)
+	_batch_label(lbl)
+	var sb := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = Vector3(3.8, 3.0, 3.2)
+	col.shape = bs
+	col.position = Vector3(0, 1.5, -0.2)
+	sb.add_child(col)
+	root.add_child(sb)
+	office3_zone = Zone.new().setup(Zone.Kind.CUSTOM, null, Vector2(2.4, 2.0), "UPGRADES", Color(0.6, 0.95, 1.0))
+	office3_zone.position = V3_OFFICE + Vector3(0, 0, 3.4)
+	office3_zone.on_enter = func(_c: Node) -> void:
+		if Game.hud:
+			Game.hud.open_upgrades(3)
+	office3_zone.on_exit = func(_c: Node) -> void:
+		if Game.hud:
+			Game.hud.close_upgrades()
+	r3.add_child(office3_zone)
+	_plaza3(Vector2(V3_OFFICE.x, V3_OFFICE.z + 2.6), Vector2(2.2, 1.6))
+	if animate:
+		Fx.pop_in(root, 0.6)
+
+
+# ---------------------------------------------------------------- build sites, rent, forklift
+
+## Village houses: slot squares on the street side (+X), stacked along z. Clock Tower: in front.
+func _build_site(id: String, animate: bool) -> void:
+	var info: Dictionary = Balance.BUILD_SITES[id]
+	var tower := id == "r3_clocktower"
+	var origin := Vector3(-2.6, 0, 4.4) if tower else Vector3(4.2, 0, -2.6)
+	var step := Vector3(2.6, 0, 0) if tower else Vector3(0, 0, 2.6)
+	var sign_at := Vector3(0, 4.2, 2.6) if tower else Vector3(0, 3.2, 2.4)
+	var site := BuildSite.new().setup(id, info, origin, step, sign_at)
+	site.position = info.pos
+	r3.add_child(site)
+	sites[id] = site
+	site.completed.connect(_on_site_completed)
+	if tower:
+		var sb := StaticBody3D.new()
+		var col := CollisionShape3D.new()
+		var bs := BoxShape3D.new()
+		bs.size = Vector3(4.0, 6.0, 4.0)
+		col.shape = bs
+		col.position.y = 3.0
+		sb.add_child(col)
+		site.add_child(sb)
+		var p: Vector3 = info.pos
+		_plaza3(Vector2(p.x, p.z + 2.6), Vector2(3.8, 3.6))
+	if animate:
+		Fx.pop_in(site, 0.6)
+
+
+func _on_site_completed(id: String) -> void:
+	var info: Dictionary = Balance.BUILD_SITES[id]
+	var p: Vector3 = info.pos
+	Sfx.play("unlock", -2.0)
+	Fx.confetti(self, p + Vector3(0, 3.0, 0))
+	_pull_out()
+	if bool(info.rent):
+		if shop3:
+			shop3.spawn_bonus = 1.0 + 0.1 * Game.houses_done()
+		var rent := int(round(Balance.RENT_PER_HOUSE * Game.fame_mult(3)))
+		Fx.float_text(get_tree().current_scene, p + Vector3(0, 4.5, 0), "+%s/s" % Game.fmt(rent), Color(1.0, 0.9, 0.35), 1.3)
+		if Game.hud:
+			Game.hud.toast("%s built: rent +%s/s" % [_title_of(id).trim_prefix("Village Plot ").get_slice(": ", 1), Game.fmt(rent)])
+	Game.save_game()
+	if Balance.LANDMARKS.has(id):
+		_landmark_done(id)
+
+
+func _title_of(id: String) -> String:
+	for u in UNLOCKS:
+		if u.id == id:
+			return str(u.title)
+	return id
+
+
+## Build complete: the camera pulls out 20% for 1.2 s (GDD 7.6 B).
+func _pull_out() -> void:
+	var base := Vector3(0, 8.4, 6.6)
+	var tw := create_tween()
+	tw.tween_property(self, "cam_offset", base * 1.2, 0.4).set_trans(Tween.TRANS_SINE)
+	tw.tween_interval(0.4)
+	tw.tween_property(self, "cam_offset", base, 0.4).set_trans(Tween.TRANS_SINE)
+
+
+## Village rent, once a second, straight to the wallet, whether the Highlands are awake or not.
+func _pay_rent(delta: float) -> void:
+	_rent_t += delta
+	if _rent_t < 1.0:
+		return
+	_rent_t -= 1.0
+	var r := Game.rent_rate()
+	if r <= 0.0:
+		return
+	_rent_carry += r
+	var whole := int(_rent_carry)
+	if whole > 0:
+		_rent_carry -= whole
+		Game.add_money(whole, 3)
+
+
+## First unfinished site (in plot order) with room for `item`, or null.
+func _site_needing(item: String) -> BuildSite:
+	for id in Balance.BUILD_SITES:
+		if sites.has(id):
+			var s: BuildSite = sites[id]
+			if s.room(item) > 0:
+				return s
+	return null
+
+
+func _forklift_source(machine_id: String) -> void:
+	if forklift == null or not machines.has(machine_id):
+		return
+	var m: Machine = machines[machine_id]
+	forklift.add_source(m.output, m.out_zone.global_position)
+
+
+## Where a forklift load of `item` goes: the Yard counter (beams, floorboards) or the train
+## platform (kits), alternating with a build site that needs it. [] = nowhere right now.
+## commit = this load is leaving now (flips the alternation).
+func _forklift_route(item: String, commit: bool = false) -> Array:
+	var main: Array = []
+	if item in ["beam", "floorboard"] and shop3 and shop3.is_open(item) and not shop3.shelf(item).is_full():
+		main = [shop3.shelf(item), shop3.shelf_zone(item).global_position]
+	elif item == "cabin_kit" and machines.has("rail") and not (machines.rail as TruckDock).pile.is_full():
+		var d: TruckDock = machines.rail
+		main = [d.pile, d.zone.global_position]
+	var site := _site_needing(item)
+	var to_site := site != null and (main.is_empty() or bool(_route_flip.get(item, false)))
+	if commit:
+		_route_flip[item] = not bool(_route_flip.get(item, false))
+	if to_site:
+		return [site.intake_of(item), site.zone_of(item).global_position]
+	return main
+
+
+# ---------------------------------------------------------------- handcar stops
+
+func valley_open(rid: int) -> bool:
+	var gate: String = Balance.VALLEY_GATE.get(rid, "")
+	return gate == "" or Game.is_unlocked(gate)
+
+
+## Sign, a short track with the handcar, and one tile per other open valley (GDD 7.6 E).
+func _build_handcar_stop(rid: int, animate: bool) -> void:
+	if _stops.has(rid):
+		return
+	var info: Dictionary = Balance.HANDCAR_STOPS[rid]
+	var region: Region = regions[rid]
+	var root := Node3D.new()
+	root.name = "HandcarStop%d" % rid
+	root.position = info.pos
+	region.add_child(root)
+	_stops[rid] = root
+	var sign := Models.make("handcar_stop")
+	sign.position = Vector3(0, 0, -1.2)
+	root.add_child(sign)
+	var side := float(info.side)
+	var rail := Models.make("rail")
+	rail.position = Vector3(3.1 * side, 0, 0)
+	root.add_child(rail)
+	var car := Models.make("handcar")
+	car.position = Vector3(3.1 * side, 0, -0.6)
+	root.add_child(car)
+	var dests := []
+	for other in Balance.HANDCAR_STOPS:
+		if int(other) != rid and valley_open(int(other)):
+			dests.append(int(other))
+	for i in dests.size():
+		var tile := Models.make("handcar_tile")
+		tile.position = Vector3((i - (dests.size() - 1) * 0.5) * 3.4, 0, 0.4)
+		root.add_child(tile)
+	MeshMerge.merge(root)
+	var title := Label3D.new()
+	title.font = Fx.font()
+	title.text = "HANDCAR"
+	title.font_size = 48
+	title.outline_size = 10
+	title.modulate = Color(0.25, 0.16, 0.08)
+	title.outline_modulate = Color(1, 0.95, 0.75)
+	title.pixel_size = 0.006
+	title.position = Vector3(0, 2.0, -1.11)
+	root.add_child(title)
+	_batch_label(title)
+	for i in dests.size():
+		var dst: int = dests[i]
+		var pos := Vector3((i - (dests.size() - 1) * 0.5) * 3.4, 0, 0.4)
+		var z := Zone.new().setup(Zone.Kind.CUSTOM, null, Vector2(1.6, 1.6), str(Balance.REGIONS[dst].name).to_upper(), Color(1.0, 0.85, 0.3))
+		z.position = pos
+		z.marker.visible = false
+		z.interval = 0.0
+		var key := "%d>%d" % [rid, dst]
+		z.on_carrier = func(c: Node, delta: float) -> bool:
+			if not c.get("is_player"):
+				return false
+			var t: float = float(_tile_hold.get(key, 0.0)) + delta
+			_tile_hold[key] = t
+			if t >= float(Balance.HANDCAR.hold_s) and t - delta < float(Balance.HANDCAR.hold_s):
+				_ride(dst)
+			return false
+		z.on_exit = func(_c: Node) -> void:
+			_tile_hold[key] = 0.0
+		root.add_child(z)
+		if z.label:
+			z.label.font_size = 40
+			z.label.pixel_size = 0.0075
+			z.label.position.z = 1.3
+	if animate:
+		Fx.pop_in(root, 0.6)
+
+
+## 0.8 s on a tile: fade out 0.3 s, move player and camera to that valley's stop, fade in 0.3 s.
+func _ride(dst: int) -> void:
+	# The tile left behind may sleep with its valley before it sees the player leave.
+	_tile_hold.clear()
+	Sfx.play("machine", -3.0, 0.7)
+	var land: Vector3 = Balance.HANDCAR_STOPS[dst].land
+	var go := func() -> void:
+		player.global_position = land
+		player.velocity = Vector3.ZERO
+		_cam_pos = land
+		_update_regions(0.0, true)
+		Sfx.play("machine", -3.0, 0.8)
+	if Game.hud:
+		Game.hud.fade_travel(go)
+	else:
+		go.call()
+
+
+## Maple Highlands mini-tutorial until its first lumberjack (GDD 12): chop, feed the saw, stock the counter.
+func _goal_v3(p: Vector3) -> Array:
+	var back := player.stack
+	if not Game.is_unlocked("r3_beamsaw"):
+		if pads.has("r3_beamsaw"):
+			return [(pads.r3_beamsaw as Node3D).global_position, "Build the beam saw"]
+		return [null, ""]
+	var saw: Machine = machines.beamsaw
+	if shop3.coin_value > 0 and back.is_empty():
+		return [shop3.coin_zone.global_position, "Collect your cash"]
+	if back.top_type() == "maple_log":
+		var t := _nearest_tree(p, "maple")
+		if saw.in_zone.contains(p) or back.count() >= player.capacity() or t == null or back.count() >= 10:
+			return [saw.in_zone.global_position, "Feed the beam saw"]
+		return [t.global_position, "Chop the maple trees"]
+	if back.top_type() == "beam":
+		if saw.out_zone.contains(p) and not saw.output.is_empty() and back.count() < player.capacity():
+			return [saw.out_zone.global_position, "Pick up the beams"]
+		return [shop3.shelf_zone("beam").global_position, "Stock the beam counter"]
+	if not back.is_empty():
+		return [null, ""]
+	if saw.output.count() >= 4:
+		return [saw.out_zone.global_position, "Pick up the beams"]
+	var t2 := _nearest_tree(p, "maple")
+	if t2:
+		return [t2.global_position, "Chop the maple trees"]
 	return [null, ""]

@@ -72,7 +72,8 @@ func setup(pad_id: String, price: int, text: String, size: Vector2 = Vector2(2.6
 	_price.outline_modulate = Color(0.1, 0.3, 0.08, 1.0)
 	_price.pixel_size = 0.0075
 	add_child(_price)
-	var item := Models.item_in_title(text, pad_id.begins_with("r2_"))
+	var log_type := "birch_log" if pad_id.begins_with("r2_") else ("maple_log" if pad_id.begins_with("r3_") else "log")
+	var item := Models.item_in_title(text, log_type)
 	var tex := Models.hud_icon(item) if item != "" else null
 	if tex:
 		_icon = Sprite3D.new()

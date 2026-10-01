@@ -7,8 +7,9 @@ signal unlocked(id: String)
 signal upgraded(id: String, level: int)
 
 const SAVE_PATH := "user://save.json"
-## 1 = original single-valley save (no "version" key), 2 = M1 (valleys, ledger, offline).
-const SAVE_VERSION := 2
+## 1 = original single-valley save (no "version" key), 2 = M1 (valleys, ledger, offline),
+## 3 = M2 (build sites).
+const SAVE_VERSION := 3
 
 const PRICES := Balance.PRICES
 const UPGRADES := Balance.UPGRADES
@@ -23,6 +24,8 @@ var region_upgrades: Dictionary = {}
 var ledger: Dictionary = {}
 ## "1": {"time": seconds played there, "earned": money earned there}
 var region_stats: Dictionary = {}
+## Build sites: "r3_house1": {"beam": 30, "floorboard": 12} goods delivered so far.
+var sites: Dictionary = {}
 ## Offline earnings waiting as a coin pile at the Valley 1 office.
 var offline_pending: int = 0
 var pile_counts: Dictionary = {}
@@ -224,6 +227,31 @@ func ledger_total() -> float:
 	return t
 
 
+## A build site whose every slot is full.
+func site_done(id: String) -> bool:
+	if not Balance.BUILD_SITES.has(id) or not sites.has(id):
+		return false
+	var goods: Dictionary = Balance.BUILD_SITES[id].goods
+	var have: Dictionary = sites[id]
+	for item in goods:
+		if int(have.get(item, 0)) < int(goods[item]):
+			return false
+	return true
+
+
+func houses_done() -> int:
+	var n := 0
+	for id in Balance.BUILD_SITES:
+		if bool(Balance.BUILD_SITES[id].rent) and site_done(id):
+			n += 1
+	return n
+
+
+## Village rent in $/s: paid straight to the wallet, awake or asleep (GDD 7.6 B, 10.4).
+func rent_rate() -> float:
+	return float(houses_done() * Balance.RENT_PER_HOUSE) * fame_mult(3)
+
+
 func save_game() -> void:
 	var piles := pile_counts.duplicate()
 	for id in _piles:
@@ -241,6 +269,7 @@ func save_game() -> void:
 		"ledger": ledger,
 		"region_stats": region_stats,
 		"offline_pending": offline_pending,
+		"sites": sites,
 		"saved_at": int(Time.get_unix_time_from_system()),
 		"piles": piles,
 		"finished": finished,
@@ -297,6 +326,13 @@ func apply_save(data: Dictionary) -> void:
 		var d: Dictionary = rs[k]
 		region_stats[str(k)] = {"time": float(d.get("time", 0.0)), "earned": int(d.get("earned", 0))}
 	offline_pending = int(data.get("offline_pending", 0))
+	sites = {}
+	var sd: Dictionary = data.get("sites", {})
+	for k in sd:
+		var d := {}
+		for item in (sd[k] as Dictionary):
+			d[str(item)] = int(sd[k][item])
+		sites[str(k)] = d
 	pile_counts = data.get("piles", {})
 	# Old saves: finished = true means the Lodge is done; the finish panel does not reopen.
 	finished = bool(data.get("finished", false))
@@ -309,7 +345,7 @@ func apply_save(data: Dictionary) -> void:
 		var away := clampi(int(Time.get_unix_time_from_system()) - saved_at, 0, Balance.OFFLINE_MAX_S)
 		# A quick restart is not "away": only count breaks of a minute or more.
 		if away >= 60:
-			offline_pending += int(away * ledger_total() * Balance.OFFLINE_RATE)
+			offline_pending += int(away * (ledger_total() + rent_rate()) * Balance.OFFLINE_RATE)
 
 
 func collect_offline() -> int:
@@ -332,6 +368,7 @@ func reset_game() -> void:
 	ledger.clear()
 	region_stats.clear()
 	offline_pending = 0
+	sites.clear()
 	_piles.clear()
 	finished = false
 	for k in UPGRADES:

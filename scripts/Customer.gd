@@ -33,6 +33,8 @@ func setup(s: Node, prod: String, n: int, spawn: Vector3, entry_pt: Vector3, exi
 	entry = entry_pt
 	exit_point = exit_pt
 	init_walker(LOOKS[randi() % LOOKS.size()])
+	# The market draws every shopper's carried items in one MultiMesh per item type.
+	stack.external_draw = true
 	walk_speed = randf_range(2.6, 3.2)
 	position = spawn
 	_bubble = Label3D.new()

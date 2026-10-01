@@ -29,3 +29,4 @@ tools/lookdev/_render/
 tools/lookdev/tex/
 tools/lookdev/*.png
 screenshots_v3/
+docs/balance/__pycache__/

@@ -20,7 +20,8 @@ var toast_label: Label
 var toast_pill: PanelContainer
 var upgrades_panel: PanelContainer
 var upgrade_rows: Dictionary = {}
-## Which office board is open: 1 = Valley 1 (global), 2 = Riverside Office (V2 + extended global).
+## Which office board is open: 1 = Valley 1 (global), 2 = Riverside Office (V2 + extended global),
+## 3 = Highland Office (V3).
 var upgrade_board: int = 1
 var _up_title: Label
 var _up_list: VBoxContainer
@@ -41,6 +42,9 @@ var _shown_money: float = 0.0
 var _touch_index: int = -1
 var _joy_origin: Vector2
 var _toast_tween: Tween
+## Full-screen fade for handcar rides.
+var _fade: ColorRect
+var _fading: bool = false
 const JOY_RADIUS := 110.0
 
 
@@ -57,6 +61,12 @@ func _ready() -> void:
 	_build_menu(root)
 	_build_finish(root)
 	_build_valley_card(root)
+	_fade = ColorRect.new()
+	_fade.color = Color(0.08, 0.06, 0.04, 0.0)
+	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade.visible = false
+	root.add_child(_fade)
 	_shown_money = Game.money
 	Game.money_changed.connect(_on_money)
 	Game.upgraded.connect(func(_i: String, _l: int) -> void: _refresh_upgrades())
@@ -296,12 +306,13 @@ func _build_upgrades(root: Control) -> void:
 
 
 ## Board 1: the six global upgrades. Board 2: Birch Bend upgrades plus the extended global levels.
+## Board 3: Maple Highlands upgrades.
 func _build_board(board: int) -> void:
 	upgrade_board = board
 	upgrade_rows.clear()
 	for c in _up_list.get_children():
 		c.queue_free()
-	_up_title.text = "Upgrades" if board == 1 else "Riverside Office"
+	_up_title.text = {1: "Upgrades", 2: "Riverside Office", 3: "Highland Office"}.get(board, "Upgrades")
 	var specs: Array = []
 	if board == 1:
 		for id in Game.UPGRADES:
@@ -310,7 +321,7 @@ func _build_board(board: int) -> void:
 		for key in ["saws", "crew", "fame"]:
 			var info: Dictionary = Balance.REGION_UPGRADE_INFO[key]
 			specs.append({"key": key, "region": board, "ext": false, "name": info.name, "desc": info.desc})
-		for id in Balance.GLOBAL_EXT:
+		for id in (Balance.GLOBAL_EXT if board == 2 else {}):
 			specs.append({"key": id, "region": 0, "ext": true, "name": Game.UPGRADES[id].name, "desc": Game.UPGRADES[id].desc + " (all valleys)"})
 	for spec in specs:
 		var row := HBoxContainer.new()
@@ -510,6 +521,23 @@ func close_valley_card() -> void:
 		return
 	valley_card.visible = false
 	valley_card_closed.emit()
+
+
+## Fade out (fade_s), run `mid` (move the player and camera), fade back in. Ignored while one runs.
+func fade_travel(mid: Callable) -> void:
+	if _fading:
+		return
+	_fading = true
+	var t := float(Balance.HANDCAR.fade_s)
+	_fade.visible = true
+	var tw := create_tween()
+	tw.tween_property(_fade, "color:a", 1.0, t)
+	tw.tween_callback(mid)
+	tw.tween_interval(0.05)
+	tw.tween_property(_fade, "color:a", 0.0, t)
+	tw.tween_callback(func() -> void:
+		_fade.visible = false
+		_fading = false)
 
 
 func set_valley(text: String) -> void:

@@ -1,19 +1,25 @@
 class_name TruckDock
 extends Node3D
 
-## Export dock. A vehicle (the Valley 1 truck on the road, the Birch Bend barge on the river)
-## pulls in, loads finished goods, and pays on the way out.
+## Export dock. A vehicle (the Valley 1 truck on the road, the Birch Bend barge on the river,
+## the Maple Highlands train on its track) pulls in, loads finished goods, and pays on the way out.
 
 enum State { AWAY, ARRIVING, LOADING, LEAVING }
+
+## Train: loco centre to the first wagon centre, then wagon to wagon (m, along the consist).
+const WAGON_FIRST := 3.8
+const WAGON_STEP := 3.6
 
 var pile: ItemStack
 var zone: Zone
 var product: String
 var road_x: float
 var truck: Node3D
+## Cargo spaces on the vehicle: one bed for the truck and barge, one per wagon for the train.
+var beds: Array[ItemStack] = []
 var bed: ItemStack
 var state: State = State.AWAY
-## "truck" or "barge" (Balance.EXPORTS has capacity and time away).
+## "truck", "barge" or "train" (Balance.EXPORTS has capacity and time away).
 var vehicle: String = "truck"
 var region: int = 1
 var region_node: Region
@@ -25,6 +31,11 @@ var _wait: float = 0.0
 var _stop: Vector3
 var _start: Vector3
 var _end: Vector3
+## Set by set_route() (the train): explicit stop/start/end points and vehicle yaw.
+var _route_set: bool = false
+var _yaw: float = 0.0
+## Train only: wagons built so far.
+var _wagons: int = 0
 
 
 func setup(prod: String, road_x_global: float, vehicle_kind: String = "truck", region_id: int = 1) -> TruckDock:
@@ -39,21 +50,10 @@ func setup(prod: String, road_x_global: float, vehicle_kind: String = "truck", r
 		# Appear north of the bridge, so the barge never sails through it.
 		start_dist = 22.0
 		return _setup_barge(int(ex.cap))
-	var floor_mat := StandardMaterial3D.new()
-	floor_mat.albedo_color = Color(0.62, 0.6, 0.56)
-	floor_mat.roughness = 0.9
-	var slab := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(4.2, 0.18, 5.0)
-	slab.mesh = bm
-	slab.material_override = floor_mat
-	slab.position = Vector3(0.6, 0.09, 0)
-	add_child(slab)
-	for z in [-2.3, 2.3]:
-		var post: Node3D = load("res://assets/models/factory/structure-yellow-tall.glb").instantiate()
-		post.scale = Vector3.ONE * 1.4
-		post.position = Vector3(2.4, 0, z)
-		add_child(post)
+	if vehicle == "train":
+		return _setup_train()
+	# v3 dock (ASSETS_LEFTOVER.md 2.10): slab top y 0.18, bumper on the road edge, two lamp posts.
+	add_child(Models.make("truck_dock"))
 	pile = ItemStack.new().setup(product, 24, 2, 3, "dock:" + product)
 	pile.position = Vector3(0.9, 0.18, 0)
 	add_child(pile)
@@ -62,13 +62,54 @@ func setup(prod: String, road_x_global: float, vehicle_kind: String = "truck", r
 	add_child(zone)
 	MeshMerge.merge(self)
 	truck = Node3D.new()
-	var model: Node3D = load("res://assets/models/car/truck-flat.glb").instantiate()
-	model.scale = Vector3.ONE * 1.7
-	truck.add_child(model)
+	# Scale 1.0 (the Kenney truck was x1.7); cab at +Z, turned 180 deg on the road like before.
+	truck.add_child(Models.make("truck"))
 	bed = ItemStack.new().setup(product, int(ex.cap), 2, 2)
 	bed.position = Vector3(0, 1.25, -0.9)
 	truck.add_child(bed)
+	beds = [bed]
 	return self
+
+
+## Maple Highlands: a rail platform (deck top y 0.4) and a train of wagons (4 kits each).
+## World turns the dock and calls set_route(); the export pile and DROP zone are dock-local.
+func _setup_train() -> TruckDock:
+	add_child(Models.make("rail_platform"))
+	MeshMerge.merge(self)
+	pile = ItemStack.new().setup(product, 24, 2, 3, "dock:" + product)
+	pile.position = Vector3(0.6, 0.4, 0)
+	add_child(pile)
+	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + product.to_upper().replace("_", " ") + "S", Color(0.7, 1.0, 0.8))
+	add_child(zone)
+	truck = Node3D.new()
+	truck.name = "Train"
+	truck.add_child(Models.make("train_loco"))
+	add_wagons(int(Balance.EXPORTS.train.wagons))
+	return self
+
+
+## Couples more wagons behind the train (Longer Train). Each wagon carries 4 kits (2 x 2).
+func add_wagons(n: int) -> void:
+	for i in n:
+		var w := Models.make("train_wagon")
+		w.position = Vector3(0, 0, WAGON_FIRST + WAGON_STEP * _wagons)
+		truck.add_child(w)
+		var b := ItemStack.new().setup(product, 4, 2, 2)
+		b.position = Vector3(0, 0.92, 0)
+		w.add_child(b)
+		beds.append(b)
+		_wagons += 1
+	bed = beds[0]
+
+
+## Explicit route (world points) and vehicle yaw; the vehicle reverses out the way it came if
+## end == start.
+func set_route(stop: Vector3, start: Vector3, end: Vector3, yaw: float) -> void:
+	_route_set = true
+	_stop = stop
+	_start = start
+	_end = end
+	_yaw = yaw
 
 
 ## Birch Bend: a pier on the river bank and a barge that sails south to north.
@@ -89,17 +130,21 @@ func _setup_barge(cap: int) -> TruckDock:
 	bed = ItemStack.new().setup(product, cap, 3, 2)
 	bed.position = Vector3(0, 0.49, -0.55)
 	truck.add_child(bed)
+	beds = [bed]
 	return self
 
 
 func _ready() -> void:
 	get_parent().add_child.call_deferred(truck)
+	truck.visible = false
+	if _route_set:
+		return
 	# The barge floats on the river surface (river mesh at y 0.06).
 	var y := 0.06 if vehicle == "barge" else 0.0
 	_stop = Vector3(road_x, y, global_position.z)
 	_start = Vector3(road_x, y, global_position.z + start_dist)
 	_end = Vector3(road_x, y, global_position.z - 45.0)
-	truck.visible = false
+	_yaw = PI if vehicle == "truck" else 0.0
 
 
 func _process(delta: float) -> void:
@@ -112,7 +157,7 @@ func _process(delta: float) -> void:
 				state = State.ARRIVING
 				truck.visible = true
 				truck.global_position = _start
-				truck.rotation.y = PI if vehicle == "truck" else 0.0
+				truck.rotation.y = _yaw
 		State.ARRIVING:
 			truck.global_position = truck.global_position.move_toward(_stop, 9.0 * delta * _ease(_stop))
 			if truck.global_position.distance_to(_stop) < 0.05:
@@ -122,11 +167,13 @@ func _process(delta: float) -> void:
 		State.LOADING:
 			_timer -= delta
 			_wait += delta
-			if _timer <= 0.0 and not pile.is_empty() and not bed.is_full():
+			var open_bed := _open_bed()
+			if _timer <= 0.0 and not pile.is_empty() and open_bed != null:
 				_timer = 0.18
-				pile.transfer_to(bed)
+				pile.transfer_to(open_bed)
 				Sfx.play("wood", -10.0)
-			var ready := bed.is_full() or (not bed.is_empty() and pile.is_empty() and _wait > 4.0)
+			var loaded := _loaded()
+			var ready := open_bed == null or (loaded > 0 and pile.is_empty() and _wait > 4.0)
 			if ready:
 				state = State.LEAVING
 				Sfx.play("bell", -6.0)
@@ -134,8 +181,9 @@ func _process(delta: float) -> void:
 			truck.global_position = truck.global_position.move_toward(_end, 10.0 * delta)
 			if truck.global_position.distance_to(_end) < 0.1:
 				var value := 0
-				while not bed.is_empty():
-					value += Game.price_of(bed.take_and_free())
+				for b in beds:
+					while not b.is_empty():
+						value += Game.price_of(b.take_and_free())
 				Game.add_money(value, region)
 				if region_node:
 					region_node.record(value)
@@ -149,3 +197,18 @@ func _process(delta: float) -> void:
 
 func _ease(target: Vector3) -> float:
 	return clampf(truck.global_position.distance_to(target) / 6.0, 0.15, 1.0)
+
+
+## First bed with room, or null when the vehicle is full.
+func _open_bed() -> ItemStack:
+	for b in beds:
+		if not b.is_full():
+			return b
+	return null
+
+
+func _loaded() -> int:
+	var n := 0
+	for b in beds:
+		n += b.count()
+	return n

@@ -2,6 +2,8 @@ class_name Worker
 extends Walker
 
 ## Hired help. Lumberjacks chop a forest and deliver logs; haulers move items between two spots.
+## A forklift is a hauler that serves several piles (the fullest first) and asks `route` where
+## each load goes (a counter, a build site, an export pile).
 
 enum Job { LUMBERJACK, HAULER }
 
@@ -14,6 +16,10 @@ var dest_pos: Vector3
 var home: Vector3
 ## Valley this worker belongs to (its Crew Coffee level applies).
 var region: int = 1
+## Forklift: [[ItemStack, Vector3 stand point], ...] and route(item, commit) -> [ItemStack, Vector3] or [].
+var sources: Array = []
+var route: Callable
+var forklift: bool = false
 var _target_tree: ChopTree
 var _delivering: bool = false
 var _timer: float = 0.0
@@ -43,9 +49,31 @@ func as_hauler(look: String, s: ItemStack, s_pos: Vector3, d: ItemStack, d_pos: 
 	return self
 
 
+## Forklift hauler (Maple Highlands): its own model, speed and load (Balance.FORKLIFT).
+func as_forklift(rt: Callable, home_pos: Vector3) -> Worker:
+	job = Job.HAULER
+	forklift = true
+	route = rt
+	home = home_pos
+	init_walker("forklift")
+	position = home_pos
+	return self
+
+
+func add_source(s: ItemStack, s_pos: Vector3) -> void:
+	sources.append([s, s_pos])
+
+
 func _process(delta: float) -> void:
 	walk_speed = Game.worker_speed(region)
 	cap = Game.worker_capacity(region)
+	if forklift:
+		walk_speed *= float(Balance.FORKLIFT.speed) / 3.2
+		cap += int(Balance.FORKLIFT.cap) - 6
+		if not stack.is_empty():
+			var d: Dictionary = Items.def(stack.top_type())
+			var layers := maxi(int(float(Balance.FORKLIFT.max_load_h) / float(d.layer)), 1)
+			cap = mini(cap, layers * stack.cols * stack.rows)
 	if job == Job.LUMBERJACK:
 		_lumberjack(delta)
 	else:
@@ -61,6 +89,12 @@ func _deliver(delta: float) -> void:
 			if not stack.transfer_to(dest):
 				if stack.is_empty():
 					_delivering = false
+				elif forklift:
+					# The drop filled up on the way (a build site finished): ask for another one.
+					var r: Array = route.call(stack.top_type(), true)
+					if not r.is_empty() and r[0] != dest:
+						dest = r[0]
+						dest_pos = r[1]
 			else:
 				Sfx.play("wood", -16.0)
 			if stack.is_empty():
@@ -120,6 +154,9 @@ func _hauler(delta: float) -> void:
 	if _delivering:
 		_deliver(delta)
 		return
+	if forklift and not _pick_source():
+		step_to(home, delta, 0.3)
+		return
 	if step_to(source_pos, delta, 0.3):
 		_timer -= delta
 		if _timer > 0.0:
@@ -133,5 +170,36 @@ func _hauler(delta: float) -> void:
 			_wait += 0.09
 		# Head off when full, or when holding something and the pile has been empty a moment.
 		if stack.count() >= cap or (not stack.is_empty() and _wait > 1.2):
+			if forklift:
+				var r: Array = route.call(stack.top_type(), true)
+				if r.is_empty():
+					return
+				dest = r[0]
+				dest_pos = r[1]
+				source = null
 			_delivering = true
 			_wait = 0.0
+
+
+## Forklift: keep the current pile while loading; otherwise take the fullest pile whose items
+## have somewhere to go. False when there is nothing to move.
+func _pick_source() -> bool:
+	if source != null and (not stack.is_empty() or not source.is_empty()):
+		return true
+	source = null
+	var best := 0
+	for sp in sources:
+		var s: ItemStack = sp[0]
+		if s.is_empty():
+			continue
+		var r: Array = route.call(s.item_type, false)
+		if r.is_empty():
+			continue
+		# A pile whose items a build site is waiting for counts as fuller, so belts that keep a
+		# pile low do not starve the houses of that item.
+		var score := s.count() + (12 if (r[0] as Node).get_parent() is BuildSite else 0)
+		if score > best:
+			best = score
+			source = s
+			source_pos = sp[1]
+	return source != null

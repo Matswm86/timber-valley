@@ -1,5 +1,7 @@
 # Timber Valley pacing sim (my calc)
 
+> **Superseded for Valleys 2-6 on 2026-10-01** by `rebalance_2026-10-01.md` and `rebalance_sim.py` (costs derived from measured income). Valley 1 numbers here still stand, except the modeled V1 end income: measured is 95 $/s at max upgrades, not 149.
+
 Model, not measurement. Simplification: the model lets the extended global upgrades (capacity_x, speed_x, axe_x) be bought from the start instead of from the Riverside Office; effect on Valley 1 time is under 1 minute. Income per unlock is estimated from the code rates (cycle times, worker speed/capacity, prices) with about 0.6-0.7 utilisation. Replace the estimates with bot-measured rates after each milestone (GDD section 11). Run: save both blocks as `sim.py` and `regions.py` in one folder, then `python3 regions.py`.
 
 ## Output

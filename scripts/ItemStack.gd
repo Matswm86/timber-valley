@@ -14,6 +14,8 @@ var rows: int = 2
 var persist_id: String = ""
 var fly_time: float = 0.28
 var items: Array[Node3D] = []
+## Landed items are drawn by someone else (a market draws all its shoppers' bags together).
+var external_draw: bool = false
 ## item type -> MultiMeshInstance3D drawing the landed items of that type.
 var _mm: Dictionary = {}
 var _dirty: bool = false
@@ -179,7 +181,7 @@ func _mark_dirty() -> void:
 
 func _rebuild() -> void:
 	_dirty = false
-	if not is_inside_tree():
+	if not is_inside_tree() or external_draw:
 		return
 	var by_type := {}
 	for it in items:
@@ -193,6 +195,10 @@ func _rebuild() -> void:
 			(_mm[t] as MultiMeshInstance3D).multimesh.instance_count = 0
 	for t in by_type:
 		var list: Array = by_type[t]
+		# Heavy items (cabin kits) draw a capped tower; the bottom layers stay, the count is real.
+		var cap := int(Items.def(t).get("max_drawn", 0))
+		if cap > 0 and list.size() > cap:
+			list = list.slice(0, cap)
 		var mmi: MultiMeshInstance3D = _mm.get(t)
 		if mmi == null:
 			mmi = MultiMeshInstance3D.new()

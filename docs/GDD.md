@@ -4,6 +4,11 @@ Status: design for the "last longer" expansion, written 2026-09-30 on branch `lo
 Owner: game-designer. Builder: godot-android-dev. Data: `docs/balance/unlocks_regions.csv`
 (every new pad) and `docs/balance/pacing_sim.md` (the pacing model and its output).
 
+**Costs after Valley 1 were rebalanced on 2026-10-01** from measured income (Mats found
+Valleys 2+ too expensive): see `docs/balance/rebalance_2026-10-01.md` and
+`docs/balance/rebalance_sim.py`. Where this doc and `pacing_sim.md` disagree on a cost, the
+rebalance wins.
+
 Numbers tagged **(my calc)** come from the pacing model in `docs/balance/pacing_sim.md`, not
 from play. The model estimates income per purchase from the code rates (cycle times, worker
 speed and carry, prices) at 60-70% use. Section 11 says how to replace the estimates with
@@ -107,6 +112,10 @@ Oiled Machines 90 (5), Coffee Break 120 (5), Reputation 150 (5). All levels toge
   (70% efficiency) in **about 24 minutes** (my calc). A purchase comes every 13 s on median
   and the longest wait is 0.6 min. By the end, income is about $150/s (about $9k/min), so the
   $6,000 Lodge takes under a minute.
+- **Correction (2026-10-01, measured):** a headless probe of the finished valley earns
+  **29 $/s** with no upgrades, **67 $/s** at the capture-bot levels and **95 $/s** with every
+  global upgrade at max, not $150/s. The model's V1 time is unchanged (Mats liked the pace),
+  but every later cost now comes from the measured rate.
 - Verdict: **20-25 minutes of content.** The pace is good, but it stops just when the
   automation becomes satisfying to watch.
 
@@ -114,28 +123,34 @@ Oiled Machines 90 (5), Coffee Break 120 (5), Reputation 150 (5). All levels toge
 
 ## 5. Target
 
-| Metric | Target | Model result (my calc) |
+Revised 2026-10-01 after Mats played Valley 2 on his phone (prices too high). Targets are for
+a **casual phone player**. Valley 1 is unchanged.
+
+| Metric | Target (Mats, 2026-10-01) | Rebalance result, casual (my calc) |
 |---|---|---|
-| Total to finish | 6-10 h | **5.9 h attentive, 8.5 h casual** |
-| Session | 10-20 min | One or two pads per session late game, one valley stage early |
-| Wait between purchases (median) | under 3 min | 13 s (V1), 66 s (V2), 110 s (V3), 137 s (V4), 167 s (V5) |
-| Longest wait | under 12 min, only for landmarks | 10.4 min (V5 Observatory) |
+| Valley 2 | about 30-40 min | **35 min** (attentive 31) |
+| Valleys 3-4 | rising gently | **44 min, 53 min** |
+| Valley 5 | about 60-75 min | **63 min** (attentive 61) |
+| Wait between purchases (median) | about 1-3 min | 0.5 min (V2), 1.2 (V3), 1.4 (V4), 2.0 (V5); pad to pad 1.6 / 1.8 / 2.0 / 3.1 |
+| Longest single wait | about 5 min, landmarks included | 4.5 min (Lighthouse, Observatory) |
+| First pads in a new valley | affordable 1-2 min after arriving | gateway 0.7-2.1 min, then first machine 0.9-1.6 min |
+| Total to finish | (was 6-10 h) | **about 3.7 h**: V1 about 24 min + 3.3 h after the Lodge (open question for Mats) |
 
-Pacing curve (attentive player, my calc):
+Pacing curve (casual player, my calc; V1-V3 income measured by the headless probe, V4-V5
+modeled):
 
-| Valley | Minutes | Hours total | Income at end | Purchases incl. upgrades |
+| Valley | Minutes | Hours after the Lodge | Automated income at end | Purchases incl. upgrades |
 |---|---:|---:|---:|---:|
-| 1 Home Valley (today) | 17 | 0.3 | $150/s | 58 |
-| 2 Birch Bend | 50 | 1.1 | $500/s | 39 |
-| 3 Maple Highlands | 70 | 2.3 | $1,300/s | 34 |
-| 4 Redwood Coast | 90 | 3.8 | $3,250/s | 35 |
-| 5 Frost Peaks | 110 | 5.6 | $6,500/s | 33 |
-| Grand Timber Station | 20 | 5.9 | - | 1 |
+| 1 Home Valley (unchanged) | about 24 | - | 95 $/s at max upgrades (measured) | 58 |
+| 2 Birch Bend | 35 | 0.58 | 363 $/s | 54 |
+| 3 Maple Highlands | 44 | 1.32 | 1,192 $/s | 34 |
+| 4 Redwood Coast | 53 | 2.20 | 2,895 $/s | 33 |
+| 5 Frost Peaks | 63 | 3.25 | 5,865 $/s | 28 |
+| Grand Timber Station | 4 (plus goods) | 3.32 | - | 1 |
 
-Income by play time (my calc): 5 min $7/s, 15 min $92/s, 30 min $233/s, 1 h $1.0k/s,
-2 h $3.5k/s, 4 h $13.7k/s, 6 h $27k/s. Growth is about x3 per valley and each valley takes
-about 20 minutes longer than the one before. The first purchases in a new valley add about
-8-15% to total income, enough to feel.
+Before the rebalance, the old prices at the measured income gave V2 2.0 h, V3 4.2 h, V4 5.7 h
+and V5 6.9 h, with landmark waits of 9-40 min (my calc). Income grows x2-3.3 per valley
+now; prices follow income instead of a fixed per-valley scale.
 
 ---
 
@@ -198,7 +213,7 @@ so build sites are new in Valley 3 and nowhere earlier.
 | broadleaf | 1 | 3 | 3 | 7 s | 1.0 | exists |
 | pine | 1 | 4 | 4 | 7 s | 1.0 | exists |
 | birch | 2 | 4 | 4 | 8 s | 1.0 | white trunk, light green blob |
-| maple | 3 | 5 | 5 | 9 s | 1.1 | red/orange canopy (`tree_*_fall` models work as stand-ins) |
+| maple | 3 | 5 | 5 | 9 s | 1.1 (maple C 1.0) | red/orange canopy (`tree_*_fall` models work as stand-ins) |
 | redwood | 4 | 8 | 7 | 14 s | 1.6, collision radius 0.45 | red-brown trunk, tall dark canopy |
 | frost fir | 5 | 6 | 6 | 12 s | 1.15 | snow-capped cone |
 
@@ -303,7 +318,7 @@ Build recipes (money slot = the CSV cost):
 | Ship (r4_slipway, r4_slipway2), repeatable | 60 timber, 80 deckboard, 3 mast; launch pays **$14,000** base |
 | Lighthouse (r4_lighthouse) | 200 timber, 150 deckboard, 10 mast |
 | Summit Observatory (r5_observatory) | 200 dry_lumber, 60 skis, 20 sled, 10 guitar |
-| Grand Timber Station (cap_station) | $25,000,000 plus five platform slots (7.7) |
+| Grand Timber Station (cap_station) | $1,500,000 plus five platform slots (7.7) |
 
 **C. Cargo orders (Valley 4 on).** An Order Board by the harbour pier.
 - A cargo ship docks with a manifest of 2-3 lines drawn from the valley's sellable items.
@@ -332,7 +347,7 @@ and no menu. Stops: V1 (-7, 12), V2 (-34, 8), V3 (4, -56), V4 (26, 10), V5 (46, 
 ### 7.7 Capstone: Grand Timber Station
 - The pad appears when the Observatory is done, at (0, -52) on the rail line between Valley 1
   and Valley 3.
-- It is a build site with a $25M money slot and five **platform slots**, one in each valley
+- It is a build site with a $1.5M money slot and five **platform slots**, one in each valley
   next to its handcar stop:
 
   | Platform | Needs |
@@ -364,10 +379,15 @@ base x 1.8^level, max 5 levels each.
 
 | Valley | Sharp Saws (+25% machine speed) | Crew Coffee (+15% worker speed, +2 carry) | Local Fame (+10% prices and shoppers) |
 |---|---:|---:|---:|
-| 2 | 8,000 | 11,000 | 13,000 |
-| 3 | 50,000 | 65,000 | 80,000 |
-| 4 | 160,000 | 210,000 | 270,000 |
-| 5 | 510,000 | 680,000 | 850,000 |
+| 2 | 2,200 | 1,400 | 3,400 |
+| 3 | 13,000 | 8,000 | 19,000 |
+| 4 | 51,000 | 32,000 | 77,000 |
+| 5 | 180,000 | 120,000 | 280,000 |
+| Measured income gain per level (V2, my calc fit) | +6% | +1.5% | +9% |
+
+Rebalanced 2026-10-01: base = gateway cost x 0.8 (saws), 0.5 (crew), 1.2 (fame). Crew
+Coffee is the cheapest because it does the least (see `docs/balance/rebalance_2026-10-01.md`
+section 5).
 
 ### 7.9 Markets, shoppers and exports
 
@@ -396,9 +416,15 @@ base x 1.8^level, max 5 levels each.
 ## 8. Economy (for `scripts/Balance.gd`)
 
 Every pad for Valleys 2-6 (id, title, cost, requirements, pad position, kind, modelled
-income, effect) is in **`docs/balance/unlocks_regions.csv`** (81 rows). Costs come from the
-pacing model, scaled per valley to hit the section 5 targets and rounded to 2 significant
-figures. Valley totals: V2 $1.16M, V3 $9.1M, V4 $32.5M, V5 $90.7M, Station $25M plus goods.
+income, effect) is in **`docs/balance/unlocks_regions.csv`** (81 rows). **Rebalanced
+2026-10-01** (`docs/balance/rebalance_2026-10-01.md`): each cost = income when the player
+reaches the pad x a target wait (about 1 min at the gate, 2 min late in the valley, 3-4.5
+min for landmarks), with V1-V3 income measured by a headless probe and V4-V5 modeled. Costs
+are rounded to 2 significant figures. Valley totals (pads): V2 $288K (was $1.16M), V3 $1.51M
+(was $9.1M), V4 $4.56M (was $32.5M), V5 $12.7M (was $90.7M), Station $1.5M plus goods (was
+$25M). The CSV columns `auto_income_base_per_s` and `hand_income_base_per_s` now hold the
+rebalance model's $/s added per pad (measured automation for V2-V3, modeled for V4-V5;
+attentive hand income).
 Pad positions are world coordinates. Nudge any of them up to 3 m to clear paths; keep the
 order and the costs.
 
@@ -454,12 +480,12 @@ const RENT_PER_HOUSE := 15            # $/s base, x Local Fame
 const SHIP_REWARD := 14000
 const SHIP_MIN_INTERVAL := 45.0
 const ORDER := {"lines_min": 2, "lines_max": 3, "base_qty": 10, "qty_per_order": 4, "qty_cap": 60, "pay_mult": 1.6, "gap_s": 15.0}
-# region upgrades: base cost per valley, growth 1.8, max 5
+# region upgrades: base cost per valley, growth 1.8, max 5 (rebalance 2026-10-01)
 const REGION_UPGRADES := {
-	2: {"saws": 8000, "crew": 11000, "fame": 13000},
-	3: {"saws": 50000, "crew": 65000, "fame": 80000},
-	4: {"saws": 160000, "crew": 210000, "fame": 270000},
-	5: {"saws": 510000, "crew": 680000, "fame": 850000},
+	2: {"saws": 2200, "crew": 1400, "fame": 3400},
+	3: {"saws": 13000, "crew": 8000, "fame": 19000},
+	4: {"saws": 51000, "crew": 32000, "fame": 77000},
+	5: {"saws": 180000, "crew": 120000, "fame": 280000},
 }
 const REGION_UPGRADE_GROWTH := 1.8
 const GLOBAL_EXT := {"capacity": [2500, 4], "speed": [3000, 2], "axe": [2000, 3]}  # [base, extra levels], growth 1.75
@@ -467,7 +493,7 @@ const CUSTOMERS_PER_REGION := 20
 ```
 
 ### 8.3 Money display
-Money passes $1M in Valley 3. Show `$999`, `$12.5K`, `$3.40M`, `$1.20B` (3 significant
+Money passes $1M in Valley 5 (pad prices reach $1.6M there). Show `$999`, `$12.5K`, `$3.40M`, `$1.20B` (3 significant
 figures) in the money pill, pad prices, float texts and toasts. `Game.money` stays an int
 (64-bit in GDScript, no overflow).
 
@@ -656,6 +682,36 @@ permissions unless needed (open question 4).
 - All `r3_*` pads, 5 village houses with rent, and the Clock Tower.
 - Done when houses fill from carriers and the player, rent keeps paying while the valley
   sleeps, and the handcar tiles work.
+- **M2 layout as built (2026-10-01, branch `v3-m2`).** Positions are in `Balance.gd` and
+  `World.gd` (`V3_*`); pad moves are also in `unlocks_regions.csv`.
+  - **Train platform (designer flag a):** at the CSV spot (13, -100) an unturned platform put
+    the track on the road (x 16.5). The platform now stands at (9.5, -101.5) turned 90 deg, so
+    the track runs east-west along z = -105, north of the road end, from a buffer stop at x = 1
+    into the east forest. The train arrives from the east and backs out the same way. The
+    r3_rail pad stays at (13, -100); r3_rail2 moved from (15, -106) (on the track) to (15, -102).
+  - **Maple C (flag b):** `tree_mapleC` uses scale 1.0, not 1.1 (`Balance.TREE_SCALE_OVERRIDE`);
+    maples A and B keep 1.1.
+  - **Plazas (flag c):** beam saw, planer, kit factory, train platform, office, market, handcar
+    stop and Clock Tower each stand on a dirt plaza.
+  - **Kit piles (flag d):** a pile draws at most 12 cabin kits (`Balance.KIT_PILE_DRAWN`, about
+    8.7k tris); the pile keeps its real count. The forklift carries at most 2.4 m of kits.
+  - **Pad nudges:** r3_gate pad (0, -50) -> (0, -42.4) on the Home Valley side of the gate (like
+    the bridge pad); beam saw (2, -64) -> (2.5, -64.5); office (8, -56) -> (6.5, -59.5), so its
+    door square is inside the valley wall at z = -55; jack1 (-4, -62) -> (-2, -61.2), off Grove 1;
+    forklift (6, -68) -> (6, -69); planer (2, -78) -> (2.5, -78). Builders' Yard (10, -62) ->
+    (11.5, -66), clear of the office.
+  - **Groves:** Grove 1 (-7, -65) 3x3, Grove 2 (-8, -72) 3x2, North Grove (-7, -101) 4x3, Ridge
+    Grove (2, -114) 4x2.
+  - **Handcar stops:** V1 (-7, 12) -> (-8.5, 11.2), V2 (-34, 8) -> (-35.6, 3.4) (the Riverside
+    Office stands at (-34, 10)), V3 (4, -56) -> (-6, -57.8), west of the gate road. Tiles are
+    3.4 m apart so the valley names fit beside each other.
+  - **Gate:** the Highland Gate model stands in the Home Valley palisade at (0, -46.6) with a
+    2.8 m corridor through the border forest to the Highlands wall at z = -55.
+  - **Carriers into houses:** the forklift serves the beam saw, planer and kit factory piles
+    (fullest first) and alternates each load between its counter/the train platform and the
+    first house that still needs that item. The player can fill any slot square.
+  - **Rent** is paid by World every second whether the Highlands are awake or not, and counts
+    toward offline earnings (50%, 2 h cap) together with the ledger.
 
 **M3: Redwood Coast.**
 - Redwood trees, skidder, road crossing, and the harbour pier with boat shoppers.
@@ -708,6 +764,13 @@ Art needed per milestone goes to the graphic-designer (models_v3 pipeline):
 7. **After the ending:** is "keep playing with orders and ships" enough, or do you want a
    post-game loop (for example a golden-axe replay of Valley 1 at 10x prices)? Not designed
    here, on purpose.
+8. **Length after the 2026-10-01 rebalance:** the new valley times (V2 35 min up to V5 63
+   min) make the game about 3.7 h for a casual player, down from the 6-10 h target in
+   question 2. Keep it, or push V4/V5 to the top of the 60-75 min band?
+9. **r3_jack2 lowers income** (143 to 90 $/s, measured) until r3_belt_bp is bought: the one
+   forklift splits its trips. Reorder (jack2 after belt_bp) or change the forklift?
+10. **r2_jack3 (Forester Camp) adds no income** until Sharp Saws is upgraded (measured):
+    keep it, move it later, or give it a real effect?
 
 ## Decisions (Mats, 2026-09-30)
 - First release: all 5 valleys plus the Grand Timber Station (M1-M6), not a 3-valley cut.
