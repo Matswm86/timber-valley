@@ -59,10 +59,10 @@ func rebuild() -> void:
 	_cells.clear()
 	var inv := global_transform.affine_inverse()
 	var groups := {}
-	for r in _roots.duplicate():
-		if not is_instance_valid(r) or not r.is_inside_tree():
-			_roots.erase(r)
-			continue
+	for i in range(_roots.size() - 1, -1, -1):
+		if not is_instance_valid(_roots[i]) or not _roots[i].is_inside_tree():
+			_roots.remove_at(i)
+	for r in _roots:
 		for n in r.find_children("*", "MeshInstance3D", true, false):
 			var mi := n as MeshInstance3D
 			if mi.mesh == null or not mi.has_meta("merged") or mi.get_parent() != r:

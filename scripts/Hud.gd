@@ -36,6 +36,8 @@ var joy_base: Control
 var carry_pill: PanelContainer
 var carry_icon: TextureRect
 var carry_label: Label
+## Bottom-corner button that throws the whole carried stack away (only while carrying).
+var drop_btn: Button
 var _carry_key: String = ""
 var joy_knob: Control
 var _shown_money: float = 0.0
@@ -45,6 +47,7 @@ var _toast_tween: Tween
 ## Full-screen fade for handcar rides.
 var _fade: ColorRect
 var _fading: bool = false
+var _covered: bool = false
 const JOY_RADIUS := 110.0
 
 
@@ -165,6 +168,18 @@ func _build_top(root: Control) -> void:
 	toast_pill.add_child(toast_label)
 	toast_pill.modulate.a = 0.0
 	_build_carry(root)
+	drop_btn = _button("DROP", Color(0.72, 0.36, 0.28, 0.92), 38)
+	drop_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	# 170 px square (well over 48 dp at 1080 wide), clear of the bottom edge gesture bar.
+	drop_btn.offset_left = -210
+	drop_btn.offset_top = -330
+	drop_btn.offset_right = -40
+	drop_btn.offset_bottom = -160
+	drop_btn.visible = false
+	drop_btn.pressed.connect(func() -> void:
+		if Game.player and Game.player.has_method("dump"):
+			Game.player.dump())
+	root.add_child(drop_btn)
 	var menu_btn := _button("Menu", Color(0.25, 0.3, 0.22, 0.85), 34)
 	menu_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	menu_btn.offset_left = -190
@@ -214,6 +229,7 @@ func _update_carry() -> void:
 		return
 	_carry_key = key
 	carry_pill.visible = n > 0
+	drop_btn.visible = n > 0
 	if n == 0:
 		return
 	carry_icon.texture = Models.hud_icon(t)
@@ -244,6 +260,9 @@ func _build_joystick(root: Control) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
+		# A tap on the DROP button must not also start the joystick.
+		if t.pressed and drop_btn.visible and drop_btn.get_global_rect().has_point(t.position):
+			return
 		if t.pressed and _touch_index == -1:
 			_touch_index = t.index
 			_joy_origin = t.position
@@ -312,7 +331,7 @@ func _build_board(board: int) -> void:
 	upgrade_rows.clear()
 	for c in _up_list.get_children():
 		c.queue_free()
-	_up_title.text = {1: "Upgrades", 2: "Riverside Office", 3: "Highland Office"}.get(board, "Upgrades")
+	_up_title.text = {1: "Upgrades", 2: "Riverside Office", 3: "Highland Office", 4: "Harbor Office", 5: "Mountain Office"}.get(board, "Upgrades")
 	var specs: Array = []
 	if board == 1:
 		for id in Game.UPGRADES:
@@ -387,6 +406,7 @@ func open_upgrades(board: int = 1) -> void:
 	_refresh_upgrades()
 	Sfx.play("open", -4.0)
 	upgrades_panel.visible = true
+	_cover()
 	upgrades_panel.pivot_offset = upgrades_panel.size * Vector2(0.5, 1.0)
 	upgrades_panel.scale = Vector2(0.9, 0.9)
 	create_tween().tween_property(upgrades_panel, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK)
@@ -394,6 +414,16 @@ func open_upgrades(board: int = 1) -> void:
 
 func close_upgrades() -> void:
 	upgrades_panel.visible = false
+	_cover()
+
+
+## Tells World whether a big panel covers the screen (it skips the shadow pass meanwhile).
+## Also checked every frame, so a panel hidden any other way restores the shadows.
+func _cover() -> void:
+	var on := upgrades_panel.visible or valley_card.visible or finish_panel.visible
+	if on != _covered and Game.world and Game.world.has_method("set_ui_cover"):
+		_covered = on
+		Game.world.set_ui_cover(on)
 
 
 func _build_menu(root: Control) -> void:
@@ -460,7 +490,7 @@ func _build_finish(root: Control) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 22)
 	finish_panel.add_child(v)
-	var t := _label("The Grand Lodge is built!", 52, GREEN)
+	var t := _label("The Grand Timber Station is open!", 52, GREEN)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(t)
@@ -469,9 +499,11 @@ func _build_finish(root: Control) -> void:
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(body)
-	var keep := _button("Keep relaxing", GREEN, 42)
+	var keep := _button("Keep playing", GREEN, 42)
 	keep.custom_minimum_size.y = 110
-	keep.pressed.connect(func() -> void: finish_panel.visible = false)
+	keep.pressed.connect(func() -> void:
+		finish_panel.visible = false
+		_cover())
 	v.add_child(keep)
 
 
@@ -512,6 +544,7 @@ func show_valley_card(region: int, next_line: String) -> void:
 	(valley_card.find_child("Title", true, false) as Label).text = "%s complete!" % str(Balance.REGIONS[region].name)
 	(valley_card.find_child("Body", true, false) as Label).text = "Time here: %s\nEarned here: %s\n\n%s" % [when, Game.fmt(int(st.get("earned", 0))), next_line]
 	valley_card.visible = true
+	_cover()
 	Sfx.play("upgrade", 0.0)
 	get_tree().create_timer(0.35).timeout.connect(func() -> void: Sfx.play("upgrade", 0.0))
 
@@ -520,6 +553,7 @@ func close_valley_card() -> void:
 	if not valley_card.visible:
 		return
 	valley_card.visible = false
+	_cover()
 	valley_card_closed.emit()
 
 
@@ -548,8 +582,12 @@ func set_valley(text: String) -> void:
 
 func show_finish() -> void:
 	var body: Label = finish_panel.find_child("Body", true, false)
-	body.text = "Timber Valley is complete.\nYou earned %s in total.\n\nYour workers keep going, so feel free to stay and chop a few trees." % Game.fmt(Game.total_earned)
+	var secs := 0
+	for k in Game.region_stats:
+		secs += int(float(Game.region_stats[k].get("time", 0.0)))
+	body.text = "All five valleys are connected.\nYou earned %s in %dh %02dm.\n\nOrders and ships keep running, so feel free to stay." % [Game.fmt(Game.total_earned), secs / 3600, (secs / 60) % 60]
 	finish_panel.visible = true
+	_cover()
 	Sfx.play("upgrade", 0.0)
 
 
@@ -586,6 +624,7 @@ func _process(delta: float) -> void:
 		_shown_money = target
 	_update_money_text()
 	_update_carry()
+	_cover()
 
 
 func _update_money_text() -> void:

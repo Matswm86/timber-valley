@@ -38,16 +38,21 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 	regrow_time = float(d.regrow)
 	hp = hits_needed
 	var paths: Array = []
+	var tint := Color.WHITE
 	if kind == "birch":
 		paths = Models.PATHS.birch_trees
 	elif kind == "maple":
 		paths = Models.PATHS.maple_trees
+	elif kind == "redwood" or kind == "frost":
+		var key := "redwood_trees" if kind == "redwood" else "frost_trees"
+		paths = Models.paths(key)
+		tint = Models.tint_of(key)
 	else:
 		for m in (MODELS if kind == "pine" else BROADLEAF):
 			paths.append("res://assets/models_v3/nature/%s.glb" % m)
 	var mpath: String = paths[rng.randi() % paths.size()]
 	_tree = Node3D.new()
-	var inst: Node3D = load(mpath).instantiate()
+	var inst: Node3D = Models.make_path(mpath, tint)
 	var model_name := mpath.get_file().get_basename()
 	var kind_scale := float(Balance.TREE_SCALE_OVERRIDE.get(model_name, d.scale))
 	var s := rng.randf_range(2.3, 2.8) * (1.15 if kind == "pine" else 1.0) * kind_scale
@@ -55,7 +60,8 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 	inst.rotation.y = rng.randf() * TAU
 	_tree.add_child(inst)
 	add_child(_tree)
-	_stump = Models.make("birch_stump" if kind == "birch" else ("maple_stump" if kind == "maple" else "default_stump"))
+	var stumps := {"birch": "birch_stump", "maple": "maple_stump", "redwood": "redwood_stump", "frost": "frost_stump"}
+	_stump = Models.make(str(stumps.get(kind, "default_stump")))
 	_stump.scale = Vector3.ONE * 2.2
 	_stump.visible = false
 	add_child(_stump)
@@ -64,7 +70,7 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 	var body := StaticBody3D.new()
 	var col := CollisionShape3D.new()
 	var cyl := CylinderShape3D.new()
-	cyl.radius = 0.22
+	cyl.radius = float(Balance.TREE_RADIUS.get(kind, 0.22))
 	cyl.height = 2.0
 	col.shape = cyl
 	col.position.y = 1.0
@@ -81,6 +87,10 @@ func setup(tree_kind: String, rng: RandomNumberGenerator) -> ChopTree:
 		leaf = Color(0.64, 0.82, 0.34)
 	elif kind == "maple":
 		leaf = Color(0.93, 0.54, 0.17)
+	elif kind == "redwood":
+		leaf = Color(0.22, 0.42, 0.24)
+	elif kind == "frost":
+		leaf = Color(0.92, 0.96, 1.0)
 	_leaves = _make_particles(leaf, 0.12, 10)
 	_leaves.position.y = 2.2
 	_leaves.gravity = Vector3(0, -2.5, 0)

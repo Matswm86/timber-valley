@@ -13,12 +13,18 @@ var cap: int = 6
 
 
 func init_walker(model_name: String) -> void:
-	if model_name == "forklift":
-		model = ForkliftModel.new().setup_forklift()
+	if model_name == "forklift" or model_name.begins_with("vehicle:"):
+		# Vehicles (forklift, skidder, snowcat) carry on the forks: same anchor for all.
+		model = ForkliftModel.new().setup_forklift(model_name.trim_prefix("vehicle:") if model_name != "forklift" else "forklift")
 		add_child(model)
 		# Loads sit on the fork tines (ASSETS_M2.md 1.3), two items side by side.
 		stack = ItemStack.new().setup("", 999, 1, 2)
 		stack.position = Vector3(0, 0.2, 1.05)
+		# Log skidder: logs ride on the bunk at the back (ASSETS_M3.md 1.3).
+		if model_name == "vehicle:skidder":
+			stack.position = Vector3(0, 1.04, -1.2)
+		elif model_name == "vehicle:snowcat":
+			stack.position = Vector3(0, 1.05, -0.75)
 	else:
 		model = CharacterModel.new().setup(model_name)
 		add_child(model)

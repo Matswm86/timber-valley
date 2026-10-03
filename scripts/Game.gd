@@ -8,8 +8,8 @@ signal upgraded(id: String, level: int)
 
 const SAVE_PATH := "user://save.json"
 ## 1 = original single-valley save (no "version" key), 2 = M1 (valleys, ledger, offline),
-## 3 = M2 (build sites).
-const SAVE_VERSION := 3
+## 3 = M2 (build sites), 4 = M3-M5 (cargo orders, Grand Timber Station finished).
+const SAVE_VERSION := 4
 
 const PRICES := Balance.PRICES
 const UPGRADES := Balance.UPGRADES
@@ -26,6 +26,10 @@ var ledger: Dictionary = {}
 var region_stats: Dictionary = {}
 ## Build sites: "r3_house1": {"beam": 30, "floorboard": 12} goods delivered so far.
 var sites: Dictionary = {}
+## Cargo order in progress (Redwood Coast): {"n": order number, "lines": {"timber": [need, have]}}.
+var orders: Dictionary = {}
+## The Grand Timber Station is finished and the finish panel was shown (it does not reopen).
+var complete: bool = false
 ## Offline earnings waiting as a coin pile at the Valley 1 office.
 var offline_pending: int = 0
 var pile_counts: Dictionary = {}
@@ -270,6 +274,8 @@ func save_game() -> void:
 		"region_stats": region_stats,
 		"offline_pending": offline_pending,
 		"sites": sites,
+		"orders": orders,
+		"complete": complete,
 		"saved_at": int(Time.get_unix_time_from_system()),
 		"piles": piles,
 		"finished": finished,
@@ -333,6 +339,15 @@ func apply_save(data: Dictionary) -> void:
 		for item in (sd[k] as Dictionary):
 			d[str(item)] = int(sd[k][item])
 		sites[str(k)] = d
+	orders = {}
+	var od: Dictionary = data.get("orders", {})
+	if od.has("lines"):
+		var lines := {}
+		for item in (od.lines as Dictionary):
+			var l: Array = od.lines[item]
+			lines[str(item)] = [int(l[0]), int(l[1])]
+		orders = {"n": int(od.get("n", 0)), "lines": lines}
+	complete = bool(data.get("complete", false))
 	pile_counts = data.get("piles", {})
 	# Old saves: finished = true means the Lodge is done; the finish panel does not reopen.
 	finished = bool(data.get("finished", false))
@@ -369,6 +384,8 @@ func reset_game() -> void:
 	region_stats.clear()
 	offline_pending = 0
 	sites.clear()
+	orders.clear()
+	complete = false
 	_piles.clear()
 	finished = false
 	for k in UPGRADES:

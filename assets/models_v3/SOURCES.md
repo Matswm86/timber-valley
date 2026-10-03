@@ -240,3 +240,156 @@ Placement: `assets/models_v3/ASSETS_M2.md`.
 | `assets/icons/{maple_log,beam,floorboard,cabin_kit}{,_128,_64}.png` | Rendered from the item GLBs (tools/lookdev/make_icons_m2.py) | CC0 (released with this repo) | - | - |
 | `assets/textures/ground/grass_maple.png` | Own procedural Blender material (tools/lookdev/make_ground_m2.py) | CC0 (released with this repo) | - | 512x512 |
 | `assets/textures/imposters/border_trees_atlas_m2.png` | Rendered from `maple/*_far.glb` + `nature/tree_pineTallB_detailed_far.glb` (tools/lookdev/make_imposters_m2.py) | CC0 (released with this repo) | 2 per card | 1024x1024 |
+
+## M3 Redwood Coast (models_v3/redwood, models_v3/items), icons, ground, imposters (2026-10-01)
+
+Own work from Blender primitives in `tools/lookdev/build_m3.py` (helpers `tools/lookdev/m345_lib.py`), released CC0 with
+the repo. No third-party asset inside. `redwood/forklift_navy.glb`, `handcar_navy.glb` and `handcar_stop_navy.glb` are
+the M2 builders (`build_m2.py`, own work) with the accent colour swapped.
+Exception: cells 12-15 of the imposter atlas render `nature/tree_pineTallB_detailed_far.glb` (own pine, CC0).
+Placement: `assets/models_v3/ASSETS_M3.md`.
+
+| File | Source | Licence | Tris | Texture |
+|---|---|---|---|---|
+| `redwood/tree_redwoodA.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 642 | 512x512 |
+| `redwood/tree_redwoodA_far.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 173 | 256x256 |
+| `items/item_mast.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 308 | 256x256 |
+| `redwood/cargo_ship.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1740 | 512x512 |
+| `redwood/ship_hull.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 2412 (stage1 914, stage2 248, stage3 656, stage4 594) | 512x512 |
+| `redwood/lighthouse.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 2012 (stage1 520, stage2 232, stage3 212, stage4 152, stage5 604, stage6 292) | 512x512 |
+| `redwood/tree_redwoodB.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 642 | 512x512 |
+| `redwood/tree_redwoodC.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 598 | 512x512 |
+| `redwood/tree_redwoodB_far.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 173 | 256x256 |
+| `redwood/tree_redwoodC_far.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 173 | 256x256 |
+| `redwood/stump_redwood.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 374 | 256x256 |
+| `redwood/log_stack_redwood.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 580 | 256x256 |
+| `redwood/dune_grass.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 186 | 128x128 |
+| `redwood/driftwood.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 63 | 128x128 |
+| `redwood/beach_rock.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 100 | 256x256 |
+| `items/item_red_log.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 140 | 256x256 |
+| `items/item_timber.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 120 | 256x256 |
+| `items/item_deckboard.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 80 | 128x128 |
+| `redwood/redwood_mill.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1248 | 512x512 |
+| `redwood/redwood_mill_blade.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 516 | 128x128 |
+| `redwood/deck_saw.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1048 | 512x512 |
+| `redwood/deck_saw_gang.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 708 | 128x128 |
+| `redwood/mast_lathe.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1176 | 512x512 |
+| `redwood/mast_lathe_log.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 220 | 256x256 |
+| `redwood/log_skidder.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1624 | 256x256 |
+| `redwood/forklift_navy.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 928 | 256x256 |
+| `redwood/fishing_boat.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 592 | 256x256 |
+| `redwood/pier_straight_4m.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 896 | 256x256 |
+| `redwood/pier_end.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1668 | 256x256 |
+| `redwood/order_board.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 504 | 256x256 |
+| `redwood/dock_crane.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 140 | 128x128 |
+| `redwood/dock_crane_jib.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 312 | 256x256 |
+| `redwood/slipway.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1484 | 512x512 |
+| `redwood/harbor_office.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1028 | 512x512 |
+| `redwood/market_canopy_navy.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 1424 | 256x256 |
+| `redwood/crossing_post.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 564 | 256x256 |
+| `redwood/crossing_arm.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 384 | 128x128 |
+| `redwood/crossing_closed.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 620 | 128x128 |
+| `redwood/handcar_stop_navy.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 532 | 256x256 |
+| `redwood/buoy.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 196 | 128x128 |
+| `redwood/fish_crates.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 224 | 128x128 |
+| `redwood/anchor_prop.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 276 | 128x128 |
+| `redwood/bollard.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 188 | 128x128 |
+| `redwood/harbor_lamp.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 172 | 128x128 |
+| `redwood/handcar_navy.glb` | Built in tools/lookdev/build_m3.py, own work | CC0 (released with this repo) | 444 | 256x256 |
+| `assets/icons/{red_log,timber,deckboard,mast}{,_128,_64}.png` | Rendered from the item GLBs (tools/lookdev/make_icons_m345.py) | CC0 (released with this repo) | - | - |
+| `assets/textures/ground/grass_coast.png`, `sand_beach.png` | Own procedural Blender material (tools/lookdev/make_ground_m345.py) | CC0 (released with this repo) | - | 512x512 |
+| `assets/textures/imposters/border_trees_atlas_m3.png` | Rendered from `redwood/*_far.glb` + `nature/tree_pineTallB_detailed_far.glb` (tools/lookdev/make_imposters_m345.py) | CC0 (released with this repo) | 2 per card | 1024x1024 |
+
+## M4 Frost Peaks (models_v3/frost, models_v3/items), icons, ground, imposters (2026-10-03)
+
+Own work from Blender primitives in `tools/lookdev/build_m4.py` (helpers `tools/lookdev/m345_lib.py`), released CC0 with
+the repo. No third-party asset inside. `frost/rail_platform_alpine.glb`, `handcar_alpine.glb` and
+`handcar_stop_alpine.glb` are the M2 builders (`build_m2.py`, own work) with the accent swapped and snow added.
+Placement: `assets/models_v3/ASSETS_M4.md`.
+
+| File | Source | Licence | Tris | Texture |
+|---|---|---|---|---|
+| `frost/tree_frostfirA.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 661 | 512x512 |
+| `frost/tree_frostfirB.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 661 | 512x512 |
+| `frost/tree_frostfirC.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 513 | 512x512 |
+| `frost/tree_frostfirD.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 661 | 512x512 |
+| `frost/tree_frostfirA_far.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 183 | 256x256 |
+| `frost/tree_frostfirB_far.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 183 | 256x256 |
+| `frost/tree_frostfirC_far.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 183 | 256x256 |
+| `frost/tree_frostfirD_far.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 183 | 256x256 |
+| `frost/stump_frost.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 248 | 256x256 |
+| `frost/log_stack_frost.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 990 | 256x256 |
+| `frost/snow_drift.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 128 | 128x128 |
+| `frost/snow_rock.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 160 | 256x256 |
+| `frost/snow_bush.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 120 | 128x128 |
+| `items/item_frost_log.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 200 | 256x256 |
+| `items/item_dry_lumber.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 132 | 128x128 |
+| `items/item_skis.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 160 | 256x256 |
+| `items/item_sled.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 180 | 256x256 |
+| `items/item_guitar.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 328 | 256x256 |
+| `frost/drying_kiln.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1204 | 512x512 |
+| `frost/kiln_door.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 392 | 128x128 |
+| `frost/kiln_glow.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 36 | none (emissive colour) |
+| `frost/ski_workshop.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1468 | 512x512 |
+| `frost/ski_press.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 84 | 128x128 |
+| `frost/sled_workshop.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1936 | 512x512 |
+| `frost/sled_workshop_arm.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 152 | 128x128 |
+| `frost/luthier_workshop.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 2328 | 512x512 |
+| `frost/luthier_sander.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 124 | 128x128 |
+| `frost/snowcat.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1436 | 256x256 |
+| `frost/mountain_loco.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1224 | 512x512 |
+| `frost/mountain_wagon.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 496 | 256x256 |
+| `frost/rail_platform_alpine.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 784 | 512x512 |
+| `frost/cablecar_station_bottom.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 572 | 512x512 |
+| `frost/cablecar_station_top.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 660 | 512x512 |
+| `frost/cablecar_bullwheel.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 236 | 128x128 |
+| `frost/cablecar_gondola.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 584 | 256x256 |
+| `frost/cablecar_cable_1m.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 20 | 64x64 |
+| `frost/cablecar_chain.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 200 | 128x128 |
+| `frost/mountain_office.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1376 | 512x512 |
+| `frost/market_canopy_alpine.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1424 | 256x256 |
+| `frost/ski_lodge.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 1308 | 512x512 |
+| `frost/handcar_stop_alpine.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 640 | 256x256 |
+| `frost/handcar_alpine.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 444 | 256x256 |
+| `frost/summit_observatory.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 2812 (stage1 624, stage2 300, stage3 632, stage4 584, stage5 484, stage6 188) | 512x512 |
+| `frost/ski_rack.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 720 | 256x256 |
+| `frost/snowman.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 608 | 128x128 |
+| `frost/alpine_lamp.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 192 | 128x128 |
+| `frost/firewood_snow.glb` | Built in tools/lookdev/build_m4.py, own work | CC0 (released with this repo) | 620 | 256x256 |
+| `assets/icons/{frost_log,dry_lumber,skis,sled,guitar}{,_128,_64}.png` | Rendered from the item GLBs (tools/lookdev/make_icons_m345.py) | CC0 (released with this repo) | - | - |
+| `assets/textures/ground/snow_frost.png`, `snow_packed.png` | Own procedural Blender material (tools/lookdev/make_ground_m345.py) | CC0 (released with this repo) | - | 512x512 |
+| `assets/textures/imposters/border_trees_atlas_m4.png` | Rendered from `frost/*_far.glb` (tools/lookdev/make_imposters_m345.py) | CC0 (released with this repo) | 2 per card | 1024x1024 |
+
+## M5 Grand Timber Station (models_v3/station), ground, imposters (2026-10-03)
+
+Own work from Blender primitives in `tools/lookdev/build_m5.py` (helpers `tools/lookdev/m345_lib.py`), released CC0 with
+the repo. No third-party asset inside. `station/handcar_stop_station.glb` is the M2 builder with the accent swapped.
+Exception: cells 8-15 of the imposter atlas render `maple/tree_mapleA_far.glb` and `nature/tree_default_far.glb` (own, CC0).
+Placement: `assets/models_v3/ASSETS_M5.md`.
+
+| File | Source | Licence | Tris | Texture |
+|---|---|---|---|---|
+| `station/grand_station.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 2940 (stage1 248, stage2 992, stage3 216, stage4 556, stage5 612, stage6 316) | 512x512 |
+| `station/station_plot.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 652 | 256x256 |
+| `station/platform_slot_v1.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 492 | 256x256 |
+| `station/platform_slot_v2.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 492 | 256x256 |
+| `station/platform_slot_v3.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 492 | 256x256 |
+| `station/platform_slot_v4.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 492 | 256x256 |
+| `station/platform_slot_v5.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 492 | 256x256 |
+| `station/rail_bridge_8m.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 788 | 256x256 |
+| `station/rail_road_crossing_4m.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 192 | 256x256 |
+| `station/express_loco.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 1544 | 512x512 |
+| `station/express_tender.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 736 | 256x256 |
+| `station/express_coach.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 892 | 256x256 |
+| `station/tree_station_lime.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 577 | 512x512 |
+| `station/tree_station_cone.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 321 | 512x512 |
+| `station/tree_station_lime_far.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 103 | 256x256 |
+| `station/tree_station_cone_far.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 103 | 256x256 |
+| `station/station_bench.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 396 | 128x128 |
+| `station/clock_post.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 388 | 128x128 |
+| `station/flower_planter.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 384 | 128x128 |
+| `station/luggage_cart.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 368 | 128x128 |
+| `station/station_lamp.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 352 | 128x128 |
+| `station/handcar_stop_station.glb` | Built in tools/lookdev/build_m5.py, own work | CC0 (released with this repo) | 532 | 256x256 |
+| `assets/textures/ground/station_paving.png` | Own procedural Blender material (tools/lookdev/make_ground_m345.py) | CC0 (released with this repo) | - | 512x512 |
+| `assets/textures/imposters/border_trees_atlas_m5.png` | Rendered from `station/*_far.glb`, `maple/tree_mapleA_far.glb`, `nature/tree_default_far.glb` (tools/lookdev/make_imposters_m345.py) | CC0 (released with this repo) | 2 per card | 1024x1024 |

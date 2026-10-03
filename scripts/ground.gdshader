@@ -23,6 +23,17 @@ uniform vec4 plazas[24];
 uniform int plaza_count = 0;
 uniform float river_x = -26.0;
 uniform float river_half = 4.0;
+// Later valleys (defaults leave Valleys 1-3 unchanged): grass blends to sand between sand_x.x and
+// sand_x.y (Redwood Coast shore); alt_mix recolours grass to alt_col and alt_dirt_mix the paths
+// to alt_dirt (Frost Peaks snow and packed snow), keeping the tile's light/dark pattern.
+uniform vec3 sand_col : source_color = vec3(0.86, 0.78, 0.58);
+uniform vec2 sand_x = vec2(100000.0, 100001.0);
+uniform vec3 alt_col : source_color = vec3(1.0);
+uniform float alt_mix = 0.0;
+uniform vec3 alt_dirt : source_color = vec3(1.0);
+uniform float alt_dirt_mix = 0.0;
+// Whole-ground multiplier (Frost Peaks snow at 0.92 so it keeps its detail under ACES).
+uniform vec3 tint = vec3(1.0);
 
 varying vec3 world_pos;
 
@@ -46,6 +57,9 @@ void fragment() {
 	float n = texture(noise_tex, p * 0.018).r;
 	float n2 = texture(detail_tex, p * 0.21).r;
 	vec3 grass = texture(grass_tex, p / tile_m).rgb * mix(0.94, 1.06, smoothstep(0.35, 0.7, n));
+	float lum = dot(grass, vec3(0.3, 0.59, 0.11));
+	grass = mix(grass, alt_col * (0.78 + 0.5 * lum), alt_mix);
+	grass = mix(grass, sand_col * mix(0.94, 1.04, n2), smoothstep(sand_x.x, sand_x.y, p.x));
 
 	float d = 1e5;
 	for (int i = 0; i < path_count; i++) {
@@ -57,6 +71,7 @@ void fragment() {
 	float wobble = (n2 - 0.5) * 0.5;
 	float dirt_mask = smoothstep(0.25, -0.15, d + wobble);
 	vec3 dirt_col = texture(dirt_tex, p / tile_m + vec2(0.37, 0.61)).rgb;
+	dirt_col = mix(dirt_col, alt_dirt * (0.8 + 0.4 * dot(dirt_col, vec3(0.3, 0.59, 0.11))), alt_dirt_mix);
 	vec3 col = mix(grass, dirt_col, dirt_mask);
 	// Soft darker rim where grass meets the path.
 	col *= 1.0 - 0.12 * smoothstep(0.6, 0.0, abs(d + wobble)) * (1.0 - dirt_mask);
@@ -67,7 +82,7 @@ void fragment() {
 	// Slow drifting cloud shadows.
 	float cloud = texture(noise_tex, p * 0.012 + vec2(TIME * 0.006, TIME * 0.003)).r;
 	col *= mix(1.0, 0.82, smoothstep(0.55, 0.75, cloud));
-	ALBEDO = col;
+	ALBEDO = col * tint;
 	ROUGHNESS = 0.95;
 	SPECULAR = 0.2;
 }

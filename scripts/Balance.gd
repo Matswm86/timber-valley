@@ -17,6 +17,8 @@ const ITEM_REGION := {
 	"plank": 1, "chair": 1, "table": 1, "bookcase": 1,
 	"veneer": 2, "plywood": 2, "canoe": 2,
 	"beam": 3, "floorboard": 3, "cabin_kit": 3,
+	"timber": 4, "deckboard": 4, "mast": 4,
+	"dry_lumber": 5, "skis": 5, "sled": 5, "guitar": 5,
 }
 ## pine regrow stays 8.0 s: that is what Valley 1 ships today (GDD block says 7.0).
 const TREES := {
@@ -30,6 +32,8 @@ const TREES := {
 ## Per-model scale factor that replaces the kind's "scale" (designer flag b, 2026-10-01): the
 ## wide maple C stays at 1.0 so paths and the guide arrow stay visible next to groves.
 const TREE_SCALE_OVERRIDE := {"tree_mapleC": 1.0}
+## Trunk collision radius per kind (default 0.22; GDD 7.2: redwood 0.45).
+const TREE_RADIUS := {"redwood": 0.45}
 # id: [in_a, n_a, in_b, n_b, out, n_out, cycle_s]  ("" = no second input)
 const MACHINES := {
 	"lathe": ["birch_log", 2, "", 0, "veneer", 6, 1.2],
@@ -57,8 +61,9 @@ const ORDER := {"lines_min": 2, "lines_max": 3, "base_qty": 10, "qty_per_order":
 const REGION_UPGRADES := {
 	2: {"saws": 2200, "crew": 1400, "fame": 3400},
 	3: {"saws": 13000, "crew": 8000, "fame": 19000},
-	4: {"saws": 51000, "crew": 32000, "fame": 77000},
-	5: {"saws": 180000, "crew": 120000, "fame": 280000},
+	# Valleys 4-5 re-derived 2026-10-03 from measured income (docs/balance/m345_2026-10-03.md).
+	4: {"saws": 54000, "crew": 34000, "fame": 82000},
+	5: {"saws": 150000, "crew": 95000, "fame": 230000},
 }
 const REGION_UPGRADE_GROWTH := 1.8
 const REGION_UPGRADE_MAX := 5
@@ -87,7 +92,13 @@ const EXPORTS := {
 	"barge": {"cap": 6, "away": 8.0},
 	# 3 wagons x 4 kits = 12 per trip; Longer Train (r3_rail2) couples 2 more (20 per trip).
 	"train": {"cap": 12, "away": 10.0, "wagons": 3},
+	# Frost Peaks mountain train (GDD 7.9): 10 guitars per trip in 2 wagons of 5.
+	"mtrain": {"cap": 10, "away": 12.0, "wagons": 2, "per_wagon": 5},
 }
+## Train travel speed (m/s). The Highland train now runs on through Frost Peaks to x 104 (it used
+## to vanish at x 52, which is inside Frost Peaks now), so it runs twice as fast and each trip
+## takes the same time as before.
+const TRAIN_SPEED := 18.0
 const RAIL2_WAGONS := 2
 ## Forklift hauler (GDD 7.5): faster, carries more, serves several piles (the fullest first).
 ## max_load_h caps a load of bulky items (cabin kits) at this stack height in metres.
@@ -95,18 +106,40 @@ const FORKLIFT := {"speed": 4.5, "cap": 20, "max_load_h": 2.4}
 ## A cabin kit is 724 tris: piles draw at most this many (designer flag d: a full 48-kit pile
 ## was about 35k tris). The pile keeps its real count; only the drawn tower is capped.
 const KIT_PILE_DRAWN := 12
+## Vehicle workers (GDD 7.5): skidder = lumberjack, snowcat = hauler. Speed m/s, carry at
+## Coffee Break 0 (+2 per level), model = Models key.
+const VEHICLES := {
+	"skidder": {"speed": 4.8, "cap": 16, "model": "skidder"},
+	"snowcat": {"speed": 4.5, "cap": 24, "model": "snowcat"},
+}
+## Shipwrights (GDD 7.5): builders that fill slipway slots, the least-full slot first. Carry 10 (+2/lvl).
+const SHIPWRIGHT_CAP := 10
+## Station porters: one per valley platform, carrying that valley's export to its platform.
+const PORTER_CAP := 10
 ## Handcar fast travel (GDD 7.6 E): stand on a tile hold_s, fade out, move, fade in.
 const HANDCAR := {"hold_s": 0.8, "fade_s": 0.3}
 ## One stop per valley hub: "pos" = sign + tiles, "land" = where a rider arrives (off the tiles),
 ## "side" = which side (-1 west, 1 east) the handcar track sits on.
 ## GDD 7.6 E spots nudged off buildings and pads (V1 office, V2 office, V3 gate road).
 const HANDCAR_STOPS := {
-	1: {"pos": Vector3(-8.5, 0, 11.2), "land": Vector3(-5.6, 0, 10.0), "side": -1},
+	1: {"pos": Vector3(-9.7, 0, 11.2), "land": Vector3(-5.6, 0, 10.0), "side": -1},
 	2: {"pos": Vector3(-35.6, 0, 3.4), "land": Vector3(-35.6, 0, 6.6), "side": 1},
-	3: {"pos": Vector3(-6.0, 0, -57.8), "land": Vector3(-1.4, 0, -57.4), "side": -1},
+	3: {"pos": Vector3(-7.0, 0, -57.8), "land": Vector3(-1.4, 0, -57.4), "side": -1},
+	4: {"pos": Vector3(37.0, 0, 11.0), "land": Vector3(33.0, 0, 8.6), "side": 1},
+	5: {"pos": Vector3(41.0, 0, -60.5), "land": Vector3(43.4, 0, -57.6), "side": -1},
+}
+## Tile spacing at a stop: one row, 3.4 m apart for up to 2 tiles (M2 look), 2.4 m with a
+## smaller valley name once a stop has 3 or 4 tiles (the V1 and V3 stops moved 1.2 / 1 m west
+## so four tiles clear the Home Valley office and the gate road).
+const HANDCAR_TILE_STEP := {2: 3.4, 4: 2.4}
+## Discard bins (Mats 2026-10-03): one square per valley by its main path; standing on it throws
+## away everything carried (nothing is paid).
+const DISCARD_BINS := {
+	1: Vector3(-2.4, 0, 7.4), 2: Vector3(-35.0, 0, -9.6), 3: Vector3(2.9, 0, -57.2),
+	4: Vector3(25.6, 0, -16.4), 5: Vector3(51.6, 0, -62.8),
 }
 ## Valley open = its gateway is paid (Home Valley always).
-const VALLEY_GATE := {1: "", 2: "r2_bridge", 3: "r3_gate"}
+const VALLEY_GATE := {1: "", 2: "r2_bridge", 3: "r3_gate", 4: "r4_crossing", 5: "r5_cablecar"}
 ## Build sites (GDD 7.6 B): the pad pays the money slot, then goods fill the slots; stage k of N
 ## rises at k/N of the goods. Houses pay rent (+10% Builders' Yard shoppers each) once done.
 ## slot_x/slot_z: where the slot squares start (world), stepped along z (houses) or x (tower).
@@ -117,7 +150,27 @@ const BUILD_SITES := {
 	"r3_house4": {"model": "house_school", "pos": Vector3(-17, 0, -86), "goods": {"beam": 60, "floorboard": 70, "cabin_kit": 6}, "stages": 4, "rent": true},
 	"r3_house5": {"model": "house_inn", "pos": Vector3(-17, 0, -94), "goods": {"beam": 70, "floorboard": 80, "cabin_kit": 8}, "stages": 4, "rent": true},
 	"r3_clocktower": {"model": "clock_tower", "pos": Vector3(-10, 0, -112), "goods": {"beam": 120, "floorboard": 100, "cabin_kit": 12}, "stages": 6, "rent": false},
+	# Redwood Coast: repeatable ship slipways (launch east into the sea) and the Lighthouse.
+	"r4_slipway": {"model": "ship_hull", "pos": Vector3(67, 0, -26), "goods": {"timber": 60, "deckboard": 80, "mast": 3}, "stages": 4, "rent": false, "repeat": true, "region": 4},
+	"r4_slipway2": {"model": "ship_hull", "pos": Vector3(67, 0, -36), "goods": {"timber": 60, "deckboard": 80, "mast": 3}, "stages": 4, "rent": false, "repeat": true, "region": 4},
+	"r4_lighthouse": {"model": "lighthouse", "pos": Vector3(71, 0, -43), "goods": {"timber": 200, "deckboard": 150, "mast": 10}, "stages": 6, "rent": false, "region": 4},
+	# Frost Peaks landmark.
+	"r5_observatory": {"model": "observatory", "pos": Vector3(68, 0, -113), "goods": {"dry_lumber": 200, "skis": 60, "sled": 20, "guitar": 10}, "stages": 6, "rent": false, "region": 5},
+	# Grand Timber Station: one platform per valley next to its handcar stop (GDD 7.7).
+	"cap_p1": {"model": "platform_slot_v1", "pos": Vector3(-18.0, 0, 8.0), "goods": {"bookcase": 120}, "stages": 0, "rent": false, "region": 1, "platform": true},
+	"cap_p2": {"model": "platform_slot_v2", "pos": Vector3(-33.6, 0, -1.6), "goods": {"canoe": 40}, "stages": 0, "rent": false, "region": 2, "platform": true},
+	"cap_p3": {"model": "platform_slot_v3", "pos": Vector3(-18.6, 0, -57.6), "goods": {"cabin_kit": 40}, "stages": 0, "rent": false, "region": 3, "platform": true},
+	"cap_p4": {"model": "platform_slot_v4", "pos": Vector3(26.4, 0, 11.0), "goods": {"mast": 30}, "stages": 0, "rent": false, "region": 4, "platform": true},
+	"cap_p5": {"model": "platform_slot_v5", "pos": Vector3(28.6, 0, -58.4), "goods": {"guitar": 20}, "stages": 0, "rent": false, "region": 5, "platform": true},
 }
+## Ship launch (GDD 7.6 B / 11): the hull slides this far east into the sea over LAUNCH_S.
+const SHIP_LAUNCH := {"slide_m": 8.0, "launch_s": 4.0}
+## Cargo orders: the cargo ship ties up at ORDER_SHIP; masts join a manifest only as its third
+## line and only once the Mast Lathe stands, at a fifth of the line size (GDD 7.6 C is silent on
+## per-item size; 60 masts would be 48 000 base for one line).
+const ORDER_MAST_DIV := 5
+## Kiln look: the chimney glow ramps over the bake.
+const KILN_GLOW_MAX := 3.0
 ## Forester Camp (r2_jack3, Mats 2026-10-01): its crew size, and every birch regrows this much
 ## faster once it is bought.
 const FORESTER_CAMP := {"crew": 3, "birch_regrow_mult": 0.6}
@@ -138,6 +191,8 @@ const REGIONS := {
 	1: {"name": "Home Valley", "rect": Rect2(-23.5, -47.0, 42.5, 62.5)},
 	2: {"name": "Birch Bend", "rect": Rect2(-79.0, -47.0, 48.0, 62.5)},
 	3: {"name": "Maple Highlands", "rect": Rect2(-23.5, -119.0, 42.5, 64.0)},
+	4: {"name": "Redwood Coast", "rect": Rect2(23.0, -47.0, 54.0, 62.5)},
+	5: {"name": "Frost Peaks", "rect": Rect2(23.0, -119.0, 54.0, 64.0)},
 }
 
 # Every purchasable step. Pads show once all "req" ids are owned.
@@ -209,6 +264,51 @@ const UNLOCKS := [
 	{"id": "r3_house4", "cost": 140000, "req": ["r3_rail2"], "title": "Village Plot 4: School", "pad": Vector3(-17, 0, -86)},
 	{"id": "r3_house5", "cost": 150000, "req": ["r3_house4"], "title": "Village Plot 5: Inn", "pad": Vector3(-17, 0, -94)},
 	{"id": "r3_clocktower", "cost": 280000, "req": ["r3_house5"], "title": "Build the Clock Tower", "pad": Vector3(-10, 0, -112)},
+	# ---- Valley 4: Redwood Coast (unlocks_regions.csv; moves listed in docs/GDD.md "M3 layout").
+	{"id": "r4_crossing", "cost": 68000, "req": ["r3_clocktower"], "title": "Level Crossing to Redwood Coast", "pad": Vector3(13.0, 0, -19.5)},
+	{"id": "r4_redmill", "cost": 80000, "req": ["r4_crossing"], "title": "Redwood Mill: Timber", "pad": Vector3(32, 0, -20)},
+	{"id": "r4_grove2", "cost": 64000, "req": ["r4_redmill"], "title": "More Redwoods", "pad": Vector3(45, 0, 4)},
+	{"id": "r4_office", "cost": 67000, "req": ["r4_redmill"], "title": "Harbor Office", "pad": Vector3(28, 0, 7.4)},
+	{"id": "r4_jack1", "cost": 93000, "req": ["r4_grove2"], "title": "Hire a Redwood Lumberjack", "pad": Vector3(37, 0, -2)},
+	{"id": "r4_skidder1", "cost": 100000, "req": ["r4_jack1"], "title": "Hire a Log Skidder", "pad": Vector3(38, 0, -14)},
+	{"id": "r4_harbor", "cost": 110000, "req": ["r4_skidder1"], "title": "Fishing Pier: More Shoppers", "pad": Vector3(70, 0, 4)},
+	{"id": "r4_cashier", "cost": 120000, "req": ["r4_harbor"], "title": "Harbor Cashier", "pad": Vector3(61.5, 0, -9.5)},
+	{"id": "r4_decksaw", "cost": 130000, "req": ["r4_cashier"], "title": "Deck Saw: Deckboards", "pad": Vector3(32, 0, -32)},
+	{"id": "r4_jack2", "cost": 140000, "req": ["r4_decksaw"], "title": "Hire 2 Lumberjacks + North Redwoods", "pad": Vector3(56, 0, -38)},
+	{"id": "r4_belt_rd", "cost": 140000, "req": ["r4_jack2"], "title": "Conveyor: Mill to Deck Saw", "pad": Vector3(30, 0, -26)},
+	{"id": "r4_forklift", "cost": 150000, "req": ["r4_belt_rd"], "title": "Hire a Forklift: Harbor", "pad": Vector3(44, 0, -14)},
+	{"id": "r4_mastlathe", "cost": 170000, "req": ["r4_forklift"], "title": "Mast Lathe", "pad": Vector3(50, 0, -24)},
+	{"id": "r4_slipway", "cost": 180000, "req": ["r4_mastlathe"], "title": "Shipyard Slipway", "pad": Vector3(67, 0, -26)},
+	{"id": "r4_orders", "cost": 190000, "req": ["r4_slipway"], "title": "Cargo Order Board", "pad": Vector3(64, 0, 12)},
+	{"id": "r4_skidder2", "cost": 210000, "req": ["r4_orders"], "title": "Hire 2 Skidders + Far Redwoods", "pad": Vector3(36, 0, -37)},
+	{"id": "r4_builders", "cost": 210000, "req": ["r4_skidder2"], "title": "Hire 2 Shipwrights", "pad": Vector3(58, 0, -20)},
+	{"id": "r4_belt_ds", "cost": 300000, "req": ["r4_builders"], "title": "Conveyors: Deck Saw + Lathe to Slipway", "pad": Vector3(46, 0, -30)},
+	{"id": "r4_jack3", "cost": 350000, "req": ["r4_belt_ds"], "title": "Hire 3 Lumberjacks + Cliff Redwoods", "pad": Vector3(27, 0, -34.5)},
+	{"id": "r4_slipway2", "cost": 400000, "req": ["r4_jack3"], "title": "Second Slipway", "pad": Vector3(67, 0, -36)},
+	{"id": "r4_lighthouse", "cost": 630000, "req": ["r4_slipway2"], "title": "Build the Lighthouse", "pad": Vector3(71, 0, -43)},
+	# ---- Valley 5: Frost Peaks. The cable car pad stands in Redwood Coast, below its station.
+	{"id": "r5_cablecar", "cost": 190000, "req": ["r4_lighthouse"], "title": "Cable Car to Frost Peaks", "pad": Vector3(47, 0, -40.0)},
+	{"id": "r5_kiln", "cost": 230000, "req": ["r5_cablecar"], "title": "Drying Kiln", "pad": Vector3(40, 0, -66)},
+	{"id": "r5_grove2", "cost": 170000, "req": ["r5_kiln"], "title": "More Frost Firs", "pad": Vector3(30, 0, -76)},
+	{"id": "r5_office", "cost": 180000, "req": ["r5_kiln"], "title": "Mountain Office", "pad": Vector3(35, 0, -58.4)},
+	{"id": "r5_jack1", "cost": 250000, "req": ["r5_grove2"], "title": "Hire a Mountain Lumberjack", "pad": Vector3(32, 0, -70.5)},
+	{"id": "r5_skilodge", "cost": 280000, "req": ["r5_jack1"], "title": "Ski Lodge Shop", "pad": Vector3(60, 0, -62)},
+	{"id": "r5_skiworks", "cost": 320000, "req": ["r5_skilodge"], "title": "Ski Workshop", "pad": Vector3(48, 0, -76)},
+	{"id": "r5_cashier", "cost": 330000, "req": ["r5_skiworks"], "title": "Ski Lodge Cashier", "pad": Vector3(56.5, 0, -70)},
+	{"id": "r5_jack2", "cost": 380000, "req": ["r5_cashier"], "title": "Hire 2 Lumberjacks + North Firs", "pad": Vector3(31, 0, -101)},
+	{"id": "r5_kiln2", "cost": 400000, "req": ["r5_jack2"], "title": "Second Kiln", "pad": Vector3(40, 0, -82)},
+	{"id": "r5_belt_ks", "cost": 410000, "req": ["r5_kiln2"], "title": "Conveyor: Kilns to Ski Workshop", "pad": Vector3(46, 0, -70)},
+	{"id": "r5_sledshop", "cost": 450000, "req": ["r5_belt_ks"], "title": "Sled Workshop", "pad": Vector3(56, 0, -88)},
+	{"id": "r5_snowcat", "cost": 460000, "req": ["r5_sledshop"], "title": "Hire a Snowcat", "pad": Vector3(51, 0, -82)},
+	{"id": "r5_luthier", "cost": 650000, "req": ["r5_snowcat"], "title": "Luthier Workshop: Guitars", "pad": Vector3(52, 0, -98)},
+	{"id": "r5_express_r5", "cost": 670000, "req": ["r5_luthier"], "title": "Express Platform: Guitars", "pad": Vector3(70, 0, -80)},
+	{"id": "r5_belt_sl", "cost": 740000, "req": ["r5_express_r5"], "title": "Conveyors: Sleds + Guitars", "pad": Vector3(62, 0, -92)},
+	{"id": "r5_jack3", "cost": 770000, "req": ["r5_belt_sl"], "title": "Hire 3 Lumberjacks + Far Firs", "pad": Vector3(62, 0, -109)},
+	{"id": "r5_kiln3", "cost": 940000, "req": ["r5_jack3"], "title": "Third Kiln", "pad": Vector3(40, 0, -98)},
+	{"id": "r5_observatory", "cost": 1200000, "req": ["r5_kiln3"], "title": "Build the Summit Observatory", "pad": Vector3(68, 0, -113)},
+	# ---- Grand Timber Station (finale). Pad in Home Valley by the Highland Gate, not in the gate
+	# corridor at (0, -52): standing there would pay into it on every walk between the valleys.
+	{"id": "cap_station", "cost": 1200000, "req": ["r5_observatory"], "title": "Grand Timber Station", "pad": Vector3(5.5, 0, -42.6)},
 ]
 ## Pads drawn at the large 3.2 m size.
 const BIG_PADS := [
@@ -216,10 +316,13 @@ const BIG_PADS := [
 	"r2_bridge", "r2_lathe", "r2_office", "r2_press", "r2_press2", "r2_boatshop", "r2_barge", "r2_boathouse",
 	"r3_gate", "r3_beamsaw", "r3_office", "r3_planer", "r3_kitfactory", "r3_rail",
 	"r3_house1", "r3_house2", "r3_house3", "r3_house4", "r3_house5", "r3_clocktower",
+	"r4_crossing", "r4_redmill", "r4_office", "r4_decksaw", "r4_mastlathe", "r4_slipway", "r4_orders", "r4_slipway2", "r4_lighthouse",
+	"r5_cablecar", "r5_kiln", "r5_office", "r5_skilodge", "r5_skiworks", "r5_kiln2", "r5_sledshop", "r5_luthier", "r5_express_r5",
+	"r5_kiln3", "r5_observatory", "cap_station",
 ]
 ## Landmarks that finish a valley and show the "Valley complete" card. A landmark that is a build
 ## site (the Clock Tower) shows it when the building is finished, not when its pad is paid.
-const LANDMARKS := {"lodge": 1, "r2_boathouse": 2, "r3_clocktower": 3}
+const LANDMARKS := {"lodge": 1, "r2_boathouse": 2, "r3_clocktower": 3, "r4_lighthouse": 4, "r5_observatory": 5}
 ## Valley gateways: the pad that opens the next valley (later gates go here too). Outside the
 ## tutorials the guide arrow always points at an unpaid gateway, affordable or not.
 ## "gate" = the closed gate in the valley wall that glows; "path" = the route the glow takes
@@ -228,4 +331,12 @@ const LANDMARKS := {"lodge": 1, "r2_boathouse": 2, "r3_clocktower": 3}
 const GATEWAYS := {
 	"r2_bridge": {"region": 2, "gate": Vector3(-23.2, 0, -6), "along": "z", "path": [Vector3(-20.5, 0, -6), Vector3(-30.2, 0, -6), Vector3(-41.0, 0, -6)]},
 	"r3_gate": {"region": 3, "gate": Vector3(0, 0, -46.6), "along": "x", "arch_h": 2.0, "path": [Vector3(0, 0, -42.4), Vector3(0, 0, -52.0), Vector3(0, 0, -60.0)]},
+	"r4_crossing": {"region": 4, "gate": Vector3(19.2, 0, -20), "along": "z", "path": [Vector3(13.0, 0, -19.5), Vector3(17.0, 0, -20.0), Vector3(21.0, 0, -20.0), Vector3(27.0, 0, -20.0)]},
+	"r5_cablecar": {"region": 5, "gate": Vector3(47, 0, -45.6), "along": "x", "path": [Vector3(47, 0, -40.0), Vector3(47, 0, -50.0), Vector3(47, 0, -59.0)]},
+	"cap_station": {"region": 1, "gate": Vector3(0, 0, -46.6), "along": "x", "arch_h": 2.4, "path": [Vector3(5.5, 0, -42.6), Vector3(1.0, 0, -45.0), Vector3(0, 0, -52.0)]},
 }
+## Ship launches, cargo orders and the finale (GDD 7.7): money counts toward the valley ledger.
+## The Grand Timber Station (ASSETS_M5.md 1.1): a through-station at (0, -52) over the rail line
+## at z -51; its walk-through arches (x -1.4..1.4) replace the Highland Gate once it is bought
+## (designer option A).
+const STATION := {"pos": Vector3(0, 0, -52), "rail_z": -51.0, "rail_x": [-75.0, 75.0], "express_s": 12.0}

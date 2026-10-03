@@ -21,6 +21,11 @@ func _ready() -> void:
 	Game.region_upgrades.clear()
 	Game.region_stats.clear()
 	Game.offline_pending = 0
+	# The autoload loaded the last run's save before it was deleted: build sites (rent), orders and
+	# the finished flag must not leak in either.
+	Game.sites.clear()
+	Game.orders.clear()
+	Game.complete = false
 	Game.finished = false
 	for k in Game.UPGRADES:
 		Game.upgrade_levels[k] = 0
@@ -30,6 +35,26 @@ func _ready() -> void:
 		return
 	if mode == "m2":
 		await _m2()
+		get_tree().quit()
+		return
+	if mode == "census":
+		await _census_mode()
+		get_tree().quit()
+		return
+	if mode == "safety":
+		await _safety()
+		get_tree().quit()
+		return
+	if mode == "m3":
+		await _m3()
+		get_tree().quit()
+		return
+	if mode == "m4":
+		await _m4()
+		get_tree().quit()
+		return
+	if mode == "m5":
+		await _m5()
 		get_tree().quit()
 		return
 	if mode == "chars":
@@ -924,7 +949,7 @@ func _handcar_ride(from: int, to: int, shot: String) -> void:
 	var stop: Node3D = world._stops[from]
 	var tile := Vector3.INF
 	for z in stop.get_children():
-		if z is Zone and z.label and z.label.text == str(Balance.REGIONS[to].name).to_upper():
+		if z is Zone and z.label and z.label.text.replace("\n", " ") == str(Balance.REGIONS[to].name).to_upper():
 			tile = (z as Zone).global_position
 	var land: Vector3 = Balance.HANDCAR_STOPS[to].land
 	_teleport(Balance.HANDCAR_STOPS[from].land)
@@ -983,3 +1008,557 @@ func _bot_goal3(seconds: float) -> void:
 		t += dt
 	Engine.time_scale = 1.0
 	p.input_vector = Vector2.ZERO
+
+
+# ---------------------------------------------------------------- M3-M5: Redwood Coast, Frost Peaks, Station
+
+## Ids of every pad in valleys up to `last` (cap_ pads count as valley 6).
+func _ids_upto(last: int) -> Array:
+	var out := []
+	for u in World.UNLOCKS:
+		var r := 1
+		var id: String = u.id
+		if id.begins_with("cap_"):
+			r = 6
+		elif not _is_v1(id):
+			r = int(id[1])
+		if r <= last:
+			out.append(id)
+	return out
+
+
+## Delivered goods for every finished build site among `ids` (houses, landmarks; not slipways).
+func _sites_done(ids: Array) -> Dictionary:
+	var out := {}
+	for sid in Balance.BUILD_SITES:
+		var info: Dictionary = Balance.BUILD_SITES[sid]
+		if sid in ids and not bool(info.get("repeat", false)):
+			out[sid] = (info.goods as Dictionary).duplicate()
+	return out
+
+
+func _write_save(ids: Array, money: int, extra: Dictionary = {}) -> void:
+	var d := {"version": 4, "money": money, "total_earned": 9000000, "unlocked": ids,
+		"upgrades": {"capacity": 6, "speed": 5, "axe": 5, "machines": 5, "workers": 5, "prices": 5},
+		"region_upgrades": {"2": {"saws": 3, "crew": 3, "fame": 3}, "3": {"saws": 3, "crew": 3, "fame": 3}},
+		"ledger": {"r1": 95.0, "r2": 280.0, "r3": 740.0}, "region_stats": {"1": {"time": 1400.0, "earned": 60000}},
+		"sites": _sites_done(ids), "piles": {}, "finished": true, "sound_on": true}
+	for k in extra:
+		d[k] = extra[k]
+	var f := FileAccess.open(Game.SAVE_PATH, FileAccess.WRITE)
+	f.store_string(JSON.stringify(d))
+	f.close()
+	Game.load_game()
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child(main)
+	world = main.get_node("World")
+
+
+## Arrow at the next gateway while short of money, the landmark card names it, the pan visits it.
+func _gateway_flow(tag: String, gate_id: String, landmark: String, region: int) -> void:
+	var keep := Game.money
+	Game.money = _cost(gate_id) / 4
+	var gp: Vector3 = (world.pads[gate_id] as Node3D).global_position
+	_teleport(gp + Vector3(-6.0, 0, 4.0))
+	await _frames(20)
+	var g := world._goal()
+	var on_gate := g[0] != null and (g[0] as Vector3).distance_to(gp) < 0.1
+	print("GATEWAY %s arrow target=%s pad=%s guide=%s hint='%s' %s" % [gate_id, g[0], gp, world.guide.visible, g[1], "PASS" if on_gate and world.guide.visible else "FAIL"])
+	await _shot("%s/02_gateway_arrow" % tag)
+	var line: String = world.gateway_line(landmark)
+	Game.hud.show_valley_card(region, line)
+	if not Game.hud.valley_card_closed.is_connected(world.pan_to_gateway):
+		Game.hud.valley_card_closed.connect(world.pan_to_gateway)
+	await _frames(5)
+	var gate_title := ""
+	for u in World.UNLOCKS:
+		if u.id == gate_id:
+			gate_title = u.title
+	print("GATEWAY %s card line='%s' %s" % [gate_id, line.replace("\n", " "), "PASS" if line.contains(gate_title) else "FAIL"])
+	await _shot("%s/03_landmark_card_names_gateway" % tag)
+	Game.hud.close_valley_card()
+	await _wait_seconds(0.75)
+	var cam_d := Vector2(world._cam_pos.x - gp.x, world._cam_pos.z - gp.z).length()
+	print("GATEWAY %s pan mid cam_to_pad=%.1f %s" % [gate_id, cam_d, "PASS" if cam_d < 1.5 else "FAIL"])
+	await _shot("%s/04_pan_at_gateway" % tag)
+	await _wait_seconds(1.2)
+	Game.money = maxi(keep, _cost(gate_id) + 20000)
+
+
+## Follows the guide arrow (any valley's mini-tutorial) for `seconds` of game time.
+func _bot_follow(seconds: float, tag: String, carry_item: String) -> void:
+	Engine.time_scale = 2.0
+	var t := 0.0
+	var detour := 0.0
+	var stuck := 0.0
+	var p := world.player
+	var shot := false
+	while t < seconds:
+		var g := world._goal()
+		var dt := get_process_delta_time() * Engine.time_scale
+		if g[0] != null:
+			var d: Vector3 = (g[0] as Vector3) - p.global_position
+			d.y = 0
+			var v := Vector2(d.x, d.z).normalized() if d.length() > 0.6 else Vector2.ZERO
+			if v != Vector2.ZERO and Vector2(p.velocity.x, p.velocity.z).length() < 0.8:
+				stuck += dt
+			else:
+				stuck = 0.0
+			if stuck > 0.25:
+				detour = 0.7
+				stuck = 0.0
+			if detour > 0.0:
+				detour -= dt
+				v = v.rotated(1.3)
+			p.input_vector = v
+		else:
+			p.input_vector = Vector2.ZERO
+		if not shot and p.stack.top_type() == carry_item and p.stack.count() >= 4:
+			shot = true
+			Engine.time_scale = 1.0
+			await _frames(3)
+			await _shot("%s/07b_carrying_%s" % [tag, carry_item])
+			Engine.time_scale = 2.0
+		if int(t / 5.0) != int((t - dt) / 5.0):
+			print("%s t=%.0f hint='%s' back=%d:%s money=%d" % [tag, t, g[1], p.stack.count(), p.stack.top_type(), Game.money])
+		await get_tree().process_frame
+		t += dt
+	Engine.time_scale = 1.0
+	p.input_vector = Vector2.ZERO
+
+
+func _unlock_region(prefix: String) -> void:
+	var total := 0
+	for u in World.UNLOCKS:
+		if str(u.id).begins_with(prefix):
+			total += int(u.cost)
+	Game.add_money(total)
+	for u in World.UNLOCKS:
+		if str(u.id).begins_with(prefix) and not Game.is_unlocked(u.id):
+			Game.unlock(u.id)
+			await _frames(2)
+	if Game.hud:
+		Game.hud.valley_card.visible = false
+
+
+func _shots(spots: Dictionary, frames: int = 30) -> void:
+	# A tall carried tower from a tutorial would hide the view: throw it away first.
+	world.player.dump()
+	for k in spots:
+		_teleport(spots[k])
+		await _frames(frames)
+		await _shot(k)
+
+
+func _awake_count() -> int:
+	var n := 0
+	for rid in world.regions:
+		if (world.regions[rid] as Region).awake:
+			n += 1
+	return n
+
+
+## CAPTURE_MODE=m3: from an M2-complete save (Clock Tower built) to the Level Crossing, the
+## Redwood Coast mini-tutorial, the handcar, then every pad: cargo orders and two slipways run
+## with no player, the Lighthouse finishes and its card names the Cable Car.
+func _m3() -> void:
+	var ids := _ids_upto(3)
+	_write_save(ids, _cost("r4_crossing") * 3 / 4)
+	await _frames(40)
+	await _shot("m3/01_start_from_m2_save")
+	print("M3 money=%d pads=%s" % [Game.money, world.pads.keys()])
+	await _gateway_flow("m3", "r4_crossing", "r3_clocktower", 3)
+	_teleport(Vector3(8.0, 0, -18.0))
+	await _frames(20)
+	await _shot("m3/05_crossing_pad_glow")
+	await _walk_to(Vector3(13.0, 0, -19.5), 12.0, func() -> bool: return Game.is_unlocked("r4_crossing"))
+	print("M3 crossing bought=%s money=%d" % [Game.is_unlocked("r4_crossing"), Game.money])
+	await _wait_seconds(0.7)
+	await _shot("m3/06_crossing_opened")
+	# Stand on the crossing: the barrier arms come down and the truck waits.
+	_teleport(Vector3(17.0, 0, -20.0))
+	await _wait_seconds(1.0)
+	print("M3 crossing arms_down=%.2f holds_truck=%s %s" % [world.coast._arms_down, world.crossing_holds(Vector3(17, 0, -14)), "PASS" if world.coast._arms_down > 0.9 and world.crossing_holds(Vector3(17, 0, -14)) else "FAIL"])
+	await _shot("m3/06b_on_crossing_arms_down")
+	var ok := await _walk_to(Vector3(27, 0, -20), 12.0)
+	print("M3 crossed=%s pos=%s region=%d awake=%d r1=%s r4=%s" % [ok, world.player.global_position.snapped(Vector3.ONE * 0.1), world.current_region(), _awake_count(), world.r1.awake, world.r4.awake])
+	await _frames(20)
+	await _shot("m3/07_redwood_arrival")
+	Game.add_money(_cost("r4_redmill") + 1000)
+	await _walk_to(Vector3(32, 0, -20), 14.0, func() -> bool: return Game.is_unlocked("r4_redmill"))
+	print("M3 redmill bought=%s" % Game.is_unlocked("r4_redmill"))
+	await _frames(40)
+	await _bot_follow(50.0, "m3", "red_log")
+	var mill: Machine = world.machines.redmill
+	print("M3 tutorial timber_shelf=%d mill_out=%d coins=%d money=%d %s" % [world.coast.shop4.shelf("timber").count(), mill.output.count(), world.coast.shop4.coin_value, Game.money,
+		"PASS" if world.coast.shop4.shelf("timber").count() + mill.output.count() + world.coast.shop4.coin_value > 0 else "FAIL"])
+	await _shot("m3/08_after_tutorial")
+	# Handcar: Redwood Coast -> Home Valley -> Redwood Coast.
+	await _handcar_ride(4, 1, "m3/09_handcar_home")
+	await _handcar_ride(1, 4, "m3/10_handcar_back_coast")
+	# Every pad, then let it run with the player parked at the handcar stop.
+	await _unlock_region("r4_")
+	var launches := [0]
+	var orders_done := [0]
+	for sid in ["r4_slipway", "r4_slipway2"]:
+		(world.sites[sid] as BuildSite).launched.connect(func(_i: String, _h: Node3D) -> void: launches[0] += 1)
+	world.coast.orders.filled.connect(func(_v: int) -> void: orders_done[0] += 1)
+	_teleport(Balance.HANDCAR_STOPS[4].land)
+	# 2x, not 4x: at 4x the rendered frame steps get coarse (one transfer per frame).
+	Engine.time_scale = 2.0
+	var t := 0.0
+	var shot_launch := false
+	while t < 600.0:
+		await get_tree().process_frame
+		t += get_process_delta_time() * Engine.time_scale
+		if int(t / 30.0) != int((t - get_process_delta_time() * Engine.time_scale) / 30.0):
+			var s1: BuildSite = world.sites.r4_slipway
+			var s2: BuildSite = world.sites.r4_slipway2
+			print("M3 run t=%.0f launches=%d orders=%d order=%s ship1=%s ship2=%s light=%s" % [t, launches[0], orders_done[0], Game.orders.get("lines"), s1.delivered, s2.delivered, world.sites.r4_lighthouse.delivered])
+		if launches[0] >= 1 and not shot_launch:
+			shot_launch = true
+			Engine.time_scale = 1.0
+			_teleport(Vector3(66, 0, -22))
+			await _wait_seconds(1.6)
+			await _shot("m3/11_ship_launch")
+			_teleport(Balance.HANDCAR_STOPS[4].land)
+			Engine.time_scale = 2.0
+		if launches[0] >= 2 and orders_done[0] >= 1:
+			break
+	Engine.time_scale = 1.0
+	print("M3 AUTOMATION launches=%d orders=%d game_s=%.0f %s" % [launches[0], orders_done[0], t, "PASS" if launches[0] >= 2 and orders_done[0] >= 1 else "FAIL"])
+	await _shots({
+		"m3/20_crossing_from_coast": Vector3(25, 0, -19), "m3/21_redwood_mill": Vector3(32, 0, -17),
+		"m3/22_harbor_market": Vector3(64, 0, -2), "m3/23_pier_boats": Vector3(72, 0, 5),
+		"m3/24_office_handcar_platform": Vector3(32, 0, 9), "m3/25_decksaw_belts": Vector3(33, 0, -29),
+		"m3/26_mastlathe": Vector3(50, 0, -21), "m3/27_slipways": Vector3(64, 0, -29),
+		"m3/28_order_board_ship": Vector3(68, 0, 9), "m3/29_lighthouse_site": Vector3(68, 0, -40),
+		"m3/30_north_groves_cablecar_pad": Vector3(46, 0, -39), "m3/31_cliff_far_groves": Vector3(32, 0, -38),
+		"m3/32_groves_forklift": Vector3(44, 0, -6),
+	})
+	_teleport(Vector3(28, 0, 8.0))
+	await _frames(25)
+	await _shot("m3/33_harbor_upgrades")
+	# Finish the Lighthouse (goods pushed into its intakes): Valley complete card names the Cable Car.
+	var lh: BuildSite = world.sites.r4_lighthouse
+	_teleport(Vector3(68, 0, -40))
+	await _frames(10)
+	for item in lh.goods:
+		for i in lh.room(item):
+			lh.intake_of(item).push(Items.make(item), false)
+	await _frames(40)
+	var title := (Game.hud.valley_card.find_child("Title", true, false) as Label).text
+	var body := (Game.hud.valley_card.find_child("Body", true, false) as Label).text
+	print("M3 LIGHTHOUSE done=%s card='%s' body_names_cable=%s cable_pad=%s %s" % [lh.done, title, body.contains("Cable Car"), world.pads.has("r5_cablecar"),
+		"PASS" if lh.done and title.contains("Redwood Coast") and world.pads.has("r5_cablecar") else "FAIL"])
+	await _shot("m3/34_lighthouse_valley_card")
+	Game.hud.valley_card.visible = false
+	await _frames(40)
+	await _shot("m3/35_lighthouse_built")
+	# Sleep: Birch Bend far west; at most 2 valleys awake anywhere.
+	var worst := 0
+	for spot in [Vector3(-74, 0, -40), Vector3(0, 0, -50), Vector3(20, 0, -20), Vector3(50, 0, -40), Vector3(-6, 0, -60)]:
+		_teleport(spot)
+		await _frames(20)
+		worst = maxi(worst, _awake_count())
+	print("M3 SLEEP max_awake=%d %s ledger=%s" % [worst, "PASS" if worst <= 2 else "FAIL", Game.ledger])
+	Game.save_game()
+
+
+## CAPTURE_MODE=m4: from an M3-complete save (Lighthouse built) up the Cable Car, the Frost Peaks
+## mini-tutorial (fill the kiln, it bakes), every pad (kilns, snowcat, mountain train), and the
+## Observatory card naming the Grand Timber Station.
+func _m4() -> void:
+	var ids := _ids_upto(4)
+	_write_save(ids, _cost("r5_cablecar") * 3 / 4, {"ledger": {"r1": 95.0, "r2": 280.0, "r3": 740.0, "r4": 1500.0}})
+	await _frames(40)
+	await _shot("m4/01_start_from_m3_save")
+	print("M4 money=%d pads=%s" % [Game.money, world.pads.keys()])
+	await _gateway_flow("m4", "r5_cablecar", "r4_lighthouse", 4)
+	_teleport(Vector3(47, 0, -34.5))
+	await _frames(20)
+	await _shot("m4/05_cablecar_pad")
+	await _walk_to((world.pads["r5_cablecar"] as Node3D).global_position, 12.0, func() -> bool: return Game.is_unlocked("r5_cablecar"))
+	print("M4 cablecar bought=%s" % Game.is_unlocked("r5_cablecar"))
+	await _wait_seconds(0.8)
+	await _shot("m4/06_cablecar_built")
+	# Onto the ride tile (the ride is under test here, not the walk).
+	_teleport(FrostPeaks.CABLE_TILE_BOTTOM)
+	var t := 0.0
+	while t < 4.0 and world.player.global_position.distance_to(FrostPeaks.CABLE_LAND_TOP) > 0.5:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	await _wait_seconds(0.5)
+	var d := world.player.global_position.distance_to(FrostPeaks.CABLE_LAND_TOP)
+	print("M4 CABLECAR up arrived=%.1fm region=%d awake=%d %s" % [d, world.current_region(), _awake_count(), "PASS" if d < 0.6 and world.current_region() == 5 else "FAIL"])
+	await _shot("m4/07_frost_arrival")
+	Game.add_money(_cost("r5_kiln") + 1000)
+	await _walk_to(Vector3(40, 0, -66), 14.0, func() -> bool: return Game.is_unlocked("r5_kiln"))
+	print("M4 kiln bought=%s" % Game.is_unlocked("r5_kiln"))
+	await _frames(40)
+	var kiln: Kiln = world.machines.kiln
+	var baked := [false]
+	await _bot_follow(45.0, "m4", "frost_log")
+	var tk := 0.0
+	while tk < 30.0 and kiln.output.count() == 0:
+		if kiln.baking and not baked[0]:
+			baked[0] = true
+			await _shot("m4/08_kiln_baking_glow")
+		await get_tree().process_frame
+		tk += get_process_delta_time()
+	print("M4 KILN baked=%s out=%d in=%d %s" % [baked[0], kiln.output.count(), kiln.input.count(), "PASS" if kiln.output.count() > 0 else "FAIL"])
+	await _frames(20)
+	await _shot("m4/09_kiln_batch_out")
+	if not baked[0]:
+		# The tutorial bake finished off screen: fill the kiln once more to film the glow.
+		for i in maxi(int(Balance.KILN.batch) - kiln.input.count(), 0):
+			kiln.input.push(Items.make("frost_log"), false)
+		var tg := 0.0
+		while tg < 12.0 and not kiln.baking:
+			await get_tree().process_frame
+			tg += get_process_delta_time()
+		# In front of the kiln, clear of the handcar tiles.
+		_teleport(Vector3(37.5, 0, -63.2))
+		await _wait_seconds(5.0)
+		print("M4 KILN glow baking=%s glow=%.2f" % [kiln.baking, kiln._glow.emission_energy_multiplier])
+		await _shot("m4/08_kiln_baking_glow")
+	await _unlock_region("r5_")
+	_teleport(Balance.HANDCAR_STOPS[5].land)
+	Engine.time_scale = 2.0
+	t = 0.0
+	var trips := 0
+	var dock: TruckDock = world.machines.mtrain
+	var last_state := dock.state
+	while t < 300.0:
+		await get_tree().process_frame
+		t += get_process_delta_time() * Engine.time_scale
+		if dock.state != last_state and dock.state == TruckDock.State.AWAY:
+			trips += 1
+		last_state = dock.state
+		if int(t / 30.0) != int((t - get_process_delta_time() * Engine.time_scale) / 30.0):
+			var ks := []
+			for k in world.frost.kilns:
+				ks.append("%s:%s/%d" % [k.name, "bake" if k.baking else "load", k.output.count()])
+			print("M4 run t=%.0f kilns=%s skis_out=%d sled_out=%d guitar_out=%d lodge=%s train_trips=%d snowcat=%d:%s obs=%s" % [t, ks, world.machines.skiworks.output.count(),
+				world.machines.sledshop.output.count(), world.machines.luthier.output.count(), [world.frost.lodge.shelf("dry_lumber").count(), world.frost.lodge.shelf("skis").count(), world.frost.lodge.shelf("sled").count()],
+				trips, world.frost.snowcat.stack.count(), world.frost.snowcat.stack.top_type(), world.sites.r5_observatory.delivered])
+	Engine.time_scale = 1.0
+	print("M4 AUTOMATION train_trips=%d sled_shop_lumber_in=%d frost_earned=%d %s" % [trips, (world.machines.sledshop as Machine).input.count(), int(Game.stats(5).get("earned", 0)), "PASS" if trips >= 1 else "FAIL"])
+	await _shots({
+		"m4/20_cable_top_handcar_office": Vector3(41, 0, -59), "m4/21_kiln1_grove": Vector3(36, 0, -65),
+		"m4/22_kilns_skiworks": Vector3(43, 0, -77), "m4/23_ski_lodge": Vector3(58, 0, -62),
+		"m4/24_sledshop_snowcat": Vector3(53, 0, -86), "m4/25_luthier_kiln3": Vector3(47, 0, -96),
+		"m4/26_express_platform": Vector3(66, 0, -79), "m4/27_observatory_site": Vector3(66, 0, -108),
+		"m4/28_north_far_groves": Vector3(42, 0, -110), "m4/29_highland_line": Vector3(30, 0, -103),
+	})
+	# Mountain train at its platform.
+	_teleport(Vector3(66, 0, -79))
+	var tw := 0.0
+	while tw < 30.0 and dock.state != TruckDock.State.LOADING:
+		await get_tree().process_frame
+		tw += get_process_delta_time()
+	await _frames(10)
+	print("M4 MTRAIN state=%s wagons=%d loaded=%d pile=%d" % [dock.state, dock.beds.size(), dock._loaded(), dock.pile.count()])
+	await _shot("m4/30_mountain_train")
+	_teleport(Vector3(35, 0, -57.5))
+	await _frames(25)
+	await _shot("m4/31_mountain_upgrades")
+	var obs: BuildSite = world.sites.r5_observatory
+	_teleport(Vector3(66, 0, -106))
+	await _frames(10)
+	for item in obs.goods:
+		for i in obs.room(item):
+			obs.intake_of(item).push(Items.make(item), false)
+	await _frames(40)
+	var title := (Game.hud.valley_card.find_child("Title", true, false) as Label).text
+	var body := (Game.hud.valley_card.find_child("Body", true, false) as Label).text
+	print("M4 OBSERVATORY done=%s card='%s' names_station=%s station_pad=%s %s" % [obs.done, title, body.contains("Grand Timber Station"), world.pads.has("cap_station"),
+		"PASS" if obs.done and title.contains("Frost Peaks") and world.pads.has("cap_station") else "FAIL"])
+	await _shot("m4/32_observatory_valley_card")
+	Game.hud.valley_card.visible = false
+	await _frames(40)
+	await _shot("m4/33_observatory_built")
+	await _handcar_ride(5, 3, "m4/34_handcar_to_highlands")
+	await _handcar_ride(3, 5, "m4/35_handcar_back_frost")
+	var worst := 0
+	for spot in [Vector3(30, 0, -60), Vector3(47, 0, -50), Vector3(20, 0, -100), Vector3(70, 0, -110)]:
+		_teleport(spot)
+		await _frames(20)
+		worst = maxi(worst, _awake_count())
+	print("M4 SLEEP max_awake=%d %s ledger=%s" % [worst, "PASS" if worst <= 2 else "FAIL", Game.ledger])
+	Game.save_game()
+
+
+## CAPTURE_MODE=m5: from an M4-complete save (Observatory built): the Station pad, the station and
+## the five platforms (porters carry goods), every platform filled, the Timber Express loop and
+## the finish panel; then a reload that must not reopen it.
+func _m5() -> void:
+	var ids := _ids_upto(5)
+	_write_save(ids, _cost("cap_station") * 3 / 4, {"ledger": {"r1": 95.0, "r2": 280.0, "r3": 740.0, "r4": 1500.0, "r5": 3000.0}})
+	await _frames(40)
+	await _shot("m5/01_start_from_m4_save")
+	print("M5 money=%d pads=%s" % [Game.money, world.pads.keys()])
+	await _gateway_flow("m5", "cap_station", "r5_observatory", 5)
+	_teleport(Vector3(5.5, 0, -37))
+	await _frames(20)
+	await _shot("m5/05_station_pad")
+	await _walk_to(Vector3(5.5, 0, -42.6), 12.0, func() -> bool: return Game.is_unlocked("cap_station"))
+	print("M5 station bought=%s" % Game.is_unlocked("cap_station"))
+	await _wait_seconds(1.5)
+	await _shot("m5/06_station_site_rail")
+	# Platforms by each handcar stop; let the porters work for a while.
+	Engine.time_scale = 4.0
+	await _frames(600)
+	Engine.time_scale = 1.0
+	var plat := []
+	for pid in GrandStation.PLATFORMS:
+		plat.append("%s=%s" % [pid, world.sites[pid].delivered])
+	print("M5 porters after 40 s: %s" % " ".join(plat))
+	await _shots({
+		"m5/07_platform_home": Vector3(-17, 0, 10), "m5/08_platform_birch": Vector3(-34, 0, 1),
+		"m5/09_platform_highlands": Vector3(-15, 0, -56), "m5/10_platform_coast": Vector3(28, 0, 12),
+		"m5/11_platform_frost": Vector3(30, 0, -57),
+	})
+	# Fill every platform (goods pushed into the intakes), the station rises, the Express runs.
+	_teleport(Vector3(6, 0, -44))
+	await _frames(10)
+	for pid in GrandStation.PLATFORMS:
+		var s: BuildSite = world.sites[pid]
+		var reg: Region = world.regions[int(Balance.BUILD_SITES[pid].region)]
+		_teleport(s.global_position + Vector3(0, 0, 5))
+		await _frames(10)
+		for item in s.goods:
+			for i in s.room(item):
+				s.intake_of(item).push(Items.make(item), false)
+		await _frames(10)
+		print("M5 platform %s done=%s awake=%s" % [pid, s.done, reg.awake])
+	var tt := 0.0
+	while tt < 5.0 and not world.station.cutscene:
+		await get_tree().process_frame
+		tt += get_process_delta_time()
+	print("M5 EXPRESS started=%s" % world.station.cutscene)
+	# Shots between the station passes (the train crosses x 0 at about 6 s).
+	for k in 3:
+		await _wait_seconds([2.0, 2.5, 4.0][k])
+		await _shot("m5/%02d_express_%d" % [12 + k, k])
+	tt = 0.0
+	while tt < 10.0 and not Game.hud.finish_panel.visible:
+		await get_tree().process_frame
+		tt += get_process_delta_time()
+	await _frames(10)
+	print("M5 FINISH panel=%s complete=%s %s" % [Game.hud.finish_panel.visible, Game.complete, "PASS" if Game.hud.finish_panel.visible and Game.complete else "FAIL"])
+	await _shot("m5/15_finish_panel")
+	Game.hud.finish_panel.visible = false
+	_teleport(Vector3(6, 0, -40))
+	await _frames(40)
+	await _shot("m5/16_grand_station_built")
+	Game.save_game()
+	# Reload: the finish panel must not reopen; orders and ships keep running.
+	main.queue_free()
+	await _frames(5)
+	Game.load_game()
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child(main)
+	world = main.get_node("World")
+	await _frames(60)
+	print("M5 RELOAD finish_panel=%s complete=%s orders=%s %s" % [Game.hud.finish_panel.visible, Game.complete, Game.orders.get("n"), "PASS" if not Game.hud.finish_panel.visible and Game.complete else "FAIL"])
+	await _shot("m5/17_after_reload")
+
+
+# ---------------------------------------------------------------- safety: stuck, drop, discard, pickup
+
+## CAPTURE_MODE=safety (Mats 2026-10-03): the Mega Saw is bought with the player standing on its
+## pad and the player must walk away; a player dropped inside its collision gets unstuck; the DROP
+## button and the discard bin empty the stack; walking past a PICK square takes nothing; a
+## player carrying planks does not chop a tree.
+func _safety() -> void:
+	var ids := []
+	for u in World.UNLOCKS:
+		if _is_v1(u.id) and u.id not in ["megasaw", "belt_mega", "lodge"]:
+			ids.append(u.id)
+	_write_save(ids, _cost("megasaw") + 100)
+	await _frames(40)
+	var pad: Vector3 = (world.pads["megasaw"] as Node3D).global_position
+	_teleport(pad)
+	var t := 0.0
+	while t < 6.0 and not Game.is_unlocked("megasaw"):
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	await _wait_seconds(1.6)
+	await _shot("safety/01_megasaw_built_on_player")
+	var p0 := world.player.global_position
+	var inside := world._overlaps(p0)
+	await _walk_to(p0 + Vector3(-4.0, 0, 6.0), 4.0)
+	var moved := world.player.global_position.distance_to(p0)
+	print("SAFETY megasaw bought=%s overlap_after_build=%s moved_away=%.1fm %s" % [Game.is_unlocked("megasaw"), inside, moved, "PASS" if not inside and moved > 3.0 else "FAIL"])
+	await _shot("safety/02_walked_away_from_megasaw")
+	# Unstuck: put the player in the middle of the Mega Saw's collision and push for 2.5 s.
+	world.player.global_position = Vector3(9.6, 0, -13.2)
+	world._cam_pos = world.player.global_position
+	world.player.input_vector = Vector2(0, -1)
+	await _wait_seconds(2.6)
+	world.player.input_vector = Vector2.ZERO
+	var free := not world._overlaps(world.player.global_position)
+	print("SAFETY unstuck pos=%s free=%s %s" % [world.player.global_position.snapped(Vector3.ONE * 0.1), free, "PASS" if free else "FAIL"])
+	await _shot("safety/03_unstuck")
+	# DROP button: visible while carrying, empties the stack.
+	_teleport(Vector3(2, 0, 2))
+	for i in 6:
+		world.player.stack.push(Items.make("log"), false)
+	await _frames(10)
+	var shown: bool = Game.hud.drop_btn.visible
+	await _shot("safety/04_drop_button_carrying")
+	Game.hud.drop_btn.pressed.emit()
+	await _wait_seconds(0.3)
+	await _shot("safety/05_dropped_tumbling")
+	await _frames(10)
+	print("SAFETY drop button shown=%s empty_after=%s hidden_after=%s %s" % [shown, world.player.stack.is_empty(), not Game.hud.drop_btn.visible, "PASS" if shown and world.player.stack.is_empty() and not Game.hud.drop_btn.visible else "FAIL"])
+	# Discard bin: walking past keeps the stack, standing on it empties it.
+	var bin: Vector3 = Balance.DISCARD_BINS[1]
+	_teleport(bin + Vector3(-3, 0, 0))
+	for i in 5:
+		world.player.stack.push(Items.make("plank"), false)
+	await _frames(5)
+	await _walk_to(bin + Vector3(3, 0, 0), 3.0)
+	var kept := world.player.stack.count()
+	await _walk_to(bin, 3.0)
+	await _wait_seconds(1.0)
+	await _shot("safety/06_discard_bin")
+	print("SAFETY discard bin passing_kept=%d standing_empty=%s %s" % [kept, world.player.stack.is_empty(), "PASS" if kept == 5 and world.player.stack.is_empty() else "FAIL"])
+	# Pickup: walking straight over the sawmill's PICK square takes nothing; standing takes planks.
+	var saw: Machine = world.machines.sawmill1
+	for i in 8:
+		saw.output.push(Items.make("plank"), false)
+	var oz := saw.out_zone.global_position
+	_teleport(oz + Vector3(0, 0, 3.0))
+	await _frames(5)
+	await _walk_to(oz + Vector3(0, 0, -3.0), 3.0)
+	var passed := world.player.stack.count()
+	await _walk_to(oz, 3.0)
+	await _wait_seconds(1.0)
+	var stood := world.player.stack.count()
+	print("SAFETY pickup passing_took=%d standing_took=%d %s" % [passed, stood, "PASS" if passed == 0 and stood > 0 else "FAIL"])
+	# Carrying planks: standing at a tree chops nothing.
+	var tree: ChopTree = world._nearest_tree(world.player.global_position)
+	_teleport(tree.global_position + Vector3(0.9, 0, 0))
+	await _wait_seconds(1.5)
+	var only_planks := world.player.stack.top_type() == "plank" and world.player.stack.count() == stood
+	print("SAFETY no chop while carrying planks count=%d top=%s %s" % [world.player.stack.count(), world.player.stack.top_type(), "PASS" if only_planks else "FAIL"])
+
+
+## CAPTURE_MODE=census: draw-call sources at the heaviest views (CAPTURE_CENSUS lists geometry).
+func _census_mode() -> void:
+	var upto := int(OS.get_environment("CENSUS_UPTO")) if OS.get_environment("CENSUS_UPTO") != "" else 3
+	var ids := _ids_upto(upto)
+	_write_save(ids, 100, {"complete": upto >= 6})
+	await _frames(60)
+	Game.hud.valley_card.visible = false
+	Engine.time_scale = 4.0
+	await _frames(300)
+	Engine.time_scale = 1.0
+	var spots := {"census/home_stop": Vector3(-8, 0, 10), "census/gate": Vector3(0, 0, -53), "census/shop": Vector3(9, 0, 2),
+		"census/upgrades": Vector3(-3.5, 0, 10.0), "census/station": Vector3(6, 0, -40), "census/v3_market": Vector3(11, 0, -64)}
+	for k in spots:
+		_teleport(spots[k])
+		await _frames(30)
+		await _shot(k)

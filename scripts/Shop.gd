@@ -51,7 +51,7 @@ func setup(region_id: int = 1, mirror: float = 1.0) -> Shop:
 ## Shade cloth over the customer side of the market (v3 canopy, ASSETS_LEFTOVER.md 2.9):
 ## 10.1 m long, centred between the first counter and the till; teal in Maple Highlands.
 func _build_canopy() -> void:
-	var c: Node3D = load(Models.path("market_canopy_teal" if region == 3 else "market_canopy")).instantiate()
+	var c: Node3D = Models.make(str({3: "market_canopy_teal", 4: "market_canopy_navy", 5: "market_canopy_alpine"}.get(region, "market_canopy")))
 	c.position = Vector3(0, 0, (3.9 + till_z - 1.0) * 0.5)
 	# 180 deg = the mirrored layout (cloth on the other side).
 	c.rotation_degrees.y = 0.0 if side > 0.0 else 180.0
@@ -61,7 +61,7 @@ func _build_canopy() -> void:
 func _sign(root: Node3D, product: String) -> void:
 	var l := Label3D.new()
 	l.font = Fx.font()
-	l.text = "%sS  %s" % [product.to_upper(), Game.fmt(Game.price_of(product))]
+	l.text = "%s  %s" % [Items.label(product), Game.fmt(Game.price_of(product))]
 	l.font_size = 44
 	l.outline_size = 12
 	l.modulate = Color(1, 0.97, 0.88)
@@ -70,8 +70,10 @@ func _sign(root: Node3D, product: String) -> void:
 	l.rotation_degrees = Vector3(-55, 0, 0)
 	# Mirrored markets push the sign toward the player side so the canopy does not cover it.
 	l.position = Vector3(-0.2 if side > 0.0 else 0.6, 1.9, 0.9)
+	l.name = "PriceSign"
 	root.add_child(l)
-	# Product icon on the price tag, left of the text (job 2, Models.ICONS 128 px).
+	# Product icon on the price tag, left of the text (job 2, Models.ICONS 128 px). A sibling of the
+	# sign, not a child: the sign text is drawn by the valley's GroundLabels and its node is hidden.
 	var tex := Models.shop_icon(product)
 	var icon: Sprite3D = null
 	if tex:
@@ -79,11 +81,17 @@ func _sign(root: Node3D, product: String) -> void:
 		icon.texture = tex
 		icon.pixel_size = 0.0036
 		icon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		l.add_child(icon)
+		root.add_child(icon)
 		_place_sign_icon(l, icon)
 	Game.upgraded.connect(func(id: String, _lv: int) -> void:
 		if id == "prices" or id == "r%d_fame" % region:
-			l.text = "%sS  %s" % [product.to_upper(), Game.fmt(Game.price_of(product))]
+			var gl := GroundLabels.find_for(l) if l.is_inside_tree() else null
+			if gl:
+				gl.remove(l)
+				l.visible = true
+			l.text = "%s  %s" % [Items.label(product), Game.fmt(Game.price_of(product))]
+			if gl and (l.get_parent() as Node3D).visible:
+				gl.add(l)
 			if icon:
 				_place_sign_icon(l, icon))
 
@@ -91,7 +99,7 @@ func _sign(root: Node3D, product: String) -> void:
 ## Icon just left of the sign text, vertically centred on it.
 func _place_sign_icon(l: Label3D, icon: Sprite3D) -> void:
 	var w := l.font.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.font_size).x * l.pixel_size
-	icon.position = Vector3(-w * 0.5 - 0.3, 0.0, 0.0)
+	icon.transform = l.transform * Transform3D(Basis(), Vector3(-w * 0.5 - 0.3, 0.0, 0.0))
 
 
 func _blocker(size: Vector3, pos: Vector3, parent: Node3D) -> void:
@@ -134,7 +142,7 @@ func add_shelf(product: String, z: float) -> void:
 	st.position = Vector3(0, 0.62, 0)
 	root.add_child(st)
 	var zone := Zone.new().setup(
-		Zone.Kind.DROP, st, Vector2(2.0, 2.2), product.to_upper() + "S", Color(1, 1, 1)
+		Zone.Kind.DROP, st, Vector2(2.0, 2.2), Items.label(product), Color(1, 1, 1)
 	)
 	zone.position = Vector3(PLAYER_SIDE * side, 0, 0)
 	root.add_child(zone)
@@ -147,6 +155,11 @@ func open_shelf(product: String, animate: bool) -> void:
 	var s: Dictionary = shelves[product]
 	var root: Node3D = s.root
 	root.visible = true
+	# The price sign joins the valley's GroundLabels atlas (one draw for every static sign).
+	var sign_l := root.get_node_or_null("PriceSign") as Label3D
+	var gl := GroundLabels.find_for(sign_l) if sign_l and sign_l.is_inside_tree() else null
+	if gl:
+		gl.add(sign_l)
 	MeshMerge.merge(root)
 	# Counters share one texture: the valley's StaticBatch draws them together.
 	StaticBatch.register(root)
@@ -271,6 +284,10 @@ func _try_spawn() -> void:
 		for i in w:
 			options.append(p)
 	if options.is_empty():
+		return
+	# GDD 7.9: at most CUSTOMERS_PER_REGION shoppers per valley, walking ones included (it
+	# counted only queued shoppers, so 30-40 could be on the map, each a draw call).
+	if _customers.size() >= customer_cap:
 		return
 	var total := 0
 	for q in queues:

@@ -54,8 +54,8 @@ func setup(id: String, i_type: String, o_type: String, i_n: int, o_n: int, t: fl
 	output = ItemStack.new().setup(out_type, out_cap, 2, 3, id + ":out")
 	output.position = Vector3(2.7, 0, 0.2)
 	add_child(output)
-	var in_label := ("%sS" % in_type.to_upper()).replace("_", " ")
-	var out_label := ("%sS" % out_type.to_upper()).replace("_", " ")
+	var in_label := Items.label(in_type)
+	var out_label := Items.label(out_type)
 	in_zone = Zone.new().setup(Zone.Kind.DROP, input, Vector2(2.2, 2.6), in_label, Color(1, 1, 1))
 	in_zone.position = input.position
 	add_child(in_zone)
@@ -74,7 +74,7 @@ func add_second_input(i_type: String, i_n: int, pos: Vector3) -> void:
 	input_b = ItemStack.new().setup(i_type, 36, 2, 3, name + ":in2")
 	input_b.position = pos
 	add_child(input_b)
-	in_zone_b = Zone.new().setup(Zone.Kind.DROP, input_b, Vector2(2.2, 2.4), ("%sS" % i_type.to_upper()).replace("_", " "), Color(1, 1, 1))
+	in_zone_b = Zone.new().setup(Zone.Kind.DROP, input_b, Vector2(2.2, 2.4), Items.label(i_type), Color(1, 1, 1))
 	in_zone_b.position = pos
 	add_child(in_zone_b)
 

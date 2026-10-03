@@ -18,6 +18,10 @@ var on_exit: Callable
 var marker: MeshInstance3D
 var label: Label3D
 var _timers: Dictionary = {}
+## Seconds the player has stood still inside (PICK squares only load a passing player that
+## already carries that item; otherwise only after PICK_STILL_S standing still).
+var _still: Dictionary = {}
+const PICK_STILL_S := 0.4
 var _inside: Dictionary = {}
 var _mat: ShaderMaterial
 ## Marker look, also read by the valley's ZoneMarkers MultiMesh.
@@ -111,6 +115,9 @@ func tick(carrier: Node, delta: float) -> bool:
 		_inside[id] = true
 		if carrier.get("is_player") and on_enter.is_valid():
 			on_enter.call(carrier)
+	if kind == Kind.PICK and carrier.get("is_player"):
+		var v: Vector3 = carrier.velocity
+		_still[id] = (float(_still.get(id, 0.0)) + delta) if Vector2(v.x, v.z).length() < 0.6 else 0.0
 	var t: float = _timers.get(id, 0.0) - delta
 	if t > 0.0:
 		_timers[id] = t
@@ -125,7 +132,8 @@ func tick(carrier: Node, delta: float) -> bool:
 				moved = true
 		Kind.PICK:
 			var back: ItemStack = carrier.stack
-			if not stack.is_empty() and back.count() < carrier.capacity() and back.can_accept(stack.top_type()):
+			var keen: bool = not carrier.get("is_player") or back.top_type() == stack.top_type() or float(_still.get(id, 0.0)) >= PICK_STILL_S
+			if keen and not stack.is_empty() and back.count() < carrier.capacity() and back.can_accept(stack.top_type()):
 				stack.transfer_to(back)
 				Sfx.play("place", -8.0)
 				moved = true
@@ -141,5 +149,6 @@ func left(carrier: Node) -> void:
 	if _inside.has(id):
 		_inside.erase(id)
 		_timers.erase(id)
+		_still.erase(id)
 		if carrier.get("is_player") and on_exit.is_valid():
 			on_exit.call(carrier)

@@ -160,6 +160,23 @@ func take_and_free() -> String:
 	return t
 
 
+## Frees every item that has finished its flight (any position in the pile) and returns how many.
+## Build sites and cargo lines use it: with a belt adding items faster than they land, the top item
+## was nearly always still in flight, so used-up items piled into a tower.
+func take_landed() -> int:
+	var n := 0
+	for i in range(items.size() - 1, -1, -1):
+		var it := items[i]
+		if is_instance_valid(it) and it.has_meta("landed"):
+			items.remove_at(i)
+			it.queue_free()
+			n += 1
+	if n > 0:
+		_mark_dirty()
+		changed.emit(items.size())
+	return n
+
+
 func top_global() -> Vector3:
 	return global_transform * Vector3(0, height(), 0)
 

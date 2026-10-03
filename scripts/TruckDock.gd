@@ -50,14 +50,14 @@ func setup(prod: String, road_x_global: float, vehicle_kind: String = "truck", r
 		# Appear north of the bridge, so the barge never sails through it.
 		start_dist = 22.0
 		return _setup_barge(int(ex.cap))
-	if vehicle == "train":
+	if vehicle == "train" or vehicle == "mtrain":
 		return _setup_train()
 	# v3 dock (ASSETS_LEFTOVER.md 2.10): slab top y 0.18, bumper on the road edge, two lamp posts.
 	add_child(Models.make("truck_dock"))
 	pile = ItemStack.new().setup(product, 24, 2, 3, "dock:" + product)
 	pile.position = Vector3(0.9, 0.18, 0)
 	add_child(pile)
-	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + product.to_upper() + "S", Color(0.7, 1.0, 0.8))
+	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + Items.label(product), Color(0.7, 1.0, 0.8))
 	zone.position = Vector3(-1.6, 0, 0)
 	add_child(zone)
 	MeshMerge.merge(self)
@@ -74,27 +74,30 @@ func setup(prod: String, road_x_global: float, vehicle_kind: String = "truck", r
 ## Maple Highlands: a rail platform (deck top y 0.4) and a train of wagons (4 kits each).
 ## World turns the dock and calls set_route(); the export pile and DROP zone are dock-local.
 func _setup_train() -> TruckDock:
-	add_child(Models.make("rail_platform"))
+	var mt := vehicle == "mtrain"
+	name = "MountainTrain" if mt else name
+	add_child(Models.make("rail_platform_alpine" if mt else "rail_platform"))
 	MeshMerge.merge(self)
 	pile = ItemStack.new().setup(product, 24, 2, 3, "dock:" + product)
 	pile.position = Vector3(0.6, 0.4, 0)
 	add_child(pile)
-	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + product.to_upper().replace("_", " ") + "S", Color(0.7, 1.0, 0.8))
+	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + Items.label(product), Color(0.7, 1.0, 0.8))
 	add_child(zone)
 	truck = Node3D.new()
 	truck.name = "Train"
-	truck.add_child(Models.make("train_loco"))
-	add_wagons(int(Balance.EXPORTS.train.wagons))
+	truck.add_child(Models.make("mountain_loco" if mt else "train_loco"))
+	add_wagons(int(Balance.EXPORTS[vehicle].wagons))
 	return self
 
 
 ## Couples more wagons behind the train (Longer Train). Each wagon carries 4 kits (2 x 2).
 func add_wagons(n: int) -> void:
+	var per := int(Balance.EXPORTS[vehicle].get("per_wagon", 4))
 	for i in n:
-		var w := Models.make("train_wagon")
+		var w := Models.make("mountain_wagon" if vehicle == "mtrain" else "train_wagon")
 		w.position = Vector3(0, 0, WAGON_FIRST + WAGON_STEP * _wagons)
 		truck.add_child(w)
-		var b := ItemStack.new().setup(product, 4, 2, 2)
+		var b := ItemStack.new().setup(product, per, 2, 2)
 		b.position = Vector3(0, 0.92, 0)
 		w.add_child(b)
 		beds.append(b)
@@ -121,7 +124,7 @@ func _setup_barge(cap: int) -> TruckDock:
 	pile = ItemStack.new().setup(product, 24, 2, 3, "dock:" + product)
 	pile.position = Vector3(0.6, 0.4, 0)
 	add_child(pile)
-	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + product.to_upper() + "S", Color(0.7, 1.0, 0.8))
+	zone = Zone.new().setup(Zone.Kind.DROP, pile, Vector2(2.4, 3.0), "EXPORT " + Items.label(product), Color(0.7, 1.0, 0.8))
 	zone.position = Vector3(-2.2, 0, 0)
 	add_child(zone)
 	truck = Node3D.new()
@@ -159,7 +162,9 @@ func _process(delta: float) -> void:
 				truck.global_position = _start
 				truck.rotation.y = _yaw
 		State.ARRIVING:
-			truck.global_position = truck.global_position.move_toward(_stop, 9.0 * delta * _ease(_stop))
+			if _held():
+				return
+			truck.global_position = truck.global_position.move_toward(_stop, _speed(9.0) * delta * _ease(_stop))
 			if truck.global_position.distance_to(_stop) < 0.05:
 				state = State.LOADING
 				_wait = 0.0
@@ -178,7 +183,9 @@ func _process(delta: float) -> void:
 				state = State.LEAVING
 				Sfx.play("bell", -6.0)
 		State.LEAVING:
-			truck.global_position = truck.global_position.move_toward(_end, 10.0 * delta)
+			if _held():
+				return
+			truck.global_position = truck.global_position.move_toward(_end, _speed(10.0) * delta)
 			if truck.global_position.distance_to(_end) < 0.1:
 				var value := 0
 				for b in beds:
@@ -189,10 +196,22 @@ func _process(delta: float) -> void:
 					region_node.record(value)
 				Sfx.play("coins", -4.0)
 				if Game.hud:
-					Game.hud.toast("%s delivered: +%s" % [vehicle.capitalize(), Game.fmt(value)])
+					Game.hud.toast("%s delivered: +%s" % [{"mtrain": "Mountain train"}.get(vehicle, vehicle.capitalize()), Game.fmt(value)])
 				state = State.AWAY
 				truck.visible = false
 				_timer = _away
+
+
+## Trains run at Balance.TRAIN_SPEED; the truck and barge keep their speed.
+func _speed(base: float) -> float:
+	return Balance.TRAIN_SPEED if vehicle == "train" or vehicle == "mtrain" else base
+
+
+## The Valley 1 truck waits at the level crossing while the player stands on it (GDD 9.1).
+func _held() -> bool:
+	if vehicle != "truck" or Game.world == null or not Game.world.has_method("crossing_holds"):
+		return false
+	return bool(Game.world.crossing_holds(truck.global_position))
 
 
 func _ease(target: Vector3) -> float:

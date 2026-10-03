@@ -53,7 +53,7 @@ func _ready() -> void:
 	_check("valley card stays closed", not Game.hud.valley_card.visible, "")
 	_check("no Birch Bend pads yet", not w.pads.has("r2_lathe"), "")
 	_check("no offline pile from a v1 save", Game.offline_pending == 0, str(Game.offline_pending))
-	_check("re-saved as version 3", int(re.get("version", 0)) == 3, str(re.get("version")))
+	_check("re-saved as version %d" % Game.SAVE_VERSION, int(re.get("version", 0)) == Game.SAVE_VERSION, str(re.get("version")))
 	_check("re-save keeps unlocks", (re.unlocked as Array).size() == 25, str((re.unlocked as Array).size()))
 	_check("re-save keeps piles", int((re.piles as Dictionary).get("sawmill1:in", -1)) == 5, str(re.piles))
 	_check("re-save has ledger/region/sites keys", re.has("ledger") and re.has("region_upgrades") and re.has("saved_at") and re.has("sites"), str(re.keys()))
@@ -99,7 +99,7 @@ func _ready() -> void:
 	_check("M1 save: lathe pile = 6", (w.machines.lathe as Machine).input.count() == 6, str((w.machines.lathe as Machine).input.count()))
 	_check("M1 save: Highland Gate pad shown", w.pads.has("r3_gate"), str(w.pads.keys()))
 	_check("M1 save: no other Highlands pads yet", not w.pads.has("r3_beamsaw"), "")
-	_check("M1 save: Highlands valley exists", w.r3 != null and w.regions.size() == 3, str(w.regions.keys()))
+	_check("M1 save: Highlands valley exists", w.r3 != null and w.regions.has(3), str(w.regions.keys()))
 	_check("M1 save: gate closed", w._gate3_body != null and w._gate3_doors != null, "")
 	_check("M1 save: arrow targets the gate", w.gateway_pad() == w.pads["r3_gate"], "")
 	_check("M1 save: no build sites", Game.sites.is_empty(), str(Game.sites))
@@ -121,7 +121,7 @@ func _ready() -> void:
 	await _frames(3)
 	Game.save_game()
 	var re3: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Game.SAVE_PATH))
-	_check("re-save version 3 with site progress", int(re3.get("version", 0)) == 3 and int((re3.sites as Dictionary).get("r3_house1", {}).get("beam", 0)) == 1, str(re3.get("sites")))
+	_check("re-save version %d with site progress" % Game.SAVE_VERSION, int(re3.get("version", 0)) == Game.SAVE_VERSION and int((re3.sites as Dictionary).get("r3_house1", {}).get("beam", 0)) == 1, str(re3.get("sites")))
 	main.queue_free()
 	await _frames(3)
 	# 4. Rent: a finished house pays 15 $/s, also offline (50%, with the ledger).
@@ -137,7 +137,132 @@ func _ready() -> void:
 	_check("rent = RENT_PER_HOUSE $/s", is_equal_approx(Game.rent_rate(), rent), str(Game.rent_rate()))
 	var want := int(3600 * rent * Balance.OFFLINE_RATE)
 	_check("offline 1 h of rent = %d" % want, absi(Game.offline_pending - want) <= 30, str(Game.offline_pending))
-	# 5. Money format.
+	# 5. M2-complete save (version 3, Clock Tower built): Redwood Coast opens.
+	var m2_ids: Array = []
+	for u in Balance.UNLOCKS:
+		var uid := str(u.id)
+		if not (uid.begins_with("r4_") or uid.begins_with("r5_") or uid.begins_with("cap_")):
+			m2_ids.append(uid)
+	var m2_sites := {}
+	for sid in Balance.BUILD_SITES:
+		if sid.begins_with("r3_"):
+			m2_sites[sid] = (Balance.BUILD_SITES[sid].goods as Dictionary).duplicate()
+	var m2 := {"version": 3, "money": 500000, "total_earned": 9000000, "unlocked": m2_ids,
+		"upgrades": {"capacity": 6, "speed": 5, "axe": 5, "machines": 5, "workers": 5, "prices": 5},
+		"region_upgrades": {"3": {"saws": 2, "crew": 1, "fame": 4}}, "ledger": {"r1": 95.0, "r2": 280.0, "r3": 740.0},
+		"sites": m2_sites, "saved_at": int(Time.get_unix_time_from_system()) - 10,
+		"piles": {"beamsaw:in": 7}, "finished": true, "sound_on": true}
+	_write(m2)
+	Game.load_game()
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child(main)
+	w = main.get_node("World")
+	await _frames(5)
+	_check("M2 save: all unlocks intact", Game.unlocked_ids.size() == m2_ids.size(), str(Game.unlocked_ids.size()))
+	_check("M2 save: Highlands upgrades intact", Game.region_level(3, "fame") == 4, str(Game.region_upgrades))
+	_check("M2 save: rent still 5 houses", Game.houses_done() == 5, str(Game.houses_done()))
+	_check("M2 save: beam saw pile = 7", (w.machines.beamsaw as Machine).input.count() == 7, str((w.machines.beamsaw as Machine).input.count()))
+	_check("M2 save: Level Crossing pad shown", w.pads.has("r4_crossing"), str(w.pads.keys()))
+	_check("M2 save: no other Redwood pads", not w.pads.has("r4_redmill"), "")
+	_check("M2 save: 5 valleys exist", w.regions.size() == 5 and w.r4 != null and w.r5 != null, str(w.regions.keys()))
+	_check("M2 save: crossing closed", w.coast._gate_body != null, "")
+	_check("M2 save: arrow targets the crossing", w.gateway_pad() == w.pads["r4_crossing"], "")
+	_check("M2 save: 3 handcar stops, 2 tiles each", w._stops.size() == 3, str(w._stops.keys()))
+	Game.unlock("r4_crossing")
+	await _frames(5)
+	_check("crossing bought: redwood mill pad shown", w.pads.has("r4_redmill"), str(w.pads.keys()))
+	_check("crossing bought: crossing open", w.coast._gate_body == null, "")
+	_check("crossing bought: 4 handcar stops", w._stops.size() == 4, str(w._stops.keys()))
+	main.queue_free()
+	await _frames(3)
+	# 6. Clock Tower paid but not built: the crossing waits for the building (GDD 6, rule 1).
+	var m2b := m2.duplicate(true)
+	(m2b.sites as Dictionary).erase("r3_clocktower")
+	_write(m2b)
+	Game.load_game()
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child(main)
+	w = main.get_node("World")
+	await _frames(5)
+	_check("tower paid, not built: no crossing pad yet", not w.pads.has("r4_crossing") and w.sites.has("r3_clocktower"), str(w.pads.keys()))
+	main.queue_free()
+	await _frames(3)
+	# 7. M3-complete save (version 4, Lighthouse built, an order half filled): Frost Peaks opens.
+	var m3_ids: Array = m2_ids.duplicate()
+	for u in Balance.UNLOCKS:
+		if str(u.id).begins_with("r4_"):
+			m3_ids.append(u.id)
+	var m3_sites: Dictionary = m2_sites.duplicate(true)
+	m3_sites["r4_lighthouse"] = (Balance.BUILD_SITES.r4_lighthouse.goods as Dictionary).duplicate()
+	m3_sites["r4_slipway"] = {"timber": 30, "deckboard": 10, "mast": 0}
+	var m3 := m2.duplicate(true)
+	m3["version"] = 4
+	m3["unlocked"] = m3_ids
+	m3["sites"] = m3_sites
+	m3["ledger"] = {"r1": 95.0, "r2": 280.0, "r3": 740.0, "r4": 1500.0}
+	m3["orders"] = {"n": 3, "lines": {"timber": [22, 9], "deckboard": [22, 22]}}
+	_write(m3)
+	Game.load_game()
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child(main)
+	w = main.get_node("World")
+	await _frames(5)
+	_check("M3 save: order restored", int(Game.orders.get("n", 0)) == 3 and int(Game.orders.lines.timber[1]) == 9, str(Game.orders))
+	_check("M3 save: slipway progress restored", int((w.sites.r4_slipway as BuildSite).delivered.timber) == 30, str((w.sites.r4_slipway as BuildSite).delivered))
+	_check("M3 save: Lighthouse built", (w.sites.r4_lighthouse as BuildSite).done, "")
+	_check("M3 save: Cable Car pad shown", w.pads.has("r5_cablecar"), str(w.pads.keys()))
+	_check("M3 save: no Frost pads", not w.pads.has("r5_kiln"), "")
+	_check("M3 save: orders board built", w.coast.orders != null, "")
+	Game.unlock("r5_cablecar")
+	await _frames(5)
+	_check("cable car bought: kiln pad shown", w.pads.has("r5_kiln"), str(w.pads.keys()))
+	_check("cable car bought: 5 handcar stops", w._stops.size() == 5, str(w._stops.keys()))
+	main.queue_free()
+	await _frames(3)
+	# 8. M4-complete (Observatory built): the Grand Timber Station pad shows.
+	var m4_ids: Array = m3_ids.duplicate()
+	for u in Balance.UNLOCKS:
+		if str(u.id).begins_with("r5_"):
+			m4_ids.append(u.id)
+	var m4 := m3.duplicate(true)
+	m4["unlocked"] = m4_ids
+	m4["sites"]["r5_observatory"] = (Balance.BUILD_SITES.r5_observatory.goods as Dictionary).duplicate()
+	_write(m4)
+	Game.load_game()
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child(main)
+	w = main.get_node("World")
+	await _frames(5)
+	_check("M4 save: Station pad shown", w.pads.has("cap_station"), str(w.pads.keys()))
+	_check("M4 save: arrow targets the Station", w.gateway_pad() == w.pads["cap_station"], "")
+	main.queue_free()
+	await _frames(3)
+	# 9. Finished game (version 4, complete): station built, finish panel stays closed.
+	var m5 := m4.duplicate(true)
+	m5["unlocked"] = m4_ids + ["cap_station"]
+	for pid in ["cap_p1", "cap_p2", "cap_p3", "cap_p4", "cap_p5"]:
+		m5["sites"][pid] = (Balance.BUILD_SITES[pid].goods as Dictionary).duplicate()
+	m5["complete"] = true
+	m5["ledger"] = {"r1": 95.0, "r2": 280.0, "r3": 740.0, "r4": 1500.0, "r5": 3000.0}
+	m5["saved_at"] = int(Time.get_unix_time_from_system()) - 3600
+	_write(m5)
+	Game.load_game()
+	var want5 := int(3600 * (95.0 + 280.0 + 740.0 + 1500.0 + 3000.0 + Game.rent_rate()) * Balance.OFFLINE_RATE)
+	_check("finished save: offline counts all 5 ledgers + rent", absi(Game.offline_pending - want5) <= 100, "%d vs %d" % [Game.offline_pending, want5])
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child(main)
+	w = main.get_node("World")
+	await _frames(10)
+	_check("finished save: complete kept", Game.complete, "")
+	_check("finished save: station built", w.station.built and w.sites.has("cap_p5"), "")
+	_check("finished save: finish panel closed", not Game.hud.finish_panel.visible, "")
+	_check("finished save: no express cutscene", not w.station.cutscene, "")
+	Game.save_game()
+	var re5: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Game.SAVE_PATH))
+	_check("re-save keeps complete + orders", bool(re5.get("complete", false)) and re5.has("orders"), str(re5.keys()))
+	main.queue_free()
+	await _frames(3)
+	# 10. Money format.
 	var fm := [[999, "$999"], [12500, "$12.5K"], [1200, "$1.20K"], [3400000, "$3.40M"], [1200000000, "$1.20B"], [999999, "$1.00M"]]
 	for f in fm:
 		_check("fmt %d" % int(f[0]), Game.fmt(int(f[0])) == str(f[1]), Game.fmt(int(f[0])))

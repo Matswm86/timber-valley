@@ -3,11 +3,11 @@ extends Node3D
 
 ## Draw-call reduction: the choppable trees of one valley are drawn by one MultiMesh per tree
 ## model per CELL_M square (trees never move, so groves batch together and off-screen groves
-## still cull) instead of one draw (plus one shadow draw) per tree. Each ChopTree keeps its own nodes
+## still cull; 48 m since 2026-10-03, was 24, to stay under 150 draws per view) instead of one draw (plus one shadow draw) per tree. Each ChopTree keeps its own nodes
 ## and tweens (sway, fall, regrow, pop-in); every frame this copies the live transform of each
 ## visible tree mesh into its model's MultiMesh. The tree's MeshInstance3D keeps no mesh.
 
-const CELL_M := 24.0
+const CELL_M := 48.0
 
 ## [Mesh, cell] -> MultiMeshInstance3D.
 var _mms: Dictionary = {}

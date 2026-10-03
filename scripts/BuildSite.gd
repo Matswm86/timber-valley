@@ -7,6 +7,9 @@ extends Node3D
 ## The money slot is the unlock pad that placed the site. Delivered counts live in Game.sites.
 
 signal completed(id: String)
+## Repeatable site (ship slipway): emitted when the finished ship starts its launch; the slots
+## reset at once and the next ship can fill while this one slides into the sea.
+signal launched(id: String, hull: Node3D)
 
 const RISE_S := 0.6
 
@@ -22,6 +25,10 @@ var _building: Node3D
 var _sign: Label3D
 var _shown: int = 0
 var _sign_text: String = ""
+## Ship slipways (GDD 7.6 B): reset after each launch, at most one launch per SHIP_MIN_INTERVAL.
+var repeat: bool = false
+var _since_launch: float = 1e9
+var _wait_shown: int = -1
 
 
 ## slot_origin/slot_step: site-local offsets of the first slot square and between squares;
@@ -30,6 +37,7 @@ func setup(site_id: String, info: Dictionary, slot_origin: Vector3, slot_step: V
 	id = site_id
 	name = "Site_" + site_id
 	goods = info.goods
+	repeat = bool(info.get("repeat", false))
 	var saved: Dictionary = Game.sites.get(id, {})
 	for item in goods:
 		delivered[item] = mini(int(saved.get(item, 0)), int(goods[item]))
@@ -41,14 +49,16 @@ func setup(site_id: String, info: Dictionary, slot_origin: Vector3, slot_step: V
 		var st := building.find_child("stage%d" % k, true, false) as Node3D
 		if st:
 			stages.append(st)
-	_plot = Models.make("build_plot")
-	add_child(_plot)
+	# Platforms and slipways have no village plot.
+	if int(info.stages) > 0 and not repeat:
+		_plot = Models.make("build_plot")
+		add_child(_plot)
 	var i := 0
 	for item in goods:
 		var intake := ItemStack.new().setup(item, 999, 1, 1)
 		intake.position = Vector3(0, 1.2, 0)
 		add_child(intake)
-		var label := ("%sS" % str(item).to_upper()).replace("_", " ")
+		var label := Items.label(str(item))
 		var z := Zone.new().setup(Zone.Kind.DROP, intake, Vector2(1.8, 1.8), label, Color(1, 1, 1))
 		z.position = slot_origin + slot_step * i
 		# Smaller name under the square, so it stays clear of the next square.
@@ -101,17 +111,28 @@ func zone_of(item: String) -> Zone:
 	return slots[item].zone
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if done:
 		return
+	if repeat:
+		_since_launch += delta
+		if fraction() >= 1.0:
+			var left := int(ceil(Balance.SHIP_MIN_INTERVAL - _since_launch))
+			if left <= 0:
+				_launch()
+			elif left != _wait_shown:
+				_wait_shown = left
+				_sign.text = "Next ship in 0:%02d" % left
+				_sign.visible = true
 	var changed := false
 	for item in slots:
 		var intake: ItemStack = slots[item].intake
 		intake.capacity = maxi(int(goods[item]) - int(delivered[item]), 0)
-		# Items that have landed in the building are used up.
-		while not intake.is_empty() and intake.items[-1].has_meta("landed"):
-			intake.take_and_free()
-			delivered[item] = int(delivered[item]) + 1
+		# Items that have landed in the building are used up (a belt load already on its way when
+		# the slot filled is used up, not counted twice).
+		var got := intake.take_landed()
+		if got > 0:
+			delivered[item] = mini(int(delivered[item]) + got, int(goods[item]))
 			changed = true
 	if changed:
 		_refresh(true)
@@ -144,16 +165,19 @@ func _refresh(animate: bool) -> void:
 		elif k >= want:
 			st.visible = false
 	_shown = maxi(_shown, want)
-	_plot.visible = want == 0
+	if _plot:
+		_plot.visible = want == 0
 	var lines := PackedStringArray()
 	for item in goods:
 		if int(delivered[item]) < int(goods[item]):
-			lines.append("%s %d/%d" % [("%sS" % str(item).to_upper()).replace("_", " "), int(delivered[item]), int(goods[item])])
+			lines.append("%s %d/%d" % [Items.label(str(item)), int(delivered[item]), int(goods[item])])
 	var txt := "\n".join(lines)
 	if txt != _sign_text:
 		_sign_text = txt
 		_sign.text = txt
 	_sign.visible = txt != ""
+	if f >= 1.0 and repeat:
+		return
 	if f >= 1.0 and not done:
 		done = true
 		for item in slots:
@@ -164,6 +188,22 @@ func _refresh(animate: bool) -> void:
 			completed.emit(id)
 		else:
 			MeshMerge.merge(_building)
+
+
+## Repeatable site: a copy of the finished hull goes to World for the launch slide, and the
+## site starts over (every slot empty, every stage down).
+func _launch() -> void:
+	_since_launch = 0.0
+	_wait_shown = -1
+	var hull := _building.duplicate() as Node3D
+	add_child(hull)
+	for item in goods:
+		delivered[item] = 0
+	for st in stages:
+		st.visible = false
+	_shown = 0
+	_refresh(false)
+	launched.emit(id, hull)
 
 
 ## 12 dust puffs at the base of a rising stage (GDD 11).

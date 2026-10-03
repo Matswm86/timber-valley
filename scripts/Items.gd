@@ -20,9 +20,35 @@ const DEFS := {
 	"floorboard": {"path": "res://assets/models_v3/items/item_floorboard.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.07, "cell": Vector2(1.0, 0.25)},
 	"cabin_kit": {"path": "res://assets/models_v3/items/item_cabin_kit.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.6, "cell": Vector2(1.0, 1.0), "max_drawn": Balance.KIT_PILE_DRAWN},
 	"coin": {"path": "", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.075, "cell": Vector2(0.36, 0.36)},
+	# Redwood Coast and Frost Peaks (GDD 7.3, ASSETS_M3/M4.md). A def may use "model" (a Models
+	# key) instead of "path" while its art is a stand-in.
+	"red_log": {"path": "res://assets/models_v3/items/item_red_log.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.42, "cell": Vector2(1.3, 0.5)},
+	"timber": {"path": "res://assets/models_v3/items/item_timber.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.4, "cell": Vector2(1.3, 0.45)},
+	"deckboard": {"path": "res://assets/models_v3/items/item_deckboard.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.09, "cell": Vector2(1.1, 0.35)},
+	"mast": {"path": "res://assets/models_v3/items/item_mast.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.4, "cell": Vector2(0.4, 2.4)},
+	"frost_log": {"path": "res://assets/models_v3/items/item_frost_log.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.33, "cell": Vector2(1.05, 0.4)},
+	"dry_lumber": {"path": "res://assets/models_v3/items/item_dry_lumber.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.11, "cell": Vector2(1.0, 0.4)},
+	"skis": {"path": "res://assets/models_v3/items/item_skis.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.12, "cell": Vector2(0.4, 1.6)},
+	"sled": {"path": "res://assets/models_v3/items/item_sled.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.5, "cell": Vector2(0.8, 1.3)},
+	"guitar": {"path": "res://assets/models_v3/items/item_guitar.glb", "scale": 1.0, "rot": Vector3.ZERO, "layer": 0.2, "cell": Vector2(0.5, 1.2)},
 }
 
+## Upper-case plural for signs and squares where "<ITEM>S" would be wrong.
+const LABELS := {"skis": "SKIS", "dry_lumber": "DRY LUMBER"}
+
 static var _cache: Dictionary = {}
+
+
+## "PLANKS", "CABIN KITS", "SKIS", "DRY LUMBER".
+static func label(type: String) -> String:
+	return str(LABELS.get(type, (type.to_upper() + "S").replace("_", " ")))
+
+
+## "1 plank", "3 planks", "2 skis", "4 dry lumber" (shopper bubbles).
+static func noun(type: String, n: int) -> String:
+	if n == 1 or LABELS.has(type):
+		return "%d %s" % [n, label(type).to_lower() if LABELS.has(type) else type.replace("_", " ")]
+	return "%d %ss" % [n, type.replace("_", " ")]
 static var _meshes: Dictionary = {}
 static var _coin_mesh: Mesh
 static var _coin_mat: StandardMaterial3D
@@ -75,13 +101,19 @@ static func _build(scene: PackedScene, d: Dictionary) -> Node3D:
 	pivot.rotation_degrees = d.rot
 	pivot.add_child(inst)
 	inst.scale = Vector3.ONE * float(d.scale)
+	if d.has("model"):
+		var key := str(d.model)
+		Models.tint(inst, Models.tint_of(key))
+		inst.scale = Models.standin_scale(key) * float(d.scale)
+		pivot.rotation_degrees = (d.rot as Vector3) + Models.standin_rot(key)
 	return pivot
 
 
 static func _load(type: String) -> Dictionary:
 	if _cache.has(type):
 		return _cache[type]
-	var scene: PackedScene = load(DEFS[type].path)
+	var d0: Dictionary = DEFS[type]
+	var scene: PackedScene = load(Models.path(str(d0.model)) if d0.has("model") else str(d0.path))
 	var tmp := _build(scene, DEFS[type])
 	var box := aabb_of(tmp, Transform3D.IDENTITY)
 	tmp.free()
@@ -167,5 +199,7 @@ static func mesh_primitive(m: Mesh, s: int) -> Mesh.PrimitiveType:
 
 ## Only bulky items (logs, furniture, canoes) cast shadows; thin sheets, planks and coins would
 ## add a shadow-pass draw per pile for a sliver of shadow.
+## Since 2026-10-03 only the bulkiest (layer 0.45 m and up: sleds, cabin kits) cast one: piles of
+## logs and furniture cost a shadow draw each, and the 150-draw budget needed them.
 static func casts_shadow(type: String) -> bool:
-	return float(DEFS[type].layer) >= 0.3
+	return float(DEFS[type].layer) >= 0.45

@@ -8,8 +8,8 @@ var _body: Node3D
 var _t: float = 0.0
 
 
-func setup_forklift() -> ForkliftModel:
-	_body = Models.make("forklift")
+func setup_forklift(key: String = "forklift") -> ForkliftModel:
+	_body = Models.make(key)
 	add_child(_body)
 	for mi in _body.find_children("*", "MeshInstance3D", true, false):
 		ShadowCull.track(mi as GeometryInstance3D)

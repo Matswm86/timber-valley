@@ -72,7 +72,8 @@ func setup(pad_id: String, price: int, text: String, size: Vector2 = Vector2(2.6
 	_price.outline_modulate = Color(0.1, 0.3, 0.08, 1.0)
 	_price.pixel_size = 0.0075
 	add_child(_price)
-	var log_type := "birch_log" if pad_id.begins_with("r2_") else ("maple_log" if pad_id.begins_with("r3_") else "log")
+	var logs := {"r2_": "birch_log", "r3_": "maple_log", "r4_": "red_log", "r5_": "frost_log"}
+	var log_type := str(logs.get(pad_id.left(3), "log"))
 	var item := Models.item_in_title(text, log_type)
 	var tex := Models.hud_icon(item) if item != "" else null
 	if tex:

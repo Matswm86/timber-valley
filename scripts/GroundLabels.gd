@@ -61,6 +61,10 @@ func remove(l: Label3D) -> void:
 
 
 func _process(_delta: float) -> void:
+	# Labels freed with their node (a handcar stop rebuilt for a new valley) drop out here.
+	for i in range(_labels.size() - 1, -1, -1):
+		if not is_instance_valid(_labels[i]):
+			_labels.remove_at(i)
 	if _dirty and not _baking:
 		_bake()
 	var inv := global_transform.affine_inverse()

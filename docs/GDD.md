@@ -7,7 +7,8 @@ Owner: game-designer. Builder: godot-android-dev. Data: `docs/balance/unlocks_re
 **Costs after Valley 1 were rebalanced on 2026-10-01** from measured income (Mats found
 Valleys 2+ too expensive): see `docs/balance/rebalance_2026-10-01.md` and
 `docs/balance/rebalance_sim.py`. Where this doc and `pacing_sim.md` disagree on a cost, the
-rebalance wins.
+rebalance wins. **Valleys 4-5 and the Station were re-derived on 2026-10-03 from measured income**
+(built game, headless probe): `docs/balance/m345_2026-10-03.md` and `rebalance_m345.py`.
 
 Numbers tagged **(my calc)** come from the pacing model in `docs/balance/pacing_sim.md`, not
 from play. The model estimates income per purchase from the code rates (cycle times, worker
@@ -726,6 +727,72 @@ permissions unless needed (open question 4).
 - The rail line along z = -51, the five platforms, the capstone site and the Express loop
   cutscene.
 - The finish panel moves here.
+
+- **M3-M5 as built (2026-10-03, branch `v4-m345`).** Positions live in `Balance.gd`,
+  `RedwoodCoast.gd`, `FrostPeaks.gd` and `GrandStation.gd`; art is the designer's
+  (`assets/models_v3/ASSETS_M3/M4/M5.md`), no stand-ins left.
+  - **Valley rects:** Redwood Coast x 23..77, z -47..15.5; Frost Peaks x 23..77, z -119..-55.
+    Each has its own ground plane (seam at x 21 under the border strip). Sea east of x 74.6.
+  - **Level Crossing:** pad (19, -20) -> (13, -19.5) on the Home Valley side (like the bridge and
+    gate pads). The road wall opens at z -20; a 2.8 m corridor runs to the valley's west palisade
+    at x 22.8. Crossing posts with booms come down while the player stands on the road there,
+    and the Valley 1 truck waits before the crossing.
+  - **Redwood pad nudges:** office pad (28, 8) -> (28, 7.4) with the office at (28, 4.5);
+    jack1 (40, -4) -> (37, -2) (off Grove 1); harbor (68, 6) -> (70, 4); cashier (64, -2) ->
+    (61.5, -9.5) (it sat on the counter squares); forklift (44, -10) -> (44, -14) (on a tree);
+    jack2 (55, -38) -> (56, -38); skidder2 (38, -40) -> (36, -37); jack3 (26, -42) -> (27, -34.5);
+    slipways (62, -26)/(62, -40) -> (67, -26)/(67, -36) so the ships launch into the sea;
+    Lighthouse (72, -44) -> (71, -43) with its slot squares to the west.
+  - **Redwood groves:** Grove 1 (45, -8) 3x2 and Grove 2 (45, 4) 3x2 at 4 m; North (56, -42) 4x2
+    at 3.6 m; Far (36, -42) 3x2 at 3.5 m; Cliff (27.5, -40) 3x3 at 3.6 m.
+  - **Harbour:** Harbor Market (66, -2); a 13 m pier at z 7 from the beach to x 86; shoppers come
+    off the pier end. Order Board at (68, 12); the cargo ship ties up at sea level with the board.
+  - **Redwood stop:** (26, 10) -> (37, 11): at (26, 10) the sign stood in front of the office.
+  - **Orders (design call, GDD silent):** a manifest always asks timber and deckboards; masts join
+    only as a third line once the Mast Lathe stands, at a fifth of the line size. Pay = sale price
+    (Good Reputation and Local Fame included) x 1.6. Ship launch pays $14,000 x the same
+    multipliers.
+  - **Who fills what:** the forklift serves the cargo ship first, then the counters; shipwrights fill
+    both slipways and the Lighthouse, the least-full slot first. The deck-saw belt feeds both
+    slipways; the mast-lathe belt feeds slipway 1 (slipway 2's masts come by shipwright).
+  - **Highland Railway:** the train now runs on through Frost Peaks to x 104 (Frost Peaks owns
+    that track) at 18 m/s, so a trip takes as long as before.
+  - **Cable Car:** bottom station (47, -45.4) in Redwood Coast (chained shut until bought; pad
+    (50, -47) -> (47, -40)), top station (47, -56.8). Ride tiles in front of each deck.
+  - **Frost pad nudges:** office (34, -58) -> (35, -58.4) with the office at (35, -60.5);
+    jack1 (32, -70) -> (32, -70.5); cashier (64, -58) -> (56.5, -70) (customer side); jack2
+    (35, -105) -> (31, -101) and North Grove (35, -105) -> (35, -112) (the Highland track runs
+    along z -105); belt_ks (44, -74) -> (46, -70); snowcat (52, -82) -> (51, -82); luthier
+    (44, -96) -> (52, -98) (it overlapped Kiln 3); belt_sl (60, -92) -> (62, -92); jack3
+    (65, -110) -> (62, -109) and Far Grove -> (55, -113); Observatory (66, -114) -> (68, -113).
+  - **Frost stop:** (46, -60) -> (41, -60.5), clear of the cable-car tile.
+  - **Mountain train:** Express Platform (70, -80) turned -90 deg; its track runs east-west at
+    z -76.5 into the east forest.
+  - **Snowcat (design call):** carries dry lumber to the sled workshop, luthier, counter and
+    Observatory, skis to the sled workshop, counter and Observatory, sleds to the counter and
+    Observatory, guitars to the Express Platform and Observatory, the first with room in turn.
+    Lumberjacks take their logs to the kiln with the most room. Kiln 2's belt splits to the sled
+    workshop once it stands (with both kilns belted to the ski workshop, no sled was ever made).
+  - **Flag for the designer:** the Ski Lodge opens with `r5_skilodge` (CSV), so Frost Peaks
+    earns nothing on its own until the snowcat (pad 13 of 19); the kiln's early lumber has no
+    counter. Measured in `docs/balance/m345_2026-10-03.md`.
+  - **Grand Timber Station:** the through-station at (0, -52) with its rail at z -51 (designer
+    option A): when it is bought the Highland Gate arch shrinks away and the station's arches
+    (x -1.4..1.4) are the gate. Pad (0, -52) -> (5.5, -42.6) in Home Valley: a pay pad in the
+    gate corridor would drain the wallet of anyone walking between the valleys. Platforms:
+    V1 (-18, 8), V2 (-33.6, -1.6), V3 (-18.6, -57.6), V4 (26.4, 11), V5 (28.6, -58.4); one porter
+    per valley carries its export goods there. The Express runs east to x 66, west to x -66 and
+    home (12 s), then the finish panel opens once (`Game.complete`, save version 4).
+  - **Handcar stops:** with 3-4 tiles the tiles sit 2.4 m apart with a smaller name; the V1 stop
+    moved 1.2 m west and the V3 stop 1 m west so four tiles clear the office and the gate road.
+  - **Landmark gating fixed:** the next gateway pad appears when a build-site landmark (Clock Tower,
+    Lighthouse, Observatory) is finished, as rule 1 says; it used to appear on payment.
+  - **Phone fixes (Mats, 2026-10-03):** DROP button and a discard bin per valley; PICK squares load
+    a passing player only with the item already carried (otherwise after 0.4 s standing still);
+    new buildings push the player out of their footprint; after 2 s of pushing without moving
+    while wedged in collision the player is moved to the nearest free spot. Shoppers give up on a
+    sold-out counter after 15 s (it could fill the market's shopper cap and stop every sale) and
+    cast no shadow (draw budget).
 
 **M6: Balance pass.**
 - Extend `tests/capture.gd` with a bot mode that plays from a given save without the $20,000

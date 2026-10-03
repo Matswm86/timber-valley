@@ -29,6 +29,9 @@ const IMPOSTER_KINDS := [
 ]
 ## Maple Highlands edge atlas (border_trees_atlas_m2.json): 4 x 4 cells, cell = kind_index * 4 + facing.
 const IMPOSTER_KINDS_M2 := ["tree_mapleA", "tree_mapleB", "tree_mapleC", "tree_pineTallB_detailed"]
+## Redwood Coast and Frost Peaks edge atlases (4 x 4 cells each): bucket keys "m3:<kind>", "m4:<kind>".
+const IMPOSTER_KINDS_M3 := ["tree_redwoodA", "tree_redwoodB", "tree_redwoodC", "tree_pineTallB_detailed"]
+const IMPOSTER_KINDS_M4 := ["tree_frostfirA", "tree_frostfirB", "tree_frostfirC", "tree_frostfirD"]
 ## false = the old chunked _far meshes (fallback).
 const USE_IMPOSTERS := true
 ## Birch Bend layout (world coords, GDD 9.2; nudged off paths where noted).
@@ -79,6 +82,8 @@ var machines: Dictionary = {}
 var forests: Dictionary = {
 	"a": [], "pine": [], "birch": [], "birch_north": [], "birch_west": [],
 	"maple": [], "maple_north": [], "maple_ridge": [],
+	"redwood": [], "redwood_north": [], "redwood_far": [], "redwood_cliff": [],
+	"frost": [], "frost_north": [], "frost_far": [],
 }
 var pads: Dictionary = {}
 var ground_mat: ShaderMaterial
@@ -96,6 +101,22 @@ var regions: Dictionary = {}
 var r1: Region
 var r2: Region
 var r3: Region
+var r4: Region
+var r5: Region
+## Redwood Coast, Frost Peaks and the Grand Timber Station build and run in their own scripts.
+var coast: RedwoodCoast
+var frost: FrostPeaks
+var station: GrandStation
+var rng4 := RandomNumberGenerator.new()
+var rng5 := RandomNumberGenerator.new()
+## While the first three valleys scatter their deco, later valleys' pads, forests and paths are
+## ignored, so the grass layout of Valleys 1-3 does not move when later content exists.
+var _busy_skip_new: bool = false
+## Border-forest imposters on the Station rail line: [MultiMesh, index], cleared when it is built.
+var _station_trees: Array = []
+## Discard bins built so far, by valley id.
+var _bins: Dictionary = {}
+var sun: DirectionalLight3D
 ## Per-valley ground: {"mat": ShaderMaterial, "paths": [], "plazas": []}. paths/plazas above = Valley 1's.
 var grounds: Dictionary = {}
 ## Future belts, flume and buildings in Birch Bend: kept clear of grass and rocks.
@@ -132,6 +153,8 @@ var sites: Dictionary = {}
 var forklift: Worker
 var _gate3_body: StaticBody3D
 var _gate3_doors: Node3D
+## The Highland Gate arch (retired when the Grand Timber Station takes its place).
+var _gate3_model: Node3D
 var _rent_t: float = 0.0
 var _rent_carry: float = 0.0
 ## Handcar stops by valley id (built with the Highland Gate) and the tile hold timers.
@@ -145,11 +168,17 @@ func _ready() -> void:
 	rng.seed = 20260929
 	rng2.seed = 20261001
 	rng3.seed = 20261002
+	rng4.seed = 20261003
+	rng5.seed = 20261004
 	_environment()
 	_make_regions()
+	coast = RedwoodCoast.new(self)
+	frost = FrostPeaks.new(self)
+	station = GrandStation.new(self)
 	_ground()
 	_river()
 	_road()
+	coast.sea()
 	_base_paths()
 	_reserve_v2()
 	_reserve_v3()
@@ -165,18 +194,32 @@ func _ready() -> void:
 	for u in UNLOCKS:
 		if Game.is_unlocked(u.id):
 			_apply_unlock(u.id, false)
+	if Game.is_unlocked("r3_gate"):
+		_rebuild_handcar_stops(false)
+	frost.build_rail_v3()
+	station.restore()
 	_refresh_pads()
+	_busy_skip_new = true
 	_scatter_deco()
 	_scatter_deco_v2()
 	_scatter_deco_v3()
+	_busy_skip_new = false
+	_filter_deco_v123()
+	coast.reserve()
+	frost.reserve()
+	coast.scatter()
+	frost.scatter()
 	_build_deco()
 	_update_ground_uniforms()
 	_bounds()
 	_palisades()
 	_palisades_v2()
 	_palisades_v3()
+	coast.palisades()
+	frost.palisades()
 	_build_offline_pile()
 	_update_regions(0.0, true)
+	_build_bins()
 	Game.unlocked.connect(_on_unlocked)
 	_loading = false
 
@@ -228,6 +271,7 @@ func _environment() -> void:
 	sun.directional_shadow_blend_splits = true
 	sun.shadow_opacity = 0.85
 	add_child(sun)
+	self.sun = sun
 
 
 func _make_regions() -> void:
@@ -238,6 +282,8 @@ func _make_regions() -> void:
 	r1 = regions[1]
 	r2 = regions[2]
 	r3 = regions[3]
+	r4 = regions[4]
+	r5 = regions[5]
 
 
 ## One ground plane and material per valley (the shader holds 32 paths and 24 plazas each).
@@ -260,10 +306,14 @@ func _ground() -> void:
 	fn2.frequency = 0.12
 	fn2.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	detail.noise = fn2
+	# Valleys 4 and 5 take everything east of x 21 (the seam runs under the border forest
+	# between the road wall and their west palisade).
 	var planes := {
-		1: Rect2(RIVER_X, -47.0, 80.0 - RIVER_X, 117.0),
+		1: Rect2(RIVER_X, -47.0, 21.0 - RIVER_X, 117.0),
 		2: Rect2(-110.0, -47.0, RIVER_X + 110.0, 117.0),
-		3: Rect2(-110.0, -145.0, 190.0, 98.0),
+		3: Rect2(-110.0, -145.0, 131.0, 98.0),
+		4: Rect2(21.0, -47.0, 120.0, 117.0),
+		5: Rect2(21.0, -145.0, 120.0, 98.0),
 	}
 	for rid in planes:
 		var mat := ShaderMaterial.new()
@@ -273,6 +323,10 @@ func _ground() -> void:
 		mat.set_shader_parameter("river_x", RIVER_X)
 		mat.set_shader_parameter("river_half", RIVER_HALF)
 		mat.set_shader_parameter("grass_tex", load(Models.GROUND[rid]))
+		if rid == 4:
+			coast.ground_look(mat)
+		elif rid == 5:
+			frost.ground_look(mat)
 		mat.set_shader_parameter("dirt_tex", load(Models.GROUND["dirt"]))
 		var mi := MeshInstance3D.new()
 		var pm := PlaneMesh.new()
@@ -371,7 +425,11 @@ func _bounds() -> void:
 		_wall(Vector2(x, z0), Vector2(x, -125))
 	_wall(Vector2(bank_w, z0 - 0.1), Vector2(bank_e, z0 - 0.1))
 	_wall(Vector2(bank_w, z1 + 0.1), Vector2(bank_e, z1 + 0.1))
-	_wall(Vector2(ROAD_X + 2.2, 70), Vector2(ROAD_X + 2.2, -125))
+	# Road wall, open only at the Level Crossing (z -20) once it is bought.
+	_wall(Vector2(ROAD_X + 2.2, 70), Vector2(ROAD_X + 2.2, RedwoodCoast.CROSSING_Z + RedwoodCoast.CROSSING_HALF))
+	_wall(Vector2(ROAD_X + 2.2, RedwoodCoast.CROSSING_Z - RedwoodCoast.CROSSING_HALF), Vector2(ROAD_X + 2.2, -125))
+	coast.bounds()
+	frost.bounds()
 	_wall(Vector2(-80, 15.5), Vector2(40, 15.5))
 	# North edge of Home Valley and Birch Bend, open only at the Highland Gate.
 	var gx := GATE3_HALF + 0.5
@@ -532,7 +590,9 @@ func _build_deco() -> void:
 		if not kinds.has(e[0]):
 			continue
 		var k: Dictionary = kinds[e[0]]
-		var sh: int = 1 if e[2] else 0
+		# One mesh per chunk, no shadow (draw budget, 2026-10-03): bushes and big rocks used to
+		# be a second, shadow-casting mesh per chunk; their baked contact AO stays.
+		var sh: int = 0
 		for x in e[1]:
 			var xf: Transform3D = x
 			var key := Vector3i(floori(xf.origin.x / CHUNK_SIZE), floori(xf.origin.z / CHUNK_SIZE), sh)
@@ -558,6 +618,43 @@ func _build_deco() -> void:
 		add_child(mi)
 		ShadowCull.track(mi)
 	_deco.clear()
+
+
+## Valley 1-3 scatter that now lands inside Redwood Coast (its strip east of the road), on the
+## Level Crossing, the Station rail line and pad, or under the bigger handcar stops is removed
+## after the fact, so the random draws (and every other tuft) stay where they were.
+func _filter_deco_v123() -> void:
+	var circles := []
+	for id in ["r4_crossing", "cap_station"]:
+		for u in UNLOCKS:
+			if u.id == id:
+				circles.append([Vector2(u.pad.x, u.pad.z), 2.6])
+	var rects := [
+		Rect2(22.6, -47.5, 60.0, 64.0),
+		Rect2(ROAD_X + 1.0, RedwoodCoast.CROSSING_Z - 2.0, 6.0, 4.0),
+		Rect2(-76.0, Balance.STATION.rail_z - 1.6, 152.0, 3.2),
+	]
+	for rid in Balance.HANDCAR_STOPS:
+		var st: Vector3 = Balance.HANDCAR_STOPS[rid].pos
+		rects.append(Rect2(st.x - 5.0, st.z - 1.6, 10.0, 3.6))
+	for e in _deco:
+		var keep := []
+		for x in e[1]:
+			var o: Vector3 = (x as Transform3D).origin
+			var q := Vector2(o.x, o.z)
+			var cut := false
+			for r in rects:
+				if (r as Rect2).has_point(q):
+					cut = true
+					break
+			if not cut:
+				for c in circles:
+					if q.distance_to(c[0]) < float(c[1]):
+						cut = true
+						break
+			if not cut:
+				keep.append(x)
+		e[1] = keep
 
 
 ## Packs every scatter kind's texture into one atlas (DECO_CELL cells; each cell's gutter is the
@@ -594,6 +691,8 @@ func _busy(p: Vector2, margin: float) -> bool:
 	var lines: Array = _reserved_lines.duplicate()
 	var rects: Array = _reserved_rects.duplicate()
 	for rid in grounds:
+		if _busy_skip_new and int(rid) >= 4:
+			continue
 		lines.append_array(grounds[rid].paths)
 		rects.append_array(grounds[rid].plazas)
 	for pa in lines:
@@ -609,12 +708,16 @@ func _busy(p: Vector2, margin: float) -> bool:
 		if absf(p.x - v.x) < v.z + margin + 0.6 and absf(p.y - v.y) < v.w + margin + 0.6:
 			return true
 	for u in UNLOCKS:
+		if _busy_skip_new and region_of_unlock(u.id) >= 4:
+			continue
 		var pp: Vector3 = u.pad
 		if Vector2(pp.x, pp.z).distance_to(p) < 3.2 + margin:
 			return true
 	if absf(p.x - RIVER_X) < RIVER_HALF + 0.8:
 		return true
 	for key in forests:
+		if _busy_skip_new and (str(key).begins_with("redwood") or str(key).begins_with("frost")):
+			continue
 		for t in forests[key]:
 			var tp: Vector3 = (t as Node3D).position
 			if Vector2(tp.x, tp.z).distance_to(p) < 1.3 + margin:
@@ -636,6 +739,10 @@ func _border_forest() -> void:
 		buckets[k] = []
 	for k in IMPOSTER_KINDS_M2:
 		buckets["m2:" + k] = []
+	for k in IMPOSTER_KINDS_M3:
+		buckets["m3:" + k] = []
+	for k in IMPOSTER_KINDS_M4:
+		buckets["m4:" + k] = []
 	# Outer edges of the three-valley map plus the strip inside Valley 1's west palisade.
 	var areas := [
 		Rect2(-101, 18, 161, 16),
@@ -665,16 +772,29 @@ func _border_forest() -> void:
 				continue
 			if p.x > ROAD_X and absf(p.y - V3_RAIL_Z) < 2.8:
 				continue
-			var k: String = kinds[rng.randi() % kinds.size()]
+			var ki := rng.randi() % kinds.size()
+			var k: String = kinds[ki]
 			if p.y < -48.0 and p.x > -60.0:
-				# Around Maple Highlands: maples and tall pines from the M2 atlas.
-				k = "m2:" + str(IMPOSTER_KINDS_M2[rng.randi() % IMPOSTER_KINDS_M2.size()])
+				# Around Maple Highlands: maples and tall pines from the M2 atlas (east of the road:
+				# frost firs from the M4 atlas; same draw, so the layout does not move).
+				var mi := rng.randi() % IMPOSTER_KINDS_M2.size()
+				k = ("m4:" + str(IMPOSTER_KINDS_M4[mi])) if p.x > ROAD_X + 2.0 else ("m2:" + str(IMPOSTER_KINDS_M2[mi]))
+			elif p.x > ROAD_X + 2.0 and p.y < 16.0:
+				# Next to Redwood Coast: redwoods from the M3 atlas (picked from the draw above).
+				k = "m3:" + str(IMPOSTER_KINDS_M3[ki % IMPOSTER_KINDS_M3.size()])
 			elif p.x < RIVER_X and rng.randf() < 0.5:
 				# Birch Bend's edges are half birch.
 				k = birches[rng.randi() % birches.size()]
 			var s := rng.randf_range(2.4, 3.6)
 			var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(p.x, 0, p.y))
+			# Redwood Coast and Frost Peaks now stand where this forest was; the draws above
+			# still run, so every other tree keeps its place.
+			if _border_cut(p):
+				continue
 			(buckets[k] as Array).append(xf)
+	# The forest around Redwood Coast and Frost Peaks (own seed).
+	coast.border_forest(buckets, kinds)
+	frost.border_forest(buckets, kinds)
 	if USE_IMPOSTERS:
 		_imposters(buckets)
 		return
@@ -682,6 +802,18 @@ func _border_forest() -> void:
 		var name_k: String = str(k).trim_prefix("m2:")
 		var dir := "birch" if name_k.begins_with("tree_birch") else ("maple" if name_k.begins_with("tree_maple") else "nature")
 		_multimesh("res://assets/models_v3/%s/%s_far.glb" % [dir, name_k], buckets[k])
+
+
+## Border trees that would stand inside Redwood Coast / Frost Peaks or on their crossings.
+func _border_cut(p: Vector2) -> bool:
+	for rid in [4, 5]:
+		var rect: Rect2 = Balance.REGIONS[rid].rect
+		if rect.grow(0.2).has_point(p):
+			return true
+	# Level Crossing corridor through the strip between the road wall and Redwood Coast.
+	if p.x > ROAD_X + 1.0 and p.x < 24.0 and absf(p.y - RedwoodCoast.CROSSING_Z) < 2.4:
+		return true
+	return false
 
 
 ## Camera-facing cards from one atlas (ASSETS_M1.md section 5): one MultiMesh per 16 m chunk,
@@ -706,19 +838,31 @@ func _imposters(buckets: Dictionary) -> void:
 	mat.set_shader_parameter("atlas", load(Models.IMPOSTER_ATLAS))
 	mat.set_shader_parameter("grid", 8.0)
 	# Maple Highlands edges use the M2 atlas (4 x 4 cells): a second material.
-	var mat_m2 := ShaderMaterial.new()
-	mat_m2.shader = IMPOSTER_SHADER
-	mat_m2.set_shader_parameter("atlas", load(Models.IMPOSTER_ATLAS_M2))
-	mat_m2.set_shader_parameter("grid", 4.0)
+	# Valley edge atlases (4 x 4 cells): one material each; chunk key z = the atlas index.
+	var sets := {"m2:": [IMPOSTER_KINDS_M2, Models.IMPOSTER_ATLAS_M2], "m3:": [IMPOSTER_KINDS_M3, Models.IMPOSTER_ATLAS_M3], "m4:": [IMPOSTER_KINDS_M4, Models.IMPOSTER_ATLAS_M4]}
+	var mats: Array = [mat]
+	for pre in sets:
+		var mx := ShaderMaterial.new()
+		mx.shader = IMPOSTER_SHADER
+		mx.set_shader_parameter("atlas", load(str(sets[pre][1])))
+		mx.set_shader_parameter("grid", 4.0)
+		mats.append(mx)
 	var chunks := {}
 	for k in buckets:
-		var m2 := str(k).begins_with("m2:")
-		var base: int = (IMPOSTER_KINDS_M2.find(str(k).trim_prefix("m2:")) if m2 else IMPOSTER_KINDS.find(k)) * 4
+		var ks := str(k)
+		var si := 0
+		var base: int = IMPOSTER_KINDS.find(k) * 4
+		var n := 1
+		for pre in sets:
+			if ks.begins_with(pre):
+				si = n
+				base = (sets[pre][0] as Array).find(ks.trim_prefix(pre)) * 4
+			n += 1
 		for x in buckets[k]:
 			var xf: Transform3D = x
 			# Drop the random yaw: cards must face the camera. Keep the scale.
 			var sc := xf.basis.get_scale().x
-			var key := Vector3i(floori(xf.origin.x / CHUNK_SIZE), floori(xf.origin.z / CHUNK_SIZE), 1 if m2 else 0)
+			var key := Vector3i(floori(xf.origin.x / CHUNK_SIZE), floori(xf.origin.z / CHUNK_SIZE), si)
 			if not chunks.has(key):
 				chunks[key] = []
 			(chunks[key] as Array).append([Transform3D(Basis().scaled(Vector3.ONE * sc), xf.origin), base + rng.randi() % 4])
@@ -737,10 +881,12 @@ func _imposters(buckets: Dictionary) -> void:
 			mm.set_instance_custom_data(i, Color(float(list[i][1]) / 255.0, 0, 0, 0))
 			var b := t * aabb
 			box = b if i == 0 else box.merge(b)
+			if station.on_clearing(t.origin):
+				_station_trees.append([mm, i])
 		mm.custom_aabb = box
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
-		mmi.material_override = mat_m2 if (key as Vector3i).z == 1 else mat
+		mmi.material_override = mats[(key as Vector3i).z]
 		mmi.visibility_range_end = CHUNK_VIS_END
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mmi)
@@ -791,7 +937,7 @@ func _scatter_deco() -> void:
 
 
 func _build_forest(key: String, center: Vector3, cols: int, rows: int, spacing: float, kind: String, animate: bool = false, region: int = 1) -> void:
-	var g := rng if region == 1 else (rng2 if region == 2 else rng3)
+	var g: RandomNumberGenerator = [rng, rng, rng2, rng3, rng4, rng5][clampi(region, 0, 5)]
 	for r in rows:
 		for c in cols:
 			var p := center + Vector3((c - (cols - 1) * 0.5) * spacing, 0, (r - (rows - 1) * 0.5) * spacing)
@@ -928,6 +1074,16 @@ func _spawn_hauler(look: String, src: ItemStack, src_zone: Zone, dst: ItemStack,
 
 
 func _apply_unlock(id: String, animate: bool) -> void:
+	if id.begins_with("r4_") or id.begins_with("r5_") or id.begins_with("cap_"):
+		if id.begins_with("r4_"):
+			coast.apply_unlock(id, animate)
+		elif id.begins_with("r5_"):
+			frost.apply_unlock(id, animate)
+		else:
+			station.apply_unlock(id, animate)
+		if not _loading:
+			_update_ground_uniforms()
+		return
 	if id.begins_with("r2_") or id.begins_with("r3_"):
 		if id.begins_with("r2_"):
 			_apply_unlock_r2(id, animate)
@@ -1194,6 +1350,9 @@ func _refresh_pads() -> void:
 		for r in u.req:
 			if not Game.is_unlocked(r):
 				ok = false
+			# A landmark build site opens the next gateway when the building is finished (GDD 6).
+			elif Balance.LANDMARKS.has(r) and Balance.BUILD_SITES.has(r) and not Game.site_done(r):
+				ok = false
 		if not ok:
 			continue
 		var big: bool = id in Balance.BIG_PADS
@@ -1217,6 +1376,9 @@ func _on_unlocked(id: String) -> void:
 	if _gateway_fx.has(id):
 		_open_gateway_fx(id)
 	_apply_unlock(id, true)
+	_eject_soon()
+	if id in Balance.VALLEY_GATE.values():
+		_build_bins()
 	var title := id
 	for u in UNLOCKS:
 		if u.id == id:
@@ -1254,7 +1416,8 @@ func _camera() -> void:
 	camera.fov = 52.0
 	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	camera.near = 0.5
-	camera.far = 160.0
+	# GDD 10: 110 (was 160), so the far valleys' ground and scenery drop out of the frustum.
+	camera.far = 110.0
 	add_child(camera)
 	_cam_pos = player.global_position
 	_place_camera(1.0)
@@ -1427,16 +1590,26 @@ func _goal() -> Array:
 			cheapest = pad
 	var v2_tutorial := _cur_region == 2 and not Game.is_unlocked("r2_jack1")
 	var v3_tutorial := _cur_region == 3 and Game.is_unlocked("r3_gate") and not Game.is_unlocked("r3_jack1")
+	var v4_tutorial := _cur_region == 4 and Game.is_unlocked("r4_crossing") and not Game.is_unlocked("r4_jack1")
+	var v5_tutorial := _cur_region == 5 and Game.is_unlocked("r5_cablecar") and not Game.is_unlocked("r5_jack1")
+	var any_tut := tutorial or v2_tutorial or v3_tutorial or v4_tutorial or v5_tutorial
+	if station.cutscene:
+		return [null, ""]
 	# The way into the next valley is always shown, even before the player can pay for it.
 	var gate := gateway_pad()
-	if gate and not tutorial and not v2_tutorial and not v3_tutorial:
-		return [gate.global_position, "Next valley: %s - %s" % [gate.title, Game.fmt(gate.cost - gate.paid_amount)]]
+	if gate and not any_tut:
+		var what := "Next valley" if gate.id != "cap_station" else "Finale"
+		return [gate.global_position, "%s: %s - %s" % [what, gate.title, Game.fmt(gate.cost - gate.paid_amount)]]
 	if cheapest and Game.money >= cheapest.cost - cheapest.paid_amount:
-		return [cheapest.global_position, "Buy %s!" % cheapest.title if (tutorial or v2_tutorial or v3_tutorial) else ""]
+		return [cheapest.global_position, "Buy %s!" % cheapest.title if any_tut else ""]
 	if v2_tutorial:
 		return _goal_v2(p)
 	if v3_tutorial:
 		return _goal_v3(p)
+	if v4_tutorial:
+		return coast.goal(p)
+	if v5_tutorial:
+		return frost.goal(p)
 	if not tutorial:
 		return [null, ""]
 	if shop.coin_value > 0 and back.is_empty():
@@ -1476,6 +1649,8 @@ func _process(delta: float) -> void:
 	_place_camera(1.0 - exp(-6.0 * delta))
 	_update_regions(delta, false)
 	_pay_rent(delta)
+	coast.tick(delta)
+	station.tick(delta)
 	var g := _goal()
 	var target = g[0]
 	if Game.hud:
@@ -1531,9 +1706,11 @@ func _update_regions(delta: float, force: bool) -> void:
 
 
 func region_of_unlock(id: String) -> int:
-	if id.begins_with("r3_"):
-		return 3
-	return 2 if id.begins_with("r2_") else 1
+	if id.begins_with("cap_"):
+		return 6
+	if id.length() > 3 and id[0] == "r" and id[1].is_valid_int() and id[2] == "_":
+		return int(id[1])
+	return 1
 
 
 func _valley_chip() -> String:
@@ -1607,6 +1784,12 @@ const V2_BELT_BB := [Vector3(-38.1, 0, -39.4), Vector3(-38.1, 0, -40.2), Vector3
 
 
 func _pad_region(id: String) -> Region:
+	if id == "r5_cablecar":
+		return r4
+	if id.begins_with("r5_"):
+		return r5
+	if id.begins_with("r4_") and id != "r4_crossing":
+		return r4
 	if id.begins_with("r3_") and id != "r3_gate":
 		return r3
 	return r2 if id.begins_with("r2_") and id != "r2_bridge" else r1
@@ -2011,7 +2194,8 @@ const V3_BELT_KIT_FLOOR := [Vector3(5.4, 0, -79.2), Vector3(5.4, 0, -84.6), Vect
 const V3_BELT_KIT_RAIL := [Vector3(9.5, 0, -92.3), Vector3(9.5, 0, -99.5)]
 ## Train stop: loco centre (wagons couple behind it to the east) and where it waits out of sight.
 const V3_TRAIN_STOP_X := 4.0
-const V3_TRAIN_AWAY_X := 52.0
+## The train runs on through Frost Peaks and out of sight in the east forest.
+const V3_TRAIN_AWAY_X := 104.0
 
 ## Forklift drops alternate between the counter/export pile and a build site that needs the item.
 var _route_flip: Dictionary = {}
@@ -2060,11 +2244,12 @@ func _reserve_v3() -> void:
 	for id in Balance.BUILD_SITES:
 		var p: Vector3 = Balance.BUILD_SITES[id].pos
 		_reserved_rects.append(Vector4(p.x + 1.0, p.z, 4.6, 3.4) if id != "r3_clocktower" else Vector4(p.x, p.z + 2.0, 3.6, 4.0))
-	# Handcar stops (all valleys): sign, tiles and the track beside them stay clear of scatter.
-	for rid in Balance.HANDCAR_STOPS:
-		var st: Vector3 = Balance.HANDCAR_STOPS[rid].pos
-		var side := float(Balance.HANDCAR_STOPS[rid].side)
-		_reserved_rects.append(Vector4(st.x + side * 0.6, st.z, 3.6, 2.0))
+	# Handcar stops: sign, tiles and the track beside them stay clear of scatter. These are the M2
+	# spots, kept as they were so the scatter draws do not move; _filter_deco_v123 clears the
+	# wider four-tile stops.
+	for st in [[Vector3(-8.5, 0, 11.2), -1.0], [Vector3(-35.6, 0, 3.4), 1.0], [Vector3(-6.0, 0, -57.8), -1.0]]:
+		var sp: Vector3 = st[0]
+		_reserved_rects.append(Vector4(sp.x + float(st[1]) * 0.6, sp.z, 3.6, 2.0))
 
 
 func _apply_unlock_r3(id: String, animate: bool) -> void:
@@ -2079,8 +2264,8 @@ func _apply_unlock_r3(id: String, animate: bool) -> void:
 			_path3(Vector2(0, -46.5), Vector2(0, -104), 1.0)
 			_path3(Vector2(-12, -58), Vector2(-12, -110), 1.0)
 			_path3(Vector2(-12, -58), Vector2(0, -58), 0.9)
-			for rid in Balance.HANDCAR_STOPS:
-				_build_handcar_stop(int(rid), animate)
+			if not _loading:
+				_rebuild_handcar_stops(animate)
 		"r3_beamsaw":
 			_build_beamsaw(animate)
 			_build_shop3(animate)
@@ -2157,8 +2342,12 @@ func _palisades_v3() -> void:
 			var basis := Basis(Vector3.UP, rng3.randf() * TAU).scaled(Vector3(1, hgt, 1))
 			xforms.append(Transform3D(basis, Vector3(p.x, 0.0, p.y)))
 	_multimesh(Models.path("palisade_post"), xforms, true, r3)
+	# Once the Grand Timber Station stands, its walk-through arch is the gate (ASSETS_M5.md, option A).
+	if Game.is_unlocked("cap_station"):
+		return
 	var gate := _model(Models.path("highland_gate"), GATE3, 1.0, 0, r1)
 	gate.name = "HighlandGate"
+	_gate3_model = gate
 	var lbl := Label3D.new()
 	lbl.font = Fx.font()
 	lbl.text = "MAPLE HIGHLANDS"
@@ -2172,6 +2361,24 @@ func _palisades_v3() -> void:
 	_batch_label(lbl)
 	if not Game.is_unlocked("r3_gate"):
 		_gate3_doors = _model(Models.path("highland_gate_doors"), GATE3, 1.0, 0, r1)
+
+
+## The station replaces the Highland Gate: the arch (and its sign) shrinks away.
+func retire_highland_gate(animate: bool) -> void:
+	if _gate3_model == null:
+		return
+	var g := _gate3_model
+	_gate3_model = null
+	var gl := GroundLabels.find_for(g)
+	for l in g.find_children("*", "Label3D", true, false):
+		if gl:
+			gl.remove(l as Label3D)
+	if animate:
+		var tw := g.create_tween()
+		tw.tween_property(g, "scale", Vector3.ONE * 0.01, 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_callback(g.queue_free)
+	else:
+		g.queue_free()
 
 
 func _open_gate3(animate: bool) -> void:
@@ -2298,7 +2505,8 @@ func _build_rail(animate: bool) -> void:
 	var xf := []
 	var along_x := Basis(Vector3.UP, PI * 0.5)
 	var x := V3_RAIL_WEST + 2.0
-	while x < V3_TRAIN_AWAY_X + 24.0:
+	# Up to the road wall; Frost Peaks owns the rest of the line (FrostPeaks.build_rail_v3).
+	while x < 21.0:
 		xf.append(Transform3D(along_x, Vector3(x, 0, V3_RAIL_Z)))
 		x += 4.0
 	_multimesh(Models.path("rail"), xf, true, track)
@@ -2370,17 +2578,24 @@ func _build_office3(animate: bool) -> void:
 # ---------------------------------------------------------------- build sites, rent, forklift
 
 ## Village houses: slot squares on the street side (+X), stacked along z. Clock Tower: in front.
-func _build_site(id: String, animate: bool) -> void:
+func _build_site(id: String, animate: bool, origin: Vector3 = Vector3.INF, step: Vector3 = Vector3.INF, sign_at: Vector3 = Vector3.INF) -> BuildSite:
 	var info: Dictionary = Balance.BUILD_SITES[id]
 	var tower := id == "r3_clocktower"
-	var origin := Vector3(-2.6, 0, 4.4) if tower else Vector3(4.2, 0, -2.6)
-	var step := Vector3(2.6, 0, 0) if tower else Vector3(0, 0, 2.6)
-	var sign_at := Vector3(0, 4.2, 2.6) if tower else Vector3(0, 3.2, 2.4)
+	if origin == Vector3.INF:
+		origin = Vector3(-2.6, 0, 4.4) if tower else Vector3(4.2, 0, -2.6)
+	if step == Vector3.INF:
+		step = Vector3(2.6, 0, 0) if tower else Vector3(0, 0, 2.6)
+	if sign_at == Vector3.INF:
+		sign_at = Vector3(0, 4.2, 2.6) if tower else Vector3(0, 3.2, 2.4)
 	var site := BuildSite.new().setup(id, info, origin, step, sign_at)
 	site.position = info.pos
-	r3.add_child(site)
+	(regions[int(info.get("region", 3))] as Region).add_child(site)
 	sites[id] = site
 	site.completed.connect(_on_site_completed)
+	if int(info.get("region", 3)) != 3:
+		if animate:
+			Fx.pop_in(site, 0.6)
+		return site
 	if tower:
 		var sb := StaticBody3D.new()
 		var col := CollisionShape3D.new()
@@ -2394,6 +2609,7 @@ func _build_site(id: String, animate: bool) -> void:
 		_plaza3(Vector2(p.x, p.z + 2.6), Vector2(3.8, 3.6))
 	if animate:
 		Fx.pop_in(site, 0.6)
+	return site
 
 
 func _on_site_completed(id: String) -> void:
@@ -2402,6 +2618,9 @@ func _on_site_completed(id: String) -> void:
 	Sfx.play("unlock", -2.0)
 	Fx.confetti(self, p + Vector3(0, 3.0, 0))
 	_pull_out()
+	_eject_soon()
+	if bool(info.get("platform", false)):
+		station.platform_done(id)
 	if bool(info.rent):
 		if shop3:
 			shop3.spawn_bonus = 1.0 + 0.1 * Game.houses_done()
@@ -2412,6 +2631,8 @@ func _on_site_completed(id: String) -> void:
 	Game.save_game()
 	if Balance.LANDMARKS.has(id):
 		_landmark_done(id)
+		# The next gateway pad appears once the landmark building stands.
+		_refresh_pads()
 
 
 func _title_of(id: String) -> String:
@@ -2446,9 +2667,11 @@ func _pay_rent(delta: float) -> void:
 		Game.add_money(whole, 3)
 
 
-## First unfinished site (in plot order) with room for `item`, or null.
-func _site_needing(item: String) -> BuildSite:
+## First unfinished site (in plot order) in valley `region` with room for `item`, or null.
+func _site_needing(item: String, region: int = 3) -> BuildSite:
 	for id in Balance.BUILD_SITES:
+		if int(Balance.BUILD_SITES[id].get("region", 3)) != region:
+			continue
 		if sites.has(id):
 			var s: BuildSite = sites[id]
 			if s.room(item) > 0:
@@ -2473,7 +2696,7 @@ func _forklift_route(item: String, commit: bool = false) -> Array:
 	elif item == "cabin_kit" and machines.has("rail") and not (machines.rail as TruckDock).pile.is_full():
 		var d: TruckDock = machines.rail
 		main = [d.pile, d.zone.global_position]
-	var site := _site_needing(item)
+	var site := _site_needing(item, 3)
 	var to_site := site != null and (main.is_empty() or bool(_route_flip.get(item, false)))
 	if commit:
 		_route_flip[item] = not bool(_route_flip.get(item, false))
@@ -2484,9 +2707,143 @@ func _forklift_route(item: String, commit: bool = false) -> Array:
 
 # ---------------------------------------------------------------- handcar stops
 
+## TruckDock asks: the Valley 1 truck waits before the Level Crossing while the player is on it.
+func crossing_holds(pos: Vector3) -> bool:
+	return coast.crossing_holds(pos)
+
+
+# ---------------------------------------------------------------- player safety (stuck, discard)
+
+## A building that appears (or grows in with its pop-in) around the player pushes them out to
+## the nearest free spot: once right away and once after the pop-in has finished. Workers and
+## shoppers have no collision, so they cannot be trapped.
+func _eject_soon() -> void:
+	for t in [0.15, 1.2]:
+		get_tree().create_timer(t).timeout.connect(func() -> void:
+			if player and _overlaps(player.global_position):
+				_place_free(player, 0.0))
+
+
+## Player capsule overlaps any collision at p.
+func _overlaps(p: Vector3) -> bool:
+	var q := PhysicsShapeQueryParameters3D.new()
+	var cap := CapsuleShape3D.new()
+	# A touch smaller than the player's own capsule (0.38), so resting against a wall is not "inside".
+	cap.radius = 0.34
+	cap.height = 1.4
+	q.shape = cap
+	q.transform = Transform3D(Basis(), p + Vector3(0, 0.8, 0))
+	q.exclude = [player.get_rid()]
+	return not get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+
+func _walkable(p: Vector3) -> bool:
+	var q := Vector2(p.x, p.z)
+	for rid in regions:
+		if (regions[rid] as Region).rect.grow(-0.5).has_point(q):
+			return not _overlaps(p)
+	return false
+
+
+## Moves the player to the nearest free walkable spot at least min_r away (rings of 0.5 m).
+func _place_free(who: Node3D, min_r: float) -> void:
+	var o := who.global_position
+	var r := maxf(min_r, 0.5)
+	while r <= 12.0:
+		var n := maxi(8, int(r * 6.0))
+		for i in n:
+			# Start toward the camera (+z), so the player lands in view.
+			var a := PI * 0.5 + TAU * float(i) / n
+			var c := o + Vector3(cos(a) * r, 0, sin(a) * r)
+			if _walkable(c):
+				who.global_position = c
+				if who == player:
+					player.velocity = Vector3.ZERO
+				return
+		r += 0.5
+
+
+## Safety net (Player calls it after 2 s of input without moving): wedged inside collision or
+## boxed in on every side -> nearest free spot. Pushing against a plain wall does nothing.
+func unstick(who: Node3D) -> void:
+	var p := who.global_position
+	if _overlaps(p):
+		_place_free(who, 0.0)
+		return
+	for i in 8:
+		var a := TAU * i / 8.0
+		if _walkable(p + Vector3(cos(a), 0, sin(a)) * 0.9):
+			return
+	_place_free(who, 1.0)
+
+
+## While a large panel covers the screen (upgrade board, valley card, finish panel) the sun's
+## shadow pass is skipped: the panel's own draws would otherwise push the frame over budget.
+func set_ui_cover(on: bool) -> void:
+	if sun:
+		sun.shadow_enabled = not on
+
+
+## Discard bin per open valley (Balance.DISCARD_BINS): stand on it to throw away the stack.
+func _build_bins() -> void:
+	for rid in Balance.DISCARD_BINS:
+		if _bins.has(rid) or not valley_open(int(rid)):
+			continue
+		var at: Vector3 = Balance.DISCARD_BINS[rid]
+		var root := Node3D.new()
+		root.name = "DiscardBin%d" % rid
+		root.position = at
+		(regions[int(rid)] as Region).add_child(root)
+		var bin := Models.make_path("res://assets/models_v3/survival/barrel.glb", Color(0.62, 0.64, 0.66))
+		bin.scale = Vector3.ONE * 2.0
+		bin.position = Vector3(0, 0, -1.25)
+		root.add_child(bin)
+		MeshMerge.merge(root)
+		var z := Zone.new().setup(Zone.Kind.CUSTOM, null, Vector2(1.8, 1.8), "DISCARD", Color(1.0, 0.55, 0.45))
+		z.interval = 0.0
+		# Only after standing on it for a moment, so walking past never empties the stack.
+		var still := [0.0]
+		z.on_carrier = func(c: Node, d: float) -> bool:
+			if not c.get("is_player") or (c as Player).stack.is_empty():
+				still[0] = 0.0
+				return false
+			var v: Vector3 = (c as Player).velocity
+			still[0] = still[0] + d if Vector2(v.x, v.z).length() < 0.6 else 0.0
+			if still[0] < Zone.PICK_STILL_S:
+				return false
+			still[0] = 0.0
+			(c as Player).dump()
+			return true
+		root.add_child(z)
+		_bins[rid] = root
+
+
 func valley_open(rid: int) -> bool:
 	var gate: String = Balance.VALLEY_GATE.get(rid, "")
 	return gate == "" or Game.is_unlocked(gate)
+
+
+## Every open valley's stop, rebuilt when a new valley opens (each stop gets a tile for it).
+func _rebuild_handcar_stops(animate: bool) -> void:
+	for rid in _stops.keys():
+		var old: Node3D = _stops[rid]
+		if is_instance_valid(old):
+			var gl := GroundLabels.find_for(old)
+			for l in old.find_children("*", "Label3D", true, false):
+				if gl:
+					gl.remove(l as Label3D)
+			old.queue_free()
+	_stops.clear()
+	_tile_hold.clear()
+	for rid in Balance.HANDCAR_STOPS:
+		if valley_open(int(rid)):
+			_build_handcar_stop(int(rid), animate)
+
+
+## Tile offset along the stop for tile i of n (one row; closer together with 3-4 tiles).
+func _tile_x(i: int, n: int) -> float:
+	var step := float(Balance.HANDCAR_TILE_STEP[2] if n <= 2 else Balance.HANDCAR_TILE_STEP[4])
+	return (i - (n - 1) * 0.5) * step
 
 
 ## Sign, a short track with the handcar, and one tile per other open valley (GDD 7.6 E).
@@ -2500,14 +2857,15 @@ func _build_handcar_stop(rid: int, animate: bool) -> void:
 	root.position = info.pos
 	region.add_child(root)
 	_stops[rid] = root
-	var sign := Models.make("handcar_stop")
+	# Each valley may have its own colour of stop (Redwood Coast: navy, ASSETS_M3.md 1.5).
+	var sign := Models.make(str({4: "handcar_stop_navy", 5: "handcar_stop_alpine"}.get(rid, "handcar_stop")))
 	sign.position = Vector3(0, 0, -1.2)
 	root.add_child(sign)
 	var side := float(info.side)
 	var rail := Models.make("rail")
 	rail.position = Vector3(3.1 * side, 0, 0)
 	root.add_child(rail)
-	var car := Models.make("handcar")
+	var car := Models.make(str({4: "handcar_navy", 5: "handcar_alpine"}.get(rid, "handcar")))
 	car.position = Vector3(3.1 * side, 0, -0.6)
 	root.add_child(car)
 	var dests := []
@@ -2516,7 +2874,7 @@ func _build_handcar_stop(rid: int, animate: bool) -> void:
 			dests.append(int(other))
 	for i in dests.size():
 		var tile := Models.make("handcar_tile")
-		tile.position = Vector3((i - (dests.size() - 1) * 0.5) * 3.4, 0, 0.4)
+		tile.position = Vector3(_tile_x(i, dests.size()), 0, 0.4)
 		root.add_child(tile)
 	MeshMerge.merge(root)
 	var title := Label3D.new()
@@ -2532,8 +2890,9 @@ func _build_handcar_stop(rid: int, animate: bool) -> void:
 	_batch_label(title)
 	for i in dests.size():
 		var dst: int = dests[i]
-		var pos := Vector3((i - (dests.size() - 1) * 0.5) * 3.4, 0, 0.4)
-		var z := Zone.new().setup(Zone.Kind.CUSTOM, null, Vector2(1.6, 1.6), str(Balance.REGIONS[dst].name).to_upper(), Color(1.0, 0.85, 0.3))
+		var pos := Vector3(_tile_x(i, dests.size()), 0, 0.4)
+		var vname := str(Balance.REGIONS[dst].name).to_upper()
+		var z := Zone.new().setup(Zone.Kind.CUSTOM, null, Vector2(1.6, 1.6), vname, Color(1.0, 0.85, 0.3))
 		z.position = pos
 		z.marker.visible = false
 		z.interval = 0.0
@@ -2550,9 +2909,10 @@ func _build_handcar_stop(rid: int, animate: bool) -> void:
 			_tile_hold[key] = 0.0
 		root.add_child(z)
 		if z.label:
-			z.label.font_size = 40
+			# Three or four tiles sit closer together: a smaller name keeps them apart.
+			z.label.font_size = 40 if dests.size() <= 2 else 30
 			z.label.pixel_size = 0.0075
-			z.label.position.z = 1.3
+			z.label.position.z = 1.3 if dests.size() <= 2 else 1.2
 	if animate:
 		Fx.pop_in(root, 0.6)
 
