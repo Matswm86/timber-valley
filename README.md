@@ -9,9 +9,14 @@ It is a clean version of the "idle arcade" mini-games you see in mobile ads
 without the ad-supported game wrapped around it.
 
 <p align="center">
-  <img src="screenshots/02_carrying.jpg" alt="Chopping trees next to the first sawmill" width="260"/>
-  <img src="screenshots/05_shop.jpg" alt="The market with shoppers at the counters" width="260"/>
-  <img src="screenshots/12_megasaw.jpg" alt="The mega sawmill: a crane-fed giant log and a huge chainsaw" width="260"/>
+  <img src="screenshots/readme/1_home_valley_market.jpg" alt="Home Valley: the market counters with chairs, tables and planks" width="260"/>
+  <img src="screenshots/readme/2_birch_bend_boats.jpg" alt="Birch Bend: the canoe workshop and the export barge" width="260"/>
+  <img src="screenshots/readme/3_maple_highlands_train.jpg" alt="Maple Highlands: cabin kits loaded onto the export train" width="260"/>
+</p>
+<p align="center">
+  <img src="screenshots/readme/4_redwood_coast_pier.jpg" alt="Redwood Coast: shoppers at the harbour market by the pier" width="260"/>
+  <img src="screenshots/readme/5_frost_peaks_kilns.jpg" alt="Frost Peaks: drying kilns and the ski workshop in the snow" width="260"/>
+  <img src="screenshots/readme/6_grand_timber_express.jpg" alt="The Grand Timber Express passing through Redwood Coast" width="260"/>
 </p>
 
 ## Download
