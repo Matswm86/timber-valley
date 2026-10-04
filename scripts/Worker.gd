@@ -108,17 +108,23 @@ func _process(delta: float) -> void:
 	walk_speed = Game.worker_speed(region)
 	cap = Game.worker_capacity(region)
 	if forklift:
-		walk_speed *= float(Balance.FORKLIFT.speed) / 3.2
-		cap += int(Balance.FORKLIFT.cap) - 6
+		var fk: Dictionary = Balance.FORKLIFT_BY_REGION.get(region, Balance.FORKLIFT)
+		walk_speed *= float(fk.speed) / 3.2
+		cap += int(fk.cap) - 6
 		if not stack.is_empty():
 			var d: Dictionary = Items.def(stack.top_type())
-			var layers := maxi(int(float(Balance.FORKLIFT.max_load_h) / float(d.layer)), 1)
+			var layers := maxi(int(float(fk.max_load_h) / float(d.layer)), 1)
 			cap = mini(cap, layers * stack.cols * stack.rows)
 	elif vehicle != "":
 		var vd: Dictionary = Balance.VEHICLES[vehicle]
 		walk_speed *= float(vd.speed) / 3.2
 		cap += int(vd.cap) - 6
 	cap += extra_cap
+	# Thin goods (veneer) carry by height: x Balance.CARRY_MULT, 1 for every other item.
+	var carried := stack.top_type()
+	if carried == "" and source != null:
+		carried = source.item_type
+	cap *= int(Balance.CARRY_MULT.get(carried, 1))
 	if job == Job.LUMBERJACK:
 		_lumberjack(delta)
 	else:
@@ -149,6 +155,10 @@ func _deliver(delta: float) -> void:
 						dest_pos = _came_from_pos
 			else:
 				Sfx.play("wood", -16.0)
+				# Thin goods (veneer) unload a bundle per tick, as they carry (1 for other items).
+				for k in int(Balance.CARRY_MULT.get(dest.top_type(), 1)) - 1:
+					if not stack.transfer_to(dest):
+						break
 			if stack.is_empty():
 				_delivering = false
 
@@ -234,6 +244,10 @@ func _hauler(delta: float) -> void:
 					lim = mini(cap, maxi(d0.capacity - d0.count(), 1))
 		if stack.count() < lim and not source.is_empty() and stack.can_accept(source.top_type()):
 			source.transfer_to(stack)
+			# Thin goods (veneer) load a bundle per tick, as they carry (1 for other items).
+			for k in int(Balance.CARRY_MULT.get(stack.top_type(), 1)) - 1:
+				if stack.count() >= lim or not source.transfer_to(stack):
+					break
 			Sfx.play("place", -16.0)
 			_wait = 0.0
 		else:
@@ -273,11 +287,12 @@ func _pick_source() -> bool:
 		# A cargo ship waiting for this item comes first (Redwood Coast orders need no player).
 		if (r[0] as Node).get_parent() is OrderBoard:
 			score += 60
-		# Redwood Coast on: the emptier a site's slot for this item, the sooner it is served, so
-		# three masts are not left waiting behind piles of timber.
+		# Maple Highlands on (Redwood Coast before 2026-10-04): the emptier a site's slot for this
+		# item, the sooner it is served, so three masts (or a few kits and beams for a house) are
+		# not left waiting behind piles of timber (floorboards).
 		var site := (r[0] as Node).get_parent() as BuildSite
 		var d: ItemStack = r[0]
-		if site and region >= 4:
+		if site and region >= 3:
 			score += int(48.0 * float(d.capacity - d.count()) / maxf(float(site.goods[s.item_type]), 1.0))
 		elif region >= 5:
 			# Frost Peaks snowcat: an empty machine input or counter waits less (the sled shop is

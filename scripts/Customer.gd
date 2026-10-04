@@ -98,6 +98,10 @@ func _process(delta: float) -> void:
 						var shelf: ItemStack = shop.shelf(product)
 						if not shelf.is_empty():
 							shelf.transfer_to(stack)
+							# Veneer is taken a bundle at a time (Balance.CARRY_MULT, 1 for other items).
+							for k in int(Balance.CARRY_MULT.get(product, 1)) - 1:
+								if stack.count() >= want or not shelf.transfer_to(stack):
+									break
 							Sfx.play("place", -12.0)
 							_timer = 0.16
 					if stack.count() >= want:

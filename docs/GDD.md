@@ -844,3 +844,35 @@ Art needed per milestone goes to the graphic-designer (models_v3 pipeline):
 - Offline earnings: yes, up to 2 hours at 50% income, collected as a coin pile at the office.
 - Wallet: one shared wallet across all valleys.
 - Valley names: keep the English names.
+
+## Pacing fix: Birch Bend stalls, Redwood Coast opening (2026-10-04)
+Measured with `tests/pacing_probe.gd`; full tables in `docs/balance/birch_redwood_pacing_2026-10-04.md`.
+- **Birch Bend**: veneer now carries by height. Workers, the player and belts move 3 per slot
+  (`Balance.CARRY_MULT`), and veneer shoppers buy 5x (`Balance.SHOPPER_QTY_MULT`). The flume is
+  2x faster (4 logs/s) and the lathe cycle is 0.8 s. Hire 2 Flume Lumberjacks costs 13,500, so
+  it comes after the press line. Income (max upgrades) 1,302 -> 3,975 $/min after the Veneer
+  Carrier and 7,872 -> 15,195 $/min after the Forester Camp. Worker idle 36% -> 2% and 81% -> 58%.
+  The longest stretch a pile sat full went from 149 s to 26 s.
+- Still open (design call): 3-6 lumberjacks cut about 6-7 logs/s and one lathe line uses about
+  3.5-4. The flume crews still stand 64-92% of the time (see open question 10).
+- **Redwood Coast opening**: the redwood mill .. Harbor Cashier pads cost 20K/40K/45K/55K/65K/75K/85K
+  (were 80K/64K/67K/93K/100K/110K/120K). From the crossing to the cashier takes 5.3 min instead
+  of 8.7 min (7.6 vs 12.4 min with no region upgrades bought). The first wait is 19-29 s
+  instead of 72-108 s. Gaps between pads are 19-95 s. Deck Saw on: unchanged.
+
+## Stall audit: Valleys 3-5 and the station (2026-10-04)
+Measured with `tests/pacing_probe.gd`; tables in `docs/balance/valleys_3_5_audit_2026-10-04.md`.
+- **Maple Highlands**: belts emptied every output, so the village and the Clock Tower got no beams
+  or kits and the valley could not finish (Clock Tower 0/120 beams after 46 min). Belts now leave
+  a reserve while a site needs the item (`Balance.SITE_RESERVE`), and the forklift serves sites
+  first: the Clock Tower finishes 321 s after its pad. Planer 1.1 s; Beam Saw $8K (first wait
+  71 -> 34 s).
+- **Redwood Coast**: shipwrights fill the Lighthouse before the slipways (16 -> 2.8 min to finish
+  it; valley 58 -> 45 min). The Redwood forklift carries 36 at 6.0 m/s (+14-66% income from pad 12).
+- **Frost Peaks**: the Summit Observatory could not finish (0/20 sleds after 43 min); belts keep a
+  reserve and the snowcat serves it first: done 8.5 min after its pad. Opening pads cheaper: the
+  first buyer (Ski Lodge) stands at 4.1 min instead of 8.3.
+- **Birch Bend**: barge 12 canoes per trip. **Station**: no stall (each platform 2-4 min).
+- Design calls left for Mats: crews outnumber machines in every valley; Redwood earns $0 from
+  automation for pads 9-11 and Frost Peaks until the snowcat (both need requirement changes);
+  the Forester Camp's extra crews add nothing.

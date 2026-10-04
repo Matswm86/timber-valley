@@ -299,6 +299,8 @@ func _try_spawn() -> void:
 	var n := randi_range(2, 5) if prod == "plank" else randi_range(1, 3)
 	if big:
 		n += randi_range(1, 3)
+	# Veneer sells in bundles (Balance.SHOPPER_QTY_MULT, 1 for every other item).
+	n *= int(Balance.SHOPPER_QTY_MULT.get(prod, 1))
 	var spawn := to_global(Vector3(road_x, 0, 7.0 + randf() * 3.0))
 	if spawn_local != Vector3.INF:
 		spawn = to_global(spawn_local + Vector3(0, 0, randf() * 2.0))

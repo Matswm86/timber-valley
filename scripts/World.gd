@@ -2296,8 +2296,15 @@ func _apply_unlock_r3(id: String, animate: bool) -> void:
 			for k in 2:
 				_spawn_jack_to(["character-female-c", "character-male-d"][k], forests.maple_north, pl.input, pl.in_zone.global_position, Vector3(-3.5, 0, -97.0 - k * 1.6), animate, 3)
 		"r3_belt_bp":
-			_belt((machines.beamsaw as Machine).output, shop3.shelf("beam"), V3_BELT_BEAMS, animate, 3)
-			_belt((machines.planer as Machine).output, shop3.shelf("floorboard"), V3_BELT_FLOOR, animate, 3)
+			# The yard belts leave a reserve while a village site needs that item, so the forklift
+			# finds beams and floorboards to take there (2026-10-04: with these belts and the
+			# kit-factory belts emptying both outputs, houses and the Clock Tower got no more beams).
+			var bs: ItemStack = (machines.beamsaw as Machine).output
+			var bb := _belt(bs, shop3.shelf("beam"), V3_BELT_BEAMS, animate, 3)
+			bb.hold = _site_reserve(bs, "beam")
+			var ps: ItemStack = (machines.planer as Machine).output
+			var bf := _belt(ps, shop3.shelf("floorboard"), V3_BELT_FLOOR, animate, 3)
+			bf.hold = _site_reserve(ps, "floorboard")
 		"r3_kitfactory":
 			_build_kitfactory(animate)
 			_forklift_source("kitfactory")
@@ -2305,9 +2312,13 @@ func _apply_unlock_r3(id: String, animate: bool) -> void:
 			_build_rail(animate)
 		"r3_belt_kit":
 			var kf: Machine = machines.kitfactory
-			_belt((machines.beamsaw as Machine).output, kf.input, V3_BELT_KIT_BEAMS, animate, 3)
-			_belt((machines.planer as Machine).output, kf.input_b, V3_BELT_KIT_FLOOR, animate, 3)
-			_belt(kf.output, (machines.rail as TruckDock).pile, V3_BELT_KIT_RAIL, animate, 3)
+			var kb := _belt((machines.beamsaw as Machine).output, kf.input, V3_BELT_KIT_BEAMS, animate, 3)
+			kb.hold = _site_reserve((machines.beamsaw as Machine).output, "beam")
+			var kfl := _belt((machines.planer as Machine).output, kf.input_b, V3_BELT_KIT_FLOOR, animate, 3)
+			kfl.hold = _site_reserve((machines.planer as Machine).output, "floorboard")
+			# Kits to the train leave a reserve while a village site needs kits (as r3_belt_bp).
+			var bk := _belt(kf.output, (machines.rail as TruckDock).pile, V3_BELT_KIT_RAIL, animate, 3)
+			bk.hold = _site_reserve(kf.output, "cabin_kit")
 		"r3_jack3":
 			_build_forest("maple_ridge", V3_GROVE_RIDGE, 4, 2, 2.6, "maple", animate, 3)
 			var looks := ["character-female-a", "character-male-c", "character-female-d"]
@@ -2679,6 +2690,12 @@ func _site_needing(item: String, region: int = 3) -> BuildSite:
 	return null
 
 
+## Belt hold: keep Balance.SITE_RESERVE[item] on `src` while a village site needs `item`.
+func _site_reserve(src: ItemStack, item: String) -> Callable:
+	var keep := int(Balance.SITE_RESERVE[item])
+	return func() -> bool: return src.count() <= keep and _site_needing(item, 3) != null
+
+
 func _forklift_source(machine_id: String) -> void:
 	if forklift == null or not machines.has(machine_id):
 		return
@@ -2697,7 +2714,11 @@ func _forklift_route(item: String, commit: bool = false) -> Array:
 		var d: TruckDock = machines.rail
 		main = [d.pile, d.zone.global_position]
 	var site := _site_needing(item, 3)
-	var to_site := site != null and (main.is_empty() or bool(_route_flip.get(item, false)))
+	# Once a belt feeds the item's counter or train (r3_belt_bp, r3_belt_kit), the forklift takes
+	# every load a site needs there instead of alternating (2026-10-04).
+	var belt_pad := "r3_belt_kit" if item == "cabin_kit" else "r3_belt_bp"
+	var belt_fed := Game.is_unlocked(belt_pad)
+	var to_site := site != null and (main.is_empty() or belt_fed or bool(_route_flip.get(item, false)))
 	if commit:
 		_route_flip[item] = not bool(_route_flip.get(item, false))
 	if to_site:

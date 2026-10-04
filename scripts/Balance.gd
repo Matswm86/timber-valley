@@ -36,11 +36,14 @@ const TREE_SCALE_OVERRIDE := {"tree_mapleC": 1.0}
 const TREE_RADIUS := {"redwood": 0.45}
 # id: [in_a, n_a, in_b, n_b, out, n_out, cycle_s]  ("" = no second input)
 const MACHINES := {
-	"lathe": ["birch_log", 2, "", 0, "veneer", 6, 1.2],
+	# lathe 1.2 -> 0.8 s (2026-10-04): with 6 crews it was the Birch Bend bottleneck (88-92% busy).
+	"lathe": ["birch_log", 2, "", 0, "veneer", 6, 0.8],
 	"press": ["veneer", 3, "", 0, "plywood", 1, 1.5],
 	"boatshop": ["plywood", 4, "", 0, "canoe", 1, 3.0],
 	"beamsaw": ["maple_log", 1, "", 0, "beam", 2, 1.4],
-	"planer": ["maple_log", 1, "", 0, "floorboard", 4, 1.6],
+	# planer 1.6 -> 1.1 s (2026-10-04): input 87-98% full from r3_jack2 on, kit factory
+	# short of floorboards.
+	"planer": ["maple_log", 1, "", 0, "floorboard", 4, 1.1],
 	"kitfactory": ["beam", 2, "floorboard", 4, "cabin_kit", 1, 2.0],
 	"redmill": ["red_log", 1, "", 0, "timber", 2, 1.5],
 	"decksaw": ["timber", 1, "", 0, "deckboard", 3, 1.2],
@@ -89,7 +92,9 @@ const UPGRADE_GROWTH := 1.75
 ## Exports (generalised TruckDock): items per trip, seconds away between trips.
 const EXPORTS := {
 	"truck": {"cap": 8, "away": 5.0},
-	"barge": {"cap": 6, "away": 8.0},
+	# barge 6 -> 12 (2026-10-04): at the Forester Camp the canoe dock sat full 71-80% of the time
+	# (barge 0.32 canoes/s vs ~0.42 built); 12 = two layers on its 3x2 bed.
+	"barge": {"cap": 12, "away": 8.0},
 	# 3 wagons x 4 kits = 12 per trip; Longer Train (r3_rail2) couples 2 more (20 per trip).
 	"train": {"cap": 12, "away": 10.0, "wagons": 3},
 	# Frost Peaks mountain train (GDD 7.9): 10 guitars per trip in 2 wagons of 5.
@@ -103,6 +108,9 @@ const RAIL2_WAGONS := 2
 ## Forklift hauler (GDD 7.5): faster, carries more, serves several piles (the fullest first).
 ## max_load_h caps a load of bulky items (cabin kits) at this stack height in metres.
 const FORKLIFT := {"speed": 4.5, "cap": 20, "max_load_h": 2.4}
+## Per-valley forklift override (2026-10-04): the one Redwood Coast forklift serves three machines
+## about 45 m from the harbor; at 4.5 m/s x 20 the deck saw output sat full 300+ s of 360.
+const FORKLIFT_BY_REGION := {4: {"speed": 6.0, "cap": 36, "max_load_h": 2.4}}
 ## A cabin kit is 724 tris: piles draw at most this many (designer flag d: a full 48-kit pile
 ## was about 35k tris). The pile keeps its real count; only the drawn tower is capped.
 const KIT_PILE_DRAWN := 12
@@ -174,8 +182,22 @@ const KILN_GLOW_MAX := 3.0
 ## Forester Camp (r2_jack3, Mats 2026-10-01): its crew size, and every birch regrows this much
 ## faster once it is bought.
 const FORESTER_CAMP := {"crew": 3, "birch_regrow_mult": 0.6}
-## Log flume (Valley 2): a Conveyor with a water look.
-const FLUME := {"speed": 3.5, "spacing": 0.5, "bob_m": 0.06, "bob_hz": 3.0}
+## Thin goods carry by height, not by count (Mats 2026-10-04, Birch Bend stalls): workers, the
+## player and belts move this many of the item per carried slot. Items not listed = 1.
+const CARRY_MULT := {"veneer": 3}
+## Shoppers buy this many times their usual amount (veneer sells in bundles, so the counter keeps
+## up with a carrier that brings 3x as much; docs/balance/birch_redwood_pacing_2026-10-04.md).
+const SHOPPER_QTY_MULT := {"veneer": 5}
+## Landmark/village site reserve (2026-10-04): while a Maple Highlands village site or the Summit
+## Observatory needs an item, the belts that empty its source pile leave this many on the pile for
+## the forklift/snowcat (belts emptied the piles, so sites got no beams, kits, sleds or guitars).
+const SITE_RESERVE := {
+	"beam": 12, "floorboard": 12, "cabin_kit": 4, "dry_lumber": 20, "sled": 4, "guitar": 2,
+}
+## Log flume (Valley 2): a Conveyor with a water look. 2026-10-04: spacing 0.5 -> 0.25 s (2 -> 4
+## logs/s; at 0.5 the five flume crews stood at a full chute while the lathe ran dry) and speed
+## 3.5 -> 7.0 m/s (logs in the water hold lathe-input room, so fewer riders = fewer stalls).
+const FLUME := {"speed": 7.0, "spacing": 0.25, "bob_m": 0.06, "bob_hz": 3.0}
 
 ## Valley sleep and ledger (GDD section 10).
 const WAKE_MARGIN := 24.0
@@ -232,7 +254,9 @@ const UNLOCKS := [
 	{"id": "r2_flume", "cost": 6000, "req": ["r2_jack1"], "title": "Log Flume", "pad": Vector3(-60, 0, -22)},
 	{"id": "r2_cashier", "cost": 6400, "req": ["r2_hauler1"], "title": "Riverside Cashier", "pad": Vector3(-35, 0, 0)},
 	{"id": "r2_press", "cost": 8700, "req": ["r2_hauler1"], "title": "Plywood Press", "pad": Vector3(-45, 0, -18)},
-	{"id": "r2_jack2", "cost": 9500, "req": ["r2_flume"], "title": "Hire 2 Flume Lumberjacks", "pad": Vector3(-56, 0, -26)},
+	# r2_jack2 9500 -> 13500 (2026-10-04): the flume crews come after the press line, which is
+	# the only place their logs can go; before it they stood at a full chute 85-90% of the time.
+	{"id": "r2_jack2", "cost": 13500, "req": ["r2_flume"], "title": "Hire 2 Flume Lumberjacks", "pad": Vector3(-56, 0, -26)},
 	{"id": "r2_belt_lp", "cost": 11000, "req": ["r2_press"], "title": "Conveyor: Lathe to Press", "pad": Vector3(-42, 0, -12)},
 	{"id": "r2_hauler2", "cost": 13000, "req": ["r2_press"], "title": "Hire a Plywood Carrier", "pad": Vector3(-38.5, 0, -14.5)},
 	{"id": "r2_press2", "cost": 17000, "req": ["r2_belt_lp"], "title": "Second Plywood Press", "pad": Vector3(-45, 0, -28)},
@@ -244,7 +268,8 @@ const UNLOCKS := [
 	{"id": "r2_boathouse", "cost": 63000, "req": ["r2_belt_bb", "r2_jack3"], "title": "Build the Boathouse", "pad": Vector3(-68, 0, 8)},
 	# ---- Valley 3: Maple Highlands (unlocks_regions.csv). Gate pad on the Home Valley side, like the bridge.
 	{"id": "r3_gate", "cost": 16000, "req": ["r2_boathouse"], "title": "Highland Gate", "pad": Vector3(0, 0, -42.4)},
-	{"id": "r3_beamsaw", "cost": 20000, "req": ["r3_gate"], "title": "Beam Saw", "pad": Vector3(2.5, 0, -64.5)},
+	# r3_beamsaw 20000 -> 8000 (2026-10-04): the player stood 71 s at the gateway with nothing to do.
+	{"id": "r3_beamsaw", "cost": 8000, "req": ["r3_gate"], "title": "Beam Saw", "pad": Vector3(2.5, 0, -64.5)},
 	{"id": "r3_grove2", "cost": 16000, "req": ["r3_beamsaw"], "title": "More Maples", "pad": Vector3(-8, 0, -72)},
 	{"id": "r3_office", "cost": 17000, "req": ["r3_beamsaw"], "title": "Highland Office", "pad": Vector3(6.5, 0, -59.5)},
 	{"id": "r3_jack1", "cost": 23000, "req": ["r3_grove2"], "title": "Hire a Maple Lumberjack", "pad": Vector3(-2.0, 0, -61.2)},
@@ -265,14 +290,16 @@ const UNLOCKS := [
 	{"id": "r3_house5", "cost": 150000, "req": ["r3_house4"], "title": "Village Plot 5: Inn", "pad": Vector3(-17, 0, -94)},
 	{"id": "r3_clocktower", "cost": 280000, "req": ["r3_house5"], "title": "Build the Clock Tower", "pad": Vector3(-10, 0, -112)},
 	# ---- Valley 4: Redwood Coast (unlocks_regions.csv; moves listed in docs/GDD.md "M3 layout").
+	# Opening pads redwood mill .. Harbor Cashier cut 2026-10-04 (Mats: too much waiting early;
+	# docs/balance/birch_redwood_pacing_2026-10-04.md). Deck Saw on unchanged.
 	{"id": "r4_crossing", "cost": 68000, "req": ["r3_clocktower"], "title": "Level Crossing to Redwood Coast", "pad": Vector3(13.0, 0, -19.5)},
-	{"id": "r4_redmill", "cost": 80000, "req": ["r4_crossing"], "title": "Redwood Mill: Timber", "pad": Vector3(32, 0, -20)},
-	{"id": "r4_grove2", "cost": 64000, "req": ["r4_redmill"], "title": "More Redwoods", "pad": Vector3(45, 0, 4)},
-	{"id": "r4_office", "cost": 67000, "req": ["r4_redmill"], "title": "Harbor Office", "pad": Vector3(28, 0, 7.4)},
-	{"id": "r4_jack1", "cost": 93000, "req": ["r4_grove2"], "title": "Hire a Redwood Lumberjack", "pad": Vector3(37, 0, -2)},
-	{"id": "r4_skidder1", "cost": 100000, "req": ["r4_jack1"], "title": "Hire a Log Skidder", "pad": Vector3(38, 0, -14)},
-	{"id": "r4_harbor", "cost": 110000, "req": ["r4_skidder1"], "title": "Fishing Pier: More Shoppers", "pad": Vector3(70, 0, 4)},
-	{"id": "r4_cashier", "cost": 120000, "req": ["r4_harbor"], "title": "Harbor Cashier", "pad": Vector3(61.5, 0, -9.5)},
+	{"id": "r4_redmill", "cost": 20000, "req": ["r4_crossing"], "title": "Redwood Mill: Timber", "pad": Vector3(32, 0, -20)},
+	{"id": "r4_grove2", "cost": 40000, "req": ["r4_redmill"], "title": "More Redwoods", "pad": Vector3(45, 0, 4)},
+	{"id": "r4_office", "cost": 45000, "req": ["r4_redmill"], "title": "Harbor Office", "pad": Vector3(28, 0, 7.4)},
+	{"id": "r4_jack1", "cost": 55000, "req": ["r4_grove2"], "title": "Hire a Redwood Lumberjack", "pad": Vector3(37, 0, -2)},
+	{"id": "r4_skidder1", "cost": 65000, "req": ["r4_jack1"], "title": "Hire a Log Skidder", "pad": Vector3(38, 0, -14)},
+	{"id": "r4_harbor", "cost": 75000, "req": ["r4_skidder1"], "title": "Fishing Pier: More Shoppers", "pad": Vector3(70, 0, 4)},
+	{"id": "r4_cashier", "cost": 85000, "req": ["r4_harbor"], "title": "Harbor Cashier", "pad": Vector3(61.5, 0, -9.5)},
 	{"id": "r4_decksaw", "cost": 130000, "req": ["r4_cashier"], "title": "Deck Saw: Deckboards", "pad": Vector3(32, 0, -32)},
 	{"id": "r4_jack2", "cost": 140000, "req": ["r4_decksaw"], "title": "Hire 2 Lumberjacks + North Redwoods", "pad": Vector3(56, 0, -38)},
 	{"id": "r4_belt_rd", "cost": 140000, "req": ["r4_jack2"], "title": "Conveyor: Mill to Deck Saw", "pad": Vector3(30, 0, -26)},
@@ -288,11 +315,13 @@ const UNLOCKS := [
 	{"id": "r4_lighthouse", "cost": 630000, "req": ["r4_slipway2"], "title": "Build the Lighthouse", "pad": Vector3(71, 0, -43)},
 	# ---- Valley 5: Frost Peaks. The cable car pad stands in Redwood Coast, below its station.
 	{"id": "r5_cablecar", "cost": 190000, "req": ["r4_lighthouse"], "title": "Cable Car to Frost Peaks", "pad": Vector3(47, 0, -40.0)},
-	{"id": "r5_kiln", "cost": 230000, "req": ["r5_cablecar"], "title": "Drying Kiln", "pad": Vector3(40, 0, -66)},
-	{"id": "r5_grove2", "cost": 170000, "req": ["r5_kiln"], "title": "More Frost Firs", "pad": Vector3(30, 0, -76)},
-	{"id": "r5_office", "cost": 180000, "req": ["r5_kiln"], "title": "Mountain Office", "pad": Vector3(35, 0, -58.4)},
-	{"id": "r5_jack1", "cost": 250000, "req": ["r5_grove2"], "title": "Hire a Mountain Lumberjack", "pad": Vector3(32, 0, -70.5)},
-	{"id": "r5_skilodge", "cost": 280000, "req": ["r5_jack1"], "title": "Ski Lodge Shop", "pad": Vector3(60, 0, -62)},
+	# Frost Peaks opening cut 2026-10-04 (kiln 230K, grove2 170K, office 180K, jack1 250K, ski lodge
+	# 280K): nothing sells before the Ski Lodge, so the first 8.3 min were 61-99% waiting.
+	{"id": "r5_kiln", "cost": 80000, "req": ["r5_cablecar"], "title": "Drying Kiln", "pad": Vector3(40, 0, -66)},
+	{"id": "r5_grove2", "cost": 60000, "req": ["r5_kiln"], "title": "More Frost Firs", "pad": Vector3(30, 0, -76)},
+	{"id": "r5_office", "cost": 70000, "req": ["r5_kiln"], "title": "Mountain Office", "pad": Vector3(35, 0, -58.4)},
+	{"id": "r5_jack1", "cost": 90000, "req": ["r5_grove2"], "title": "Hire a Mountain Lumberjack", "pad": Vector3(32, 0, -70.5)},
+	{"id": "r5_skilodge", "cost": 110000, "req": ["r5_jack1"], "title": "Ski Lodge Shop", "pad": Vector3(60, 0, -62)},
 	{"id": "r5_skiworks", "cost": 320000, "req": ["r5_skilodge"], "title": "Ski Workshop", "pad": Vector3(48, 0, -76)},
 	{"id": "r5_cashier", "cost": 330000, "req": ["r5_skiworks"], "title": "Ski Lodge Cashier", "pad": Vector3(56.5, 0, -70)},
 	{"id": "r5_jack2", "cost": 380000, "req": ["r5_cashier"], "title": "Hire 2 Lumberjacks + North Firs", "pad": Vector3(31, 0, -101)},

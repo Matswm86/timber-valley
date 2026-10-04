@@ -624,8 +624,13 @@ func _fork_route(item: String, _commit: bool = false) -> Array:
 	return main
 
 
-## Shipwright loads go to the slipway (or the Lighthouse) whose slot for that item is the least full.
+## Shipwright loads go to the Lighthouse while it needs the item, else to the slipway whose slot for
+## that item is the least full. (2026-10-04: least-full-first kept the emptied slipways ahead of
+## the Lighthouse, which sat at 145-185/200 timber for 12 min.)
 func _wright_route(item: String, _commit: bool = false) -> Array:
+	var lh: BuildSite = w.sites.get("r4_lighthouse")
+	if lh and lh.room(item) > 0:
+		return [lh.intake_of(item), lh.zone_of(item).global_position]
 	var best: BuildSite = null
 	var best_f := 2.0
 	for id in ["r4_slipway", "r4_slipway2", "r4_lighthouse"]:

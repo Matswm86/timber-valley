@@ -17,6 +17,9 @@ var region: int = 1
 var flume: bool = false
 var bob_m: float = 0.0
 var bob_hz: float = 0.0
+## Optional: while it returns true the belt takes nothing from its source (unset = always runs).
+## Village sites and the Summit Observatory use it to keep a reserve (Balance.SITE_RESERVE).
+var hold: Callable
 var _clock: float = 0.0
 ## Optional second route (a split): items alternate between dest and dest2.
 var dest2: ItemStack
@@ -153,21 +156,30 @@ func _process(delta: float) -> void:
 		route = 1 if _flip else 0
 		if _room(route) <= 0:
 			route = 1 - route
-	if _timer <= 0.0 and not source.is_empty() and _room(route) > 0:
+	var held := hold.is_valid() and bool(hold.call())
+	if _timer <= 0.0 and not source.is_empty() and _room(route) > 0 and not held:
 		_flip = not _flip
 		_timer = interval / _speed_mult()
-		var it := source.pop()
-		if it.has_meta("tw"):
-			var old: Tween = it.get_meta("tw")
-			if old and old.is_valid():
-				old.kill()
-		var gxf := it.global_transform
-		it.get_parent().remove_child(it)
-		add_child(it)
-		it.global_transform = gxf
-		it.scale = Vector3.ONE
-		it.visible = false
-		_riding.append({"node": it, "d": -0.6, "r": route})
+		# Thin goods (veneer) ride as a stacked bundle of Balance.CARRY_MULT items per slot.
+		var bundle := int(Balance.CARRY_MULT.get(source.top_type(), 1))
+		for k in bundle:
+			if source.is_empty() or _room(route) <= 0:
+				break
+			var it := source.pop()
+			if it.has_meta("tw"):
+				var old: Tween = it.get_meta("tw")
+				if old and old.is_valid():
+					old.kill()
+			var gxf := it.global_transform
+			it.get_parent().remove_child(it)
+			add_child(it)
+			it.global_transform = gxf
+			it.scale = Vector3.ONE
+			it.visible = false
+			var rider := {"node": it, "d": -0.6, "r": route}
+			if k > 0:
+				rider["y"] = k * float(Items.def(str(it.get_meta("item"))).layer)
+			_riding.append(rider)
 	for r in _riding.duplicate():
 		var it: Node3D = r.node
 		r.d += speed * _speed_mult() * delta
@@ -181,6 +193,8 @@ func _process(delta: float) -> void:
 			(dest if rt == 0 else dest2).push(it)
 			continue
 		it.global_position = to_global(_point_on(rt, r.d))
+		if r.has("y"):
+			it.global_position.y += float(r.y)
 		if flume:
 			it.global_position.y += sin(_clock * TAU * bob_hz + r.d * 2.0) * bob_m
 	_draw_riders()

@@ -1,6 +1,6 @@
 region,id,title,cost,requires,pad_x,pad_z,kind,auto_income_base_per_s,hand_income_base_per_s,effect
 2,r2_bridge,River Bridge to Birch Bend,2800,lodge,-27,-6,gate,0,0,Bridge becomes walkable; Birch Grove 1 (3x3) appears; region 2 wakes
-2,r2_lathe,Veneer Lathe,3600,r2_bridge,-45,-6,machine,0,30,"birch_log x2 -> veneer x6, 1.2 s; Riverside Market opens with the VENEER counter"
+2,r2_lathe,Veneer Lathe,3600,r2_bridge,-45,-6,machine,0,30,"birch_log x2 -> veneer x6, 0.8 s; Riverside Market opens with the VENEER counter"
 2,r2_grove2,More Birches,3200,r2_lathe,-55,6,forest,0,3,Birch Grove 2 (3x2)
 2,r2_office,Riverside Office,3400,r2_lathe,-36,11,office,0,0,Region upgrade board (saws/crew/fame) + extended global upgrades
 2,r2_jack1,Hire a Birch Lumberjack,4700,r2_grove2,-50,2,worker,0,4,Lumberjack on Groves 1+2 -> lathe
@@ -8,27 +8,27 @@ region,id,title,cost,requires,pad_x,pad_z,kind,auto_income_base_per_s,hand_incom
 2,r2_flume,Log Flume,6000,r2_jack1,-60,-22,belt,0,3,"North Grove chute (-60,-24) -> lathe input; water trough, 3.5 m/s; North Grove (4x3) appears"
 2,r2_cashier,Riverside Cashier,6400,r2_hauler1,-37,0,worker,22.3,-8,Auto-collects Riverside till every 1.2 s
 2,r2_press,Plywood Press,8700,r2_hauler1,-45,-18,machine,0,8,"veneer x3 -> plywood x1, 1.5 s; PLYWOOD counter opens"
-2,r2_jack2,Hire 2 Flume Lumberjacks,9500,r2_flume,-56,-26,worker,10,0,2 lumberjacks on North Grove -> flume chute
+2,r2_jack2,Hire 2 Flume Lumberjacks,13500,r2_flume,-56,-26,worker,10,0,2 lumberjacks on North Grove -> flume chute
 2,r2_belt_lp,Conveyor: Lathe to Press,11000,r2_press,-42,-12,belt,15,0,Lathe out -> press in
 2,r2_hauler2,Hire a Plywood Carrier,13000,r2_press,-40,-14,worker,25.4,-6,Press out -> plywood counter
 2,r2_press2,Second Plywood Press,17000,r2_belt_lp,-45,-28,machine,5.9,0,Same as press; belt splits lathe output 50/50
 2,r2_boatshop,Boat Workshop: Canoes,19000,r2_press2,-40,-38,machine,0,10,"plywood x4 -> canoe x1, 3.0 s"
-2,r2_barge,Barge Landing,21000,r2_boatshop,-33,-36,export,4.4,0,"River barge: 6 canoes/trip, sells on the way out (like the truck dock)"
+2,r2_barge,Barge Landing,21000,r2_boatshop,-33,-36,export,4.4,0,"River barge: 12 canoes/trip, sells on the way out (like the truck dock)"
 2,r2_belt_pb,Conveyor: Presses to Boat Workshop,23000,r2_barge,-43,-33,belt,29,-5,Both press outputs -> boat workshop in
 2,r2_belt_bb,Conveyor: Boat Workshop to Barge,30000,r2_barge,-36,-40,belt,29,-5,Boat out -> barge pile
 2,r2_jack3,Forester Camp: 3 Lumberjacks + Faster Birches,37000,r2_belt_pb,-68,-14,worker,0,0,West Grove (3x4); 3 lumberjacks -> flume chute; every birch regrows 40% faster
 2,r2_boathouse,Build the Boathouse,63000,r2_belt_bb;r2_jack3,-68,8,landmark,0,0,Money landmark (like the Lodge); Valley complete card; reveals Highland Gate pad
 3,r3_gate,Highland Gate,16000,r2_boathouse,0,-42.4,gate,0,0,"Gate in the north palisade at (0,-46.6); pad on the Home Valley side; Maple Grove 1 (3x3) appears; region 3 wakes; handcar stops in every valley"
-3,r3_beamsaw,Beam Saw,20000,r3_gate,2.5,-64.5,machine,0,44,"maple_log x1 -> beam x2, 1.4 s; Builders' Yard opens with BEAMS counter"
+3,r3_beamsaw,Beam Saw,8000,r3_gate,2.5,-64.5,machine,0,44,"maple_log x1 -> beam x2, 1.4 s; Builders' Yard opens with BEAMS counter"
 3,r3_grove2,More Maples,16000,r3_beamsaw,-8,-72,forest,0,4,Maple Grove 2 (3x2)
 3,r3_office,Highland Office,17000,r3_beamsaw,6.5,-59.5,office,0,0,Region upgrade board
 3,r3_jack1,Hire a Maple Lumberjack,23000,r3_grove2,-2,-61.2,worker,0,40,Groves 1+2 -> beam saw
 3,r3_forklift1,Hire a Forklift: Beams,28000,r3_jack1,6,-69,worker,142.3,-84,"Forklift hauler (cap 20, 4.5 m/s): beam saw out -> beams counter"
 3,r3_cashier,Builders' Yard Cashier,37000,r3_forklift1,12,-58,worker,0,0,Auto-collects Yard till
-3,r3_planer,Planer Mill: Floorboards,42000,r3_forklift1,2.5,-78,machine,0.8,10,"maple_log x1 -> floorboard x4, 1.6 s; FLOORBOARDS counter opens"
+3,r3_planer,Planer Mill: Floorboards,42000,r3_forklift1,2.5,-78,machine,0.8,10,"maple_log x1 -> floorboard x4, 1.1 s; FLOORBOARDS counter opens"
 3,r3_jack2,Hire 2 Lumberjacks + North Maples,46000,r3_belt_bp,-8,-96,worker,-53.3,0,North Grove (4x3); 2 lumberjacks -> planer
 3,r3_house1,Village Plot 1: Cottage,42000,r3_planer,-17,-62,build,14.7,0,"BuildSite: 30 beam + 40 floorboard; done = rent +15 $/s base, +10% Yard shoppers"
-3,r3_belt_bp,Conveyor: Beam Saw + Planer to Yard,45000,r3_house1,8,-72,belt,103.5,0,Two belts into the Yard counters
+3,r3_belt_bp,Conveyor: Beam Saw + Planer to Yard,45000,r3_house1,8,-72,belt,103.5,0,Two belts into the Yard counters (keep Balance.SITE_RESERVE on the piles while a village site needs the item)
 3,r3_kitfactory,Cabin Kit Factory,63000,r3_belt_bp,6,-90,machine,5.8,5,"ASSEMBLER: beam x2 + floorboard x4 -> cabin_kit x1, 2.0 s"
 3,r3_house2,Village Plot 2: Farmhouse,63000,r3_kitfactory,-17,-70,build,5.3,0,BuildSite: 40 beam + 50 floorboard + 2 cabin_kit; rent +15 $/s
 3,r3_rail,Highland Railway,72000,r3_kitfactory,13,-100,export,5.3,0,"Train, 3 wagons x 4 kits = 12 kits/trip, away 10 s. Platform at (9.5,-101.5) turned 90 deg: track runs east-west along z -105 north of the road end (an unturned platform here put the track on the road at x 16.5)"
@@ -40,17 +40,17 @@ region,id,title,cost,requires,pad_x,pad_z,kind,auto_income_base_per_s,hand_incom
 3,r3_house5,Village Plot 5: Inn,150000,r3_house4,-17,-94,build,17.8,0,BuildSite: 70 beam + 80 floorboard + 8 cabin_kit; rent +15 $/s
 3,r3_clocktower,Build the Clock Tower,280000,r3_house5,-10,-112,landmark,0,0,BuildSite landmark: 120 beam + 100 floorboard + 12 cabin_kit + money below; reveals Level Crossing pad
 4,r4_crossing,Level Crossing to Redwood Coast,68000,r3_clocktower,13,-19.5,gate,0,0,Gap in the road fence with barrier arms; Redwood Grove 1 (3x2) appears; region 4 wakes
-4,r4_redmill,Redwood Mill: Timber,80000,r4_crossing,32,-20,machine,0,95,"red_log x1 -> timber x2, 1.5 s; Harbor Market opens with TIMBER counter"
-4,r4_grove2,More Redwoods,64000,r4_redmill,45,4,forest,0,6,"Redwood Grove 2 (3x2, 4 m spacing)"
-4,r4_office,Harbor Office,67000,r4_redmill,28,7.4,office,0,0,Region upgrade board
-4,r4_jack1,Hire a Redwood Lumberjack,93000,r4_grove2,37,-2,worker,33.0,0,Groves 1+2 -> redwood mill
-4,r4_skidder1,Hire a Log Skidder,100000,r4_jack1,38,-14,worker,49.5,0,"Vehicle lumberjack: cap 16, 4.8 m/s"
-4,r4_harbor,Fishing Pier: More Shoppers,110000,r4_skidder1,70,4,shoppers,33.0,0,Boats bring shoppers: x1.7 Harbor spawn rate
-4,r4_cashier,Harbor Cashier,120000,r4_harbor,61.5,-9.5,worker,16.5,-20,Auto-collects Harbor till
+4,r4_redmill,Redwood Mill: Timber,20000,r4_crossing,32,-20,machine,0,95,"red_log x1 -> timber x2, 1.5 s; Harbor Market opens with TIMBER counter"
+4,r4_grove2,More Redwoods,40000,r4_redmill,45,4,forest,0,6,"Redwood Grove 2 (3x2, 4 m spacing)"
+4,r4_office,Harbor Office,45000,r4_redmill,28,7.4,office,0,0,Region upgrade board
+4,r4_jack1,Hire a Redwood Lumberjack,55000,r4_grove2,37,-2,worker,33.0,0,Groves 1+2 -> redwood mill
+4,r4_skidder1,Hire a Log Skidder,65000,r4_jack1,38,-14,worker,49.5,0,"Vehicle lumberjack: cap 16, 4.8 m/s"
+4,r4_harbor,Fishing Pier: More Shoppers,75000,r4_skidder1,70,4,shoppers,33.0,0,Boats bring shoppers: x1.7 Harbor spawn rate
+4,r4_cashier,Harbor Cashier,85000,r4_harbor,61.5,-9.5,worker,16.5,-20,Auto-collects Harbor till
 4,r4_decksaw,Deck Saw: Deckboards,130000,r4_cashier,32,-32,machine,33.0,20,"timber x1 -> deckboard x3, 1.2 s; DECKBOARDS counter opens"
 4,r4_jack2,Hire 2 Lumberjacks + North Redwoods,140000,r4_decksaw,56,-38,worker,57.7,0,North Grove (4x2); 2 lumberjacks -> mill
 4,r4_belt_rd,Conveyor: Mill to Deck Saw,140000,r4_jack2,30,-26,belt,57.7,0,Mill out -> deck saw in (overflow stays on mill pile)
-4,r4_forklift,Hire a Forklift: Harbor,150000,r4_belt_rd,44,-14,worker,49.5,-20,Mill + deck saw outputs -> Harbor counters
+4,r4_forklift,Hire a Forklift: Harbor,150000,r4_belt_rd,44,-14,worker,49.5,-20,"Forklift (cap 36, 6.0 m/s, Balance.FORKLIFT_BY_REGION): mill + deck saw outputs -> Harbor counters"
 4,r4_mastlathe,Mast Lathe,170000,r4_forklift,50,-24,machine,41.2,10,"red_log x3 -> mast x1, 4.0 s"
 4,r4_slipway,Shipyard Slipway,180000,r4_mastlathe,67,-26,build,99.0,0,"REPEATABLE BuildSite: 60 timber + 80 deckboard + 3 mast -> launch pays $14,000 base; min 45 s per ship"
 4,r4_orders,Cargo Order Board,190000,r4_slipway,64,12,orders,66.0,0,Cargo ships with 2-3 line manifests; pay 1.6x sale value
@@ -61,11 +61,11 @@ region,id,title,cost,requires,pad_x,pad_z,kind,auto_income_base_per_s,hand_incom
 4,r4_slipway2,Second Slipway,400000,r4_jack3,67,-36,build,131.9,0,Second repeatable ship site; shipwrights serve both
 4,r4_lighthouse,Build the Lighthouse,630000,r4_slipway2,71,-43,landmark,0,0,BuildSite landmark: 200 timber + 150 deckboard + 10 mast + money below; reveals Cable Car pad
 5,r5_cablecar,Cable Car to Frost Peaks,190000,r4_lighthouse,47,-40,gate,0,0,"Cable car ride (4 s) up to (50,-58); Frost Grove 1 (3x3); region 5 wakes"
-5,r5_kiln,Drying Kiln,230000,r5_cablecar,40,-66,machine,0,115,"BATCH: loads up to 20 frost_log, bakes 16 s -> same count dry_lumber"
-5,r5_grove2,More Frost Firs,170000,r5_kiln,30,-76,forest,0,8,Frost Grove 2 (3x2)
-5,r5_office,Mountain Office,180000,r5_kiln,35,-58.4,office,0,0,Region upgrade board
-5,r5_jack1,Hire a Mountain Lumberjack,250000,r5_grove2,32,-70.5,worker,87.9,0,Groves 1+2 -> kiln
-5,r5_skilodge,Ski Lodge Shop,280000,r5_jack1,60,-62,shop,97.7,0,"Tourist market by the cable car top: DRY LUMBER counter ($90 base) now, SKIS/SLEDS later"
+5,r5_kiln,Drying Kiln,80000,r5_cablecar,40,-66,machine,0,115,"BATCH: loads up to 20 frost_log, bakes 16 s -> same count dry_lumber"
+5,r5_grove2,More Frost Firs,60000,r5_kiln,30,-76,forest,0,8,Frost Grove 2 (3x2)
+5,r5_office,Mountain Office,70000,r5_kiln,35,-58.4,office,0,0,Region upgrade board
+5,r5_jack1,Hire a Mountain Lumberjack,90000,r5_grove2,32,-70.5,worker,87.9,0,Groves 1+2 -> kiln
+5,r5_skilodge,Ski Lodge Shop,110000,r5_jack1,60,-62,shop,97.7,0,"Tourist market by the cable car top: DRY LUMBER counter ($90 base) now, SKIS/SLEDS later"
 5,r5_skiworks,Ski Workshop,320000,r5_skilodge,48,-76,machine,78.1,20,"dry_lumber x2 -> skis x1, 2.0 s; SKIS counter opens"
 5,r5_cashier,Ski Lodge Cashier,330000,r5_skiworks,56.5,-70,worker,48.8,-25,Auto-collects Ski Lodge till
 5,r5_jack2,Hire 2 Lumberjacks + North Firs,380000,r5_cashier,31,-101,worker,156.3,0,North Grove (4x3); 2 lumberjacks -> kiln
@@ -78,5 +78,5 @@ region,id,title,cost,requires,pad_x,pad_z,kind,auto_income_base_per_s,hand_incom
 5,r5_belt_sl,Conveyors: Sleds + Guitars,740000,r5_express_r5,62,-92,belt,175.8,-10,Sled shop -> lodge; luthier -> platform
 5,r5_jack3,Hire 3 Lumberjacks + Far Firs,770000,r5_belt_sl,62,-109,worker,175.8,0,Far Grove (3x3); 3 lumberjacks
 5,r5_kiln3,Third Kiln,940000,r5_jack3,40,-98,machine,234.4,0,Same as kiln; feeds luthier by belt
-5,r5_observatory,Build the Summit Observatory,1200000,r5_kiln3,68,-113,landmark,0,0,BuildSite landmark: 200 dry_lumber + 60 skis + 20 sled + 10 guitar + money below; reveals Grand Station pad
+5,r5_observatory,Build the Summit Observatory,1200000,r5_kiln3,68,-113,landmark,0,0,"BuildSite landmark: 200 dry_lumber + 60 skis + 20 sled + 10 guitar + money below; reveals Grand Station pad; snowcat serves it first, belts keep Balance.SITE_RESERVE"
 6,cap_station,Grand Timber Station,1200000,r5_observatory,5.5,-42.6,capstone,0,0,"BuildSite: $1.5M + one platform per region (120 bookcase, 40 canoe, 40 cabin_kit, 30 mast, 20 guitar); ends the game"

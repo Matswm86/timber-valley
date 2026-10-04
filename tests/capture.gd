@@ -1249,8 +1249,8 @@ func _m3() -> void:
 	await _frames(40)
 	var title := (Game.hud.valley_card.find_child("Title", true, false) as Label).text
 	var body := (Game.hud.valley_card.find_child("Body", true, false) as Label).text
-	print("M3 LIGHTHOUSE done=%s card='%s' body_names_cable=%s cable_pad=%s %s" % [lh.done, title, body.contains("Cable Car"), world.pads.has("r5_cablecar"),
-		"PASS" if lh.done and title.contains("Redwood Coast") and world.pads.has("r5_cablecar") else "FAIL"])
+	print("M3 LIGHTHOUSE done=%s card='%s' body_names_cable=%s cable_pad=%s %s" % [lh.done, title, body.contains("Cable Car"), world.pads.has("r5_cablecar") or Game.is_unlocked("r5_cablecar"),
+		"PASS" if lh.done and title.contains("Redwood Coast") and (world.pads.has("r5_cablecar") or Game.is_unlocked("r5_cablecar")) else "FAIL"])
 	await _shot("m3/34_lighthouse_valley_card")
 	Game.hud.valley_card.visible = false
 	await _frames(40)

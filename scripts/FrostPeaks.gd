@@ -235,7 +235,11 @@ func apply_unlock(id: String, animate: bool) -> void:
 			_build_kiln("kiln2", KILN2, animate)
 		"r5_belt_ks":
 			var sw: Machine = w.machines.skiworks
-			w._belt((w.machines.kiln as Kiln).output, sw.input, BELT_K1, animate, 5)
+			var k1o: ItemStack = (w.machines.kiln as Kiln).output
+			var k1 := w._belt(k1o, sw.input, BELT_K1, animate, 5)
+			# Kiln 1's belt leaves a reserve while the Observatory needs dry lumber, so the snowcat
+			# finds some to take there (2026-10-04: the belts took nearly all of it, 5/200 in 6 min).
+			k1.hold = _obs_reserve(k1o, "dry_lumber")
 			_belt_k2 = w._belt((w.machines.kiln2 as Kiln).output, sw.input, BELT_K2, animate, 5)
 		"r5_sledshop":
 			_build_sledshop(animate)
@@ -256,8 +260,14 @@ func apply_unlock(id: String, animate: bool) -> void:
 		"r5_express_r5":
 			_build_express(animate)
 		"r5_belt_sl":
-			w._belt((w.machines.sledshop as Machine).output, lodge.shelf("sled"), BELT_SLED, animate, 5)
-			w._belt((w.machines.luthier as Machine).output, (w.machines.mtrain as TruckDock).pile, BELT_GUITAR, animate, 5)
+			# Sled and guitar belts leave a reserve while the Observatory needs sleds or guitars (the
+			# snowcat found none to take there: 0/20 sleds, 0/10 guitars in 6 min).
+			var so: ItemStack = (w.machines.sledshop as Machine).output
+			var bs := w._belt(so, lodge.shelf("sled"), BELT_SLED, animate, 5)
+			bs.hold = _obs_reserve(so, "sled")
+			var lo: ItemStack = (w.machines.luthier as Machine).output
+			var bg := w._belt(lo, (w.machines.mtrain as TruckDock).pile, BELT_GUITAR, animate, 5)
+			bg.hold = _obs_reserve(lo, "guitar")
 		"r5_jack3":
 			w._build_forest("frost_far", GROVE_FAR, 3, 3, 2.8, "frost", animate, 5)
 			var looks := ["character-female-a", "character-male-a", "character-female-c"]
@@ -267,6 +277,14 @@ func apply_unlock(id: String, animate: bool) -> void:
 		"r5_kiln3":
 			_build_kiln("kiln3", KILN3, animate)
 			w._belt((w.machines.kiln3 as Kiln).output, (w.machines.luthier as Machine).input, BELT_K3, animate, 5)
+
+
+## Belt hold: keep Balance.SITE_RESERVE[item] on `src` while the Summit Observatory needs `item`.
+func _obs_reserve(src: ItemStack, item: String) -> Callable:
+	var keep := int(Balance.SITE_RESERVE[item])
+	return func() -> bool:
+		var obs: BuildSite = w.sites.get("r5_observatory")
+		return src.count() <= keep and obs != null and obs.room(item) > 0
 
 
 func _jack(look: String, forest: Array, home: Vector3, animate: bool) -> void:
@@ -637,6 +655,11 @@ func _cat_route(item: String, commit: bool = false) -> Array:
 	if lodge and lodge.shelves.has(item) and lodge.is_open(item):
 		opts.append([lodge.shelf(item), lodge.shelf_zone(item).global_position])
 	if obs and obs.room(item) > 0:
+		# The Observatory takes dry lumber, sleds and guitars first while it needs them (it took
+		# 26 min to fill when sharing loads with the counters and the train). Skis keep rotating:
+		# the snowcat is the sled shop's only ski supply.
+		if item != "skis":
+			return [obs.intake_of(item), obs.zone_of(item).global_position]
 		opts.append([obs.intake_of(item), obs.zone_of(item).global_position])
 	var n := opts.size()
 	if n == 0:

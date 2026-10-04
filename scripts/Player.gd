@@ -74,7 +74,8 @@ func dump() -> void:
 
 
 func capacity() -> int:
-	return Game.player_capacity()
+	# Thin goods (veneer) carry by height: x Balance.CARRY_MULT, 1 for every other item.
+	return Game.player_capacity() * int(Balance.CARRY_MULT.get(stack.top_type(), 1))
 
 
 func _on_upgraded(id: String, lvl: int) -> void:

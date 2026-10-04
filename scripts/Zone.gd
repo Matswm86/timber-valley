@@ -128,6 +128,10 @@ func tick(carrier: Node, delta: float) -> bool:
 			var back: ItemStack = carrier.stack
 			if not back.is_empty() and stack.can_accept(back.top_type()):
 				back.transfer_to(stack)
+				# Thin goods (veneer) move a bundle per tick (Balance.CARRY_MULT, 1 for other items).
+				for k in int(Balance.CARRY_MULT.get(stack.top_type(), 1)) - 1:
+					if not back.transfer_to(stack):
+						break
 				Sfx.play("wood", -8.0, 1.1)
 				moved = true
 		Kind.PICK:
@@ -135,6 +139,9 @@ func tick(carrier: Node, delta: float) -> bool:
 			var keen: bool = not carrier.get("is_player") or back.top_type() == stack.top_type() or float(_still.get(id, 0.0)) >= PICK_STILL_S
 			if keen and not stack.is_empty() and back.count() < carrier.capacity() and back.can_accept(stack.top_type()):
 				stack.transfer_to(back)
+				for k in int(Balance.CARRY_MULT.get(back.top_type(), 1)) - 1:
+					if back.count() >= carrier.capacity() or not stack.transfer_to(back):
+						break
 				Sfx.play("place", -8.0)
 				moved = true
 		Kind.CUSTOM:
