@@ -157,6 +157,7 @@ with the repo. No third-party asset, texture or font is inside these files. Plac
 They replace the last Kenney models loaded by scripts/ (crane, truck-flat, bridge_wood, chest, structure-yellow-tall,
 workbench, workbench-grind, signpost-single, chair, machine-window, screen-small, cog-a, lever-single, machine-fortified,
 machine, hopper-square, robot-arm-a/b, bench, loungeChair). The Kenney files stay in `assets/models/` (CC0) until the code stops loading them.
+Since 2026-10-05 no runtime file loads them: they moved to `tools/kenney_models/` (.gdignore, not in the APK), used only by the dev tools tests/icon.gd, tests/inspect*.gd and tools/lookdev compare scripts.
 
 | File | Source | Licence | Tris | Texture |
 |---|---|---|---|---|

@@ -16,7 +16,7 @@ W = 1800
 CH = ["character-male-e", "character-male-a", "character-male-b", "character-male-c", "character-male-d",
       "character-male-f", "character-female-a", "character-female-b", "character-female-c", "character-female-d",
       "character-female-e", "character-female-f"]
-KEN = f"{REPO}/assets/models"
+KEN = f"{REPO}/tools/kenney_models"
 V3 = f"{REPO}/assets/models_v3"
 TREES = ["tree_default", "tree_oak", "tree_detailed", "tree_fat", "tree_default_dark"]
 ROCKS = ["rock_smallA", "rock_smallC", "rock_smallD", "rock_largeA"]

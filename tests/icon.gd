@@ -30,11 +30,11 @@ func _ready() -> void:
 	ground.material_override = gm
 	add_child(ground)
 	for p in [[Vector3(-1.2, 0, -1.0), "tree_pineTallC_detailed", 2.6], [Vector3(1.5, 0, -1.8), "tree_pineRoundA", 2.4], [Vector3(-2.4, 0, 0.6), "tree_oak", 2.2]]:
-		var t: Node3D = load("res://assets/models/nature/%s.glb" % p[1]).instantiate()
+		var t: Node3D = _glb("res://tools/kenney_models/nature/%s.glb" % p[1])
 		t.position = p[0]
 		t.scale = Vector3.ONE * p[2]
 		add_child(t)
-	var stump: Node3D = load("res://assets/models/nature/stump_roundDetailed.glb").instantiate()
+	var stump: Node3D = _glb("res://tools/kenney_models/nature/stump_roundDetailed.glb")
 	stump.position = Vector3(1.2, 0, 0.6)
 	stump.scale = Vector3.ONE * 2.2
 	add_child(stump)
@@ -60,3 +60,13 @@ func _ready() -> void:
 	var img := get_viewport().get_texture().get_image()
 	img.save_png(OS.get_environment("CAPTURE_DIR") + "/icon_raw.png")
 	get_tree().quit()
+
+
+## The Kenney models live in the .gdignore'd tools/kenney_models/ (not imported), so read the GLB directly.
+func _glb(path: String) -> Node3D:
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	if doc.append_from_file(path, state) != OK:
+		push_error("cannot read " + path)
+		return Node3D.new()
+	return doc.generate_scene(state) as Node3D
