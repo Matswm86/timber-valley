@@ -3,7 +3,7 @@ extends Node
 ## Save-migration test: an original single-valley save (version 1) must load with money,
 ## unlocks, upgrades and pile counts intact, show the River Bridge pad, and re-save as the
 ## current version. Also checks offline earnings (2 h cap, 50%), and that an M1-complete save
-## (version 2, Boathouse built) gets the Maple Highlands content. Backs up and restores user://save.json.
+## (version 2, Boathouse built) gets the Maple Highlands content. Backs up and restores the save file (Game.SAVE_PATH).
 ## Run: godot --headless --audio-driver Dummy res://tests/migration_test.tscn
 
 const V1_IDS := [

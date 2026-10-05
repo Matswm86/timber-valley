@@ -6,7 +6,10 @@ signal money_changed(value: int, delta: int)
 signal unlocked(id: String)
 signal upgraded(id: String, level: int)
 
-const SAVE_PATH := "user://save.json"
+## Own save name, so a host app (MWM Play) can keep several games' saves side by side.
+const SAVE_PATH := "user://timber_valley_save.json"
+## Save name before 2026-10-05; moved to SAVE_PATH on the first load.
+const OLD_SAVE_PATH := "user://save.json"
 ## 1 = original single-valley save (no "version" key), 2 = M1 (valleys, ledger, offline),
 ## 3 = M2 (build sites), 4 = M3-M5 (cargo orders, Grand Timber Station finished).
 const SAVE_VERSION := 4
@@ -291,7 +294,10 @@ func save_game() -> void:
 	f.store_string(JSON.stringify(data))
 
 
+## Safe to call again at any time (MWM Play calls it on every enter): it replaces the state with
+## the file, and offline earnings count from the file's saved_at, so nothing is paid twice.
 func load_game() -> void:
+	_move_old_save()
 	if not FileAccess.file_exists(SAVE_PATH):
 		return
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -302,6 +308,19 @@ func load_game() -> void:
 		push_warning("save file unreadable, starting fresh")
 		return
 	apply_save(data)
+
+
+## Moves user://save.json to SAVE_PATH once. If the move fails, the old file is copied and kept.
+func _move_old_save() -> void:
+	if FileAccess.file_exists(SAVE_PATH) or not FileAccess.file_exists(OLD_SAVE_PATH):
+		return
+	var err := DirAccess.rename_absolute(ProjectSettings.globalize_path(OLD_SAVE_PATH), ProjectSettings.globalize_path(SAVE_PATH))
+	if err == OK:
+		return
+	push_warning("save move failed (%d), copying" % err)
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(FileAccess.get_file_as_string(OLD_SAVE_PATH))
 
 
 ## Reads a save dictionary of any version. Version 1 (no "version" key) has only
@@ -377,8 +396,9 @@ func collect_offline() -> int:
 
 
 func reset_game() -> void:
-	if FileAccess.file_exists(SAVE_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+	for path in [SAVE_PATH, OLD_SAVE_PATH]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	money = 0
 	total_earned = 0
 	unlocked_ids.clear()
