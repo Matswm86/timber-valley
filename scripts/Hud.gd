@@ -10,6 +10,17 @@ const CREAM := Color(1.0, 0.97, 0.9)
 const INK := Color(0.2, 0.15, 0.1)
 const GREEN := Color(0.33, 0.66, 0.34)
 const GOLD := Color(1.0, 0.78, 0.22)
+## Every tappable control is at least HIT x HIT px: 12.7 mm at 430 dpi (216 / 16.93 px per mm),
+## the child touch floor MWM Play uses (docs: CHILD_UX_RESEARCH rule 1).
+const HIT := 216.0
+## Nothing tappable in the bottom strip (16 mm = 256 px at 1080x1920): a resting wrist.
+const WRIST := 256.0
+## Upgrade -> icon on its tile.
+const UPGRADE_GLYPH := {
+	"capacity": "backpack", "speed": "speed", "axe": "axe", "machines": "gear", "workers": "cup",
+	"prices": "star", "saws": "blade", "crew": "cup", "fame": "star",
+}
+const HudGlyph := preload("res://scripts/HudGlyph.gd")
 
 var font: Font
 var money_label: Label
@@ -24,7 +35,7 @@ var upgrade_rows: Dictionary = {}
 ## 3 = Highland Office (V3).
 var upgrade_board: int = 1
 var _up_title: Label
-var _up_list: VBoxContainer
+var _up_list: GridContainer
 var valley_label: Label
 var valley_pill: PanelContainer
 var valley_card: PanelContainer
@@ -32,6 +43,7 @@ var menu_panel: PanelContainer
 var finish_panel: PanelContainer
 var sound_btn: Button
 var music_btn: Button
+var menu_btn: Button
 var joy_base: Control
 ## Carried stack: item icon + "count/capacity" (top left, hidden when empty).
 var carry_pill: PanelContainer
@@ -119,6 +131,29 @@ func _button(text: String, bg: Color, size: int = 40) -> Button:
 	return b
 
 
+## Icon-only button, HIT x HIT or larger, acting on release (Button default). bg = rounded
+## coloured button; disc = transparent button with a round coloured disc inside the hit area.
+func _glyph_button(kind: String, bg: Color, disc: Color = Color(0, 0, 0, 0)) -> Button:
+	var b := _button("", bg if bg.a > 0.0 else GREEN)
+	b.custom_minimum_size = Vector2(HIT, HIT)
+	b.focus_mode = Control.FOCUS_NONE
+	if bg.a <= 0.0:
+		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+			b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	var g := HudGlyph.new()
+	g.kind = kind
+	g.disc = disc
+	b.add_child(g)
+	return b
+
+
+func _set_glyph(b: Button, kind: String) -> void:
+	for c in b.get_children():
+		if c.get_script() == HudGlyph:
+			c.set("kind", kind)
+			(c as Control).queue_redraw()
+
+
 func _build_top(root: Control) -> void:
 	var top := VBoxContainer.new()
 	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
@@ -169,24 +204,25 @@ func _build_top(root: Control) -> void:
 	toast_pill.add_child(toast_label)
 	toast_pill.modulate.a = 0.0
 	_build_carry(root)
-	drop_btn = _button("DROP", Color(0.72, 0.36, 0.28, 0.92), 38)
+	drop_btn = _glyph_button("drop", Color(0, 0, 0, 0), Color(0.72, 0.36, 0.28, 0.92))
 	drop_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	# 170 px square (well over 48 dp at 1080 wide), clear of the bottom edge gesture bar.
-	drop_btn.offset_left = -210
-	drop_btn.offset_top = -330
-	drop_btn.offset_right = -40
-	drop_btn.offset_bottom = -160
+	# HIT square on the right edge, just above the wrist strip; the drawn disc sits inside it.
+	drop_btn.offset_left = -HIT
+	drop_btn.offset_top = -WRIST - HIT
+	drop_btn.offset_right = 0
+	drop_btn.offset_bottom = -WRIST
 	drop_btn.visible = false
 	drop_btn.pressed.connect(func() -> void:
 		if Game.player and Game.player.has_method("dump"):
 			Game.player.dump())
 	root.add_child(drop_btn)
-	var menu_btn := _button("Menu", Color(0.25, 0.3, 0.22, 0.85), 34)
+	# Top-right corner, hit area running to both screen edges (the top-left corner stays free).
+	menu_btn = _glyph_button("menu", Color(0, 0, 0, 0), Color(0.25, 0.3, 0.22, 0.85))
 	menu_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	menu_btn.offset_left = -190
-	menu_btn.offset_top = 70
-	menu_btn.offset_right = -30
-	menu_btn.offset_bottom = 150
+	menu_btn.offset_left = -HIT
+	menu_btn.offset_top = 0
+	menu_btn.offset_right = 0
+	menu_btn.offset_bottom = HIT
 	menu_btn.pressed.connect(func() -> void: menu_panel.visible = not menu_panel.visible)
 	root.add_child(menu_btn)
 
@@ -195,9 +231,14 @@ func _build_carry(root: Control) -> void:
 	carry_pill = PanelContainer.new()
 	carry_pill.add_theme_stylebox_override("panel", _style(CREAM, 34, 8))
 	carry_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	carry_pill.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	carry_pill.offset_left = 30
-	carry_pill.offset_top = 70
+	# Right side, just above the DROP button (the top-left corner stays free for a host app).
+	carry_pill.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	carry_pill.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	carry_pill.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	carry_pill.offset_right = -30
+	carry_pill.offset_left = -30
+	carry_pill.offset_bottom = -WRIST - HIT - 12
+	carry_pill.offset_top = -WRIST - HIT - 12
 	carry_pill.custom_minimum_size = Vector2(0, 80)
 	carry_pill.visible = false
 	root.add_child(carry_pill)
@@ -302,7 +343,7 @@ func _panel_base(root: Control) -> PanelContainer:
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	p.offset_bottom = -60
+	p.offset_bottom = -WRIST
 	p.visible = false
 	root.add_child(p)
 	return p
@@ -316,8 +357,10 @@ func _build_upgrades(root: Control) -> void:
 	_up_title = _label("Upgrades", 56)
 	_up_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_up_title)
-	_up_list = VBoxContainer.new()
-	_up_list.add_theme_constant_override("separation", 14)
+	_up_list = GridContainer.new()
+	_up_list.columns = 2
+	_up_list.add_theme_constant_override("h_separation", 16)
+	_up_list.add_theme_constant_override("v_separation", 16)
 	v.add_child(_up_list)
 	_build_board(1)
 	Game.money_changed.connect(func(_v: int, _d: int) -> void:
@@ -344,20 +387,9 @@ func _build_board(board: int) -> void:
 		for id in (Balance.GLOBAL_EXT if board == 2 else {}):
 			specs.append({"key": id, "region": 0, "ext": true, "name": Game.UPGRADES[id].name, "desc": Game.UPGRADES[id].desc + " (all valleys)"})
 	for spec in specs:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 16)
-		_up_list.add_child(row)
-		var texts := VBoxContainer.new()
-		texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		texts.add_theme_constant_override("separation", 0)
-		row.add_child(texts)
-		texts.add_child(_label(spec.name, 40))
-		texts.add_child(_label(spec.desc, 28, Color(0.42, 0.36, 0.3)))
-		var pips := _label("", 30, GREEN)
-		texts.add_child(pips)
-		var btn := _button("$0", GREEN, 36)
-		btn.custom_minimum_size = Vector2(230, 96)
 		var sp: Dictionary = spec
+		var t := _upgrade_tile(sp)
+		var btn: Button = t.btn
 		btn.pressed.connect(func() -> void:
 			var ok := false
 			if int(sp.region) > 0:
@@ -367,8 +399,72 @@ func _build_board(board: int) -> void:
 			if ok:
 				Sfx.play("upgrade", -3.0)
 			_refresh_upgrades())
-		row.add_child(btn)
-		upgrade_rows["%d:%s" % [sp.region, sp.key]] = {"btn": btn, "pips": pips, "spec": sp}
+		_up_list.add_child(btn)
+		upgrade_rows["%d:%s" % [sp.region, sp.key]] = t
+
+
+## One upgrade = one tile: the whole tile is the buy button (HIT tall). Icon, name, a short
+## line, level pips (filled vs hollow) and the price with a coin.
+func _upgrade_tile(sp: Dictionary) -> Dictionary:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(0, HIT)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.add_theme_stylebox_override("normal", _tile_style(Color.WHITE))
+	btn.add_theme_stylebox_override("hover", _tile_style(Color.WHITE))
+	btn.add_theme_stylebox_override("pressed", _tile_style(Color(0.89, 0.94, 0.92)))
+	btn.add_theme_stylebox_override("disabled", _tile_style(Color(0.93, 0.91, 0.87)))
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	btn.pressed.connect(func() -> void: Sfx.play("click", -6.0))
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 14
+	row.offset_right = -14
+	row.offset_top = 10
+	row.offset_bottom = -10
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(row)
+	var g := HudGlyph.new()
+	g.kind = str(UPGRADE_GLYPH.get(str(sp.key), "star"))
+	g.ink = INK
+	g.scale_k = 0.42
+	g.custom_minimum_size = Vector2(96, 96)
+	row.add_child(g)
+	var texts := VBoxContainer.new()
+	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	texts.alignment = BoxContainer.ALIGNMENT_CENTER
+	texts.add_theme_constant_override("separation", 0)
+	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(texts)
+	var name_l := _label(str(sp.name), 34)
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	texts.add_child(name_l)
+	var desc := _label(str(sp.desc), 24, Color(0.42, 0.36, 0.3))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	texts.add_child(desc)
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 8)
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texts.add_child(bottom)
+	var pips := _label("", 28, GREEN)
+	pips.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom.add_child(pips)
+	var coin := CoinIcon.new()
+	coin.custom_minimum_size = Vector2(38, 38)
+	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom.add_child(coin)
+	var price := _label("", 38)
+	bottom.add_child(price)
+	return {"btn": btn, "pips": pips, "price": price, "coin": coin, "spec": sp}
+
+
+func _tile_style(bg: Color) -> StyleBoxFlat:
+	var sb := _style(bg, 26, 0)
+	sb.border_color = Color(0.56, 0.51, 0.44)
+	sb.set_border_width_all(3)
+	return sb
 
 
 func _refresh_upgrades() -> void:
@@ -393,12 +489,17 @@ func _refresh_upgrades() -> void:
 			cost = Game.upgrade_cost(key) if can else 0
 		(r.pips as Label).text = "●".repeat(lvl) + "○".repeat(maxi(mx - lvl, 0))
 		var btn: Button = r.btn
+		var price: Label = r.price
+		(r.coin as Control).visible = can
 		if not can:
-			btn.text = "MAX"
+			price.text = "MAX"
 			btn.disabled = true
+			btn.modulate.a = 1.0
 		else:
-			btn.text = Game.fmt(cost)
+			price.text = Game.fmt(cost)
 			btn.disabled = Game.money < cost
+			# Not affordable yet: greyed and faded, so it reads without colour.
+			btn.modulate.a = 0.55 if btn.disabled else 1.0
 
 
 func open_upgrades(board: int = 1) -> void:
@@ -446,25 +547,27 @@ func _build_menu(root: Control) -> void:
 	var info := _label("A calm lumber mill. No ads, no timers.\nProgress saves on its own.", 30, Color(0.42, 0.36, 0.3))
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(info)
-	sound_btn = _button("", GREEN, 40)
-	sound_btn.custom_minimum_size.y = 100
+	var toggles := HBoxContainer.new()
+	toggles.alignment = BoxContainer.ALIGNMENT_CENTER
+	toggles.add_theme_constant_override("separation", 40)
+	v.add_child(toggles)
+	sound_btn = _glyph_button("sound_on", GREEN)
 	sound_btn.pressed.connect(func() -> void:
 		Game.sound_on = not Game.sound_on
 		Sfx.apply_sound_setting()
 		_sound_text()
 		Game.save_game())
-	v.add_child(sound_btn)
-	music_btn = _button("", GREEN, 40)
-	music_btn.custom_minimum_size.y = 100
+	toggles.add_child(sound_btn)
+	music_btn = _glyph_button("music_on", GREEN)
 	music_btn.pressed.connect(func() -> void:
 		Game.music_on = not Game.music_on
 		Sfx.apply_sound_setting()
 		_sound_text()
 		Game.save_game())
-	v.add_child(music_btn)
+	toggles.add_child(music_btn)
 	_sound_text()
 	var reset := _button("Start over", Color(0.75, 0.38, 0.3), 36)
-	reset.custom_minimum_size.y = 90
+	reset.custom_minimum_size.y = HIT
 	var confirm_state := [false]
 	reset.pressed.connect(func() -> void:
 		if confirm_state[0]:
@@ -474,7 +577,7 @@ func _build_menu(root: Control) -> void:
 			reset.text = "Tap again to erase your valley")
 	v.add_child(reset)
 	var close := _button("Back to the valley", Color(0.35, 0.45, 0.3), 40)
-	close.custom_minimum_size.y = 100
+	close.custom_minimum_size.y = HIT
 	close.pressed.connect(func() -> void:
 		menu_panel.visible = false
 		confirm_state[0] = false
@@ -482,9 +585,10 @@ func _build_menu(root: Control) -> void:
 	v.add_child(close)
 
 
+## Sound and music show as a speaker and a note; "off" adds a cross or a slash (shape, not colour).
 func _sound_text() -> void:
-	sound_btn.text = "Sound: " + ("On" if Game.sound_on else "Off")
-	music_btn.text = "Music: " + ("On" if Game.music_on else "Off")
+	_set_glyph(sound_btn, "sound_on" if Game.sound_on else "sound_off")
+	_set_glyph(music_btn, "music_on" if Game.music_on else "music_off")
 
 
 func _build_finish(root: Control) -> void:
@@ -509,8 +613,7 @@ func _build_finish(root: Control) -> void:
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(body)
-	var keep := _button("Keep playing", GREEN, 42)
-	keep.custom_minimum_size.y = 110
+	var keep := _glyph_button("next", GREEN)
 	keep.pressed.connect(func() -> void:
 		finish_panel.visible = false
 		_cover())
@@ -540,8 +643,7 @@ func _build_valley_card(root: Control) -> void:
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(body)
-	var ok := _button("Keep going", GREEN, 42)
-	ok.custom_minimum_size.y = 110
+	var ok := _glyph_button("next", GREEN)
 	ok.pressed.connect(close_valley_card)
 	v.add_child(ok)
 
