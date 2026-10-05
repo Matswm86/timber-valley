@@ -35,6 +35,8 @@ var offline_pending: int = 0
 var pile_counts: Dictionary = {}
 var finished: bool = false
 var sound_on: bool = true
+## Background music on/off (menu), separate from all sound (2026-10-05).
+var music_on: bool = true
 
 var player: Node3D
 var hud: Node
@@ -280,6 +282,7 @@ func save_game() -> void:
 		"piles": piles,
 		"finished": finished,
 		"sound_on": sound_on,
+		"music_on": music_on,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f == null:
@@ -354,6 +357,7 @@ func apply_save(data: Dictionary) -> void:
 	if finished:
 		unlocked_ids["lodge"] = true
 	sound_on = bool(data.get("sound_on", true))
+	music_on = bool(data.get("music_on", true))
 	# Offline earnings: up to 2 h at 50% of the ledger income, collected at the office.
 	var saved_at := int(data.get("saved_at", 0))
 	if saved_at > 0:

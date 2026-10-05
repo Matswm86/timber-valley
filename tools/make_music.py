@@ -7,95 +7,115 @@ def write_ogg(path, data, sr):
 from scipy.signal import fftconvolve, butter, sosfilt
 SR = 44100
 rng = np.random.default_rng(7)
-BPM = 76
-beat = 60 / BPM
-bars = 16
-dur = bars * 4 * beat
-N = int(dur * SR)
-L = np.zeros(N); R = np.zeros(N)
+import argparse
+ap = argparse.ArgumentParser(description="Writes music.ogg and/or ambience.ogg into the current folder.")
+ap.add_argument("--only", choices=["music", "ambience", "all"], default="music")
+ARGS = ap.parse_args()
 
 def note_hz(m): return 440 * 2 ** ((m - 69) / 12)
 
+# ---- Music (2026-10-05): 150 s calm loop, pads + soft bass + slow e-piano + sparse bells,
+# no percussion. The old 50 s loop sat about 6 dB under the game's effects and had 88% of its
+# energy below 300 Hz, which a phone speaker barely plays (Mats could not hear it). Voiced for
+# phone speakers: chords from about 150 Hz up, no sub-bass, 180 Hz high-pass.
+BPM = 64
+beat = 60 / BPM
+BARS = 40
+dur = BARS * 4 * beat
+N = int(dur * SR)
+TAIL = int(8 * SR)
+L = np.zeros(N + TAIL); R = np.zeros(N + TAIL)
+
 def add(buf, start, sig, gain=1.0):
     i = int(start * SR)
-    j = min(N, i + len(sig))
-    if i >= N: return
-    buf[i:j] += sig[: j - i] * gain
-    # wrap the tail around so the loop is seamless
-    rest = len(sig) - (j - i)
-    if rest > 0:
-        buf[:rest] += sig[j - i:] * gain
+    n = min(len(sig), len(buf) - i)
+    if n > 0:
+        buf[i:i + n] += sig[:n] * gain
 
-def epiano(m, length, vel=0.5):
-    t = np.arange(int((length + 2.5) * SR)) / SR
-    f = note_hz(m)
-    env = np.exp(-t * 1.6) * np.minimum(1, t * 200)
-    sig = np.sin(2 * np.pi * f * t) + 0.25 * np.sin(2 * np.pi * 2 * f * t) * np.exp(-t * 3) + 0.08 * np.sin(2 * np.pi * 3 * f * t) * np.exp(-t * 5)
-    sig *= 1 + 0.04 * np.sin(2 * np.pi * 4.5 * t)
-    return sig * env * vel
+def env_adsr(n, a, r):
+    t = np.arange(n) / SR
+    e = np.minimum(1.0, t / max(a, 1e-3))
+    rel = np.clip((n / SR - t) / max(r, 1e-3), 0, 1)
+    return e * rel
 
-def pluck(m, vel=0.4, length=3.0):
-    f = note_hz(m); n = int(SR / f)
-    buf = rng.uniform(-1, 1, n)
-    out = np.zeros(int(length * SR))
-    for i in range(len(out)):
-        out[i] = buf[i % n]
-        buf[i % n] = 0.996 * 0.5 * (buf[i % n] + buf[(i + 1) % n])
-    return out * vel
-
-def pad(ms, length, vel=0.12):
-    t = np.arange(int((length + 1.5) * SR)) / SR
-    env = np.minimum(1, t / 1.2) * np.minimum(1, np.maximum(0, (length + 1.5 - t) / 1.5))
-    sig = np.zeros_like(t)
+def pad(ms, length, vel):
+    n = int((length + 2.0) * SR)
+    t = np.arange(n) / SR
+    sig = np.zeros(n)
     for m in ms:
-        for det in (-0.12, 0.12):
+        for det in (-0.07, 0.0, 0.07):
             f = note_hz(m + det)
-            sig += np.sin(2 * np.pi * f * t) + 0.3 * np.sin(2 * np.pi * 2 * f * t)
-    return sig * env * vel / len(ms)
+            ph = rng.uniform(0, 2 * np.pi)
+            sig += np.sin(2 * np.pi * f * t + ph) + 0.22 * np.sin(4 * np.pi * f * t + ph)
+    slow = 0.85 + 0.15 * np.sin(2 * np.pi * t / 6.0)
+    return sig * env_adsr(n, 1.6, 2.0) * slow * vel / (3 * len(ms))
 
-# Cmaj7 - Am7 - Fmaj7 - G6sus, two bars each, twice.
-chords = [[48, 55, 59, 64], [45, 52, 55, 60], [41, 48, 52, 57], [43, 50, 55, 59]]
-penta = [60, 62, 64, 67, 69, 72, 74, 76]
-t0 = 0.0
-for rep in range(2):
-    for ci, ch in enumerate(chords):
-        start = (rep * 8 + ci * 2) * 4 * beat
-        p = pad(ch, 8 * beat)
-        add(L, start, p, 0.9); add(R, start, p, 1.0)
-        bass = epiano(ch[0] - 12, 2, 0.35)
-        add(L, start, bass); add(R, start, bass)
-        add(L, start + 4 * beat, epiano(ch[0] - 12, 2, 0.28)); add(R, start + 4 * beat, epiano(ch[0] - 12, 2, 0.28))
-        # gentle broken chord on the piano
-        for k, bt in enumerate([0, 1.5, 3, 4.5, 6]):
-            m = ch[1 + (k % 3)] + 12
-            s = epiano(m, 1.5, 0.16)
-            pan = 0.35 + 0.3 * (k % 2)
-            add(L, start + bt * beat, s, 1 - pan); add(R, start + bt * beat, s, pan)
-# sparse plucked melody drawn from the pentatonic scale
-for b in range(bars * 4):
-    if rng.random() < 0.38 and b % 2 == 0 or rng.random() < 0.12:
-        m = int(rng.choice(penta))
-        s = pluck(m, 0.22)
-        pan = rng.uniform(0.3, 0.7)
-        add(L, b * beat + rng.choice([0, 0.5]) * beat, s, 1 - pan); add(R, b * beat, s, pan)
+def bass(m, length, vel):
+    n = int((length + 1.0) * SR)
+    t = np.arange(n) / SR
+    f = note_hz(m)
+    return (np.sin(2 * np.pi * f * t) + 0.15 * np.sin(4 * np.pi * f * t)) * env_adsr(n, 0.25, 1.2) * vel
+
+def epiano(m, vel, length=3.2):
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    f = note_hz(m)
+    tone = np.sin(2 * np.pi * f * t) + 0.25 * np.sin(4 * np.pi * f * t) * np.exp(-t * 3)
+    return tone * np.exp(-t * 1.6) * np.minimum(1, t / 0.006) * vel
+
+def bell(m, vel, length=4.0):
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    f = note_hz(m)
+    tone = np.sin(2 * np.pi * f * t) + 0.12 * np.sin(2 * np.pi * 2.76 * f * t) * np.exp(-t * 4)
+    return tone * np.exp(-t * 1.2) * np.minimum(1, t / 0.004) * vel
+
+A = [[48, 55, 59, 64], [45, 52, 55, 60], [41, 48, 52, 57], [43, 50, 55, 60]]
+B = [[40, 47, 50, 55], [45, 52, 55, 60], [38, 45, 48, 53], [43, 50, 53, 55]]
+C = [[41, 48, 52, 57], [40, 47, 50, 55], [38, 45, 48, 53], [43, 50, 55, 59]]
+chords = A + A + B + A + C
+penta = [76, 79, 81, 84, 86, 88, 91]
+for ci, ch in enumerate(chords):
+    start = ci * 8 * beat
+    # Upper chord tones only (the root is the bass), plus a soft octave-up layer.
+    p = pad([m + 12 for m in ch[1:]], 8 * beat, 0.50) + np.pad(pad([m + 24 for m in ch[1:]], 8 * beat, 0.22), (0, 0))
+    add(L, start, p, 0.95); add(R, start, p, 1.0)
+    b = bass(ch[0] + 12, 8 * beat, 0.10)
+    add(L, start, b); add(R, start, b)
+    for k, bt in enumerate([0, 1.5, 3, 4.5, 6]):
+        m = ch[1 + (k % 3)] + 24
+        s = epiano(m, rng.uniform(0.10, 0.14))
+        pan = 0.38 + 0.24 * (k % 2)
+        add(L, start + bt * beat, s, 1 - pan); add(R, start + bt * beat, s, pan)
+    if ci in range(4, 8) or ci in range(12, 16):
+        for bt in range(0, 8, 2):
+            if rng.random() < 0.4:
+                s = bell(int(rng.choice(penta)), 0.10)
+                pan = rng.uniform(0.3, 0.7)
+                add(L, start + bt * beat, s, 1 - pan); add(R, start + bt * beat, s, pan)
 
 def reverb(x):
-    t = np.arange(int(1.8 * SR)) / SR
-    ir = rng.normal(0, 1, len(t)) * np.exp(-t * 3.2)
+    t = np.arange(int(2.6 * SR)) / SR
+    ir = rng.normal(0, 1, len(t)) * np.exp(-t * 2.4)
     ir[0] = 0
-    y = fftconvolve(x, ir)[: len(x) + len(ir)]
-    # fold the tail back into the start for a seamless loop
-    out = y[: len(x)].copy(); out[: len(y) - len(x)] += y[len(x):]
-    return out
-wetL, wetR = reverb(L), reverb(R)
-L = L + 0.05 * wetL; R = R + 0.05 * wetR
-sos = butter(2, 5500, 'low', fs=SR, output='sos')
-L = sosfilt(sos, L); R = sosfilt(sos, R)
-mx = max(np.abs(L).max(), np.abs(R).max())
-st = np.stack([L, R], 1) / mx * 0.7
-write_ogg('music.ogg', st, SR)
-print('music', dur, 's')
+    return fftconvolve(x, ir)[: len(x)] / np.sqrt(len(t))
 
+L = L + 0.9 * reverb(L) * 0.12; R = R + 0.9 * reverb(R) * 0.12
+# Seamless loop: what rings past the end is folded back into the start.
+L[:TAIL] += L[N:]; R[:TAIL] += R[N:]
+L = L[:N]; R = R[:N]
+sos = butter(2, [180, 6000], 'band', fs=SR, output='sos')
+L = sosfilt(sos, np.concatenate([L, L]))[N:]; R = sosfilt(sos, np.concatenate([R, R]))[N:]
+st = np.stack([L, R], 1)
+st *= 10 ** (-12 / 20) / np.sqrt(np.mean(st ** 2))   # RMS -12 dBFS
+st = np.tanh(st * 1.15) / 1.15                      # soft limit, peaks stay under 0 dBFS
+st *= min(1.0, 10 ** (-1 / 20) / np.abs(st).max())  # peak <= -1 dBFS
+if ARGS.only in ("music", "all"):
+    write_ogg('music.ogg', st, SR)
+    print('music', round(dur, 1), 's', 'rms_db', round(20 * np.log10(np.sqrt(np.mean(st ** 2))), 1), 'peak_db', round(20 * np.log10(np.abs(st).max()), 1))
+
+if ARGS.only == "music":
+    raise SystemExit(0)
 # Ambience: soft wind bed + occasional bird chirps, 40 s loop.
 D = 40; N2 = D * SR
 noise = rng.normal(0, 1, N2)

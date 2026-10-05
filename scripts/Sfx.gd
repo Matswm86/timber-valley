@@ -20,6 +20,12 @@ const SOUNDS := {
 	"machine": ["impactWood_light_000.ogg", "impactWood_light_001.ogg"],
 }
 
+## Loop levels (2026-10-05). music.ogg is a 150 s loop at about -12.6 dB RMS voiced for phone
+## speakers (tools/make_music.py), so -16 lands near -29 dB RMS in game: low, under the effects,
+## but audible. Ambience (about -22 dB RMS) sits under the music.
+const MUSIC_DB := -16.0
+const AMBIENCE_DB := -18.0
+
 var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
 var _last_played: Dictionary = {}
@@ -38,10 +44,10 @@ func _ready() -> void:
 		add_child(p)
 		_players.append(p)
 	_music = AudioStreamPlayer.new()
-	_music.volume_db = -9.0
+	_music.volume_db = MUSIC_DB
 	add_child(_music)
 	_ambience = AudioStreamPlayer.new()
-	_ambience.volume_db = -12.0
+	_ambience.volume_db = AMBIENCE_DB
 	add_child(_ambience)
 	var music_path := "res://assets/audio/music.ogg"
 	if ResourceLoader.exists(music_path):
@@ -61,10 +67,14 @@ func _ready() -> void:
 func apply_sound_setting() -> void:
 	AudioServer.set_bus_mute(0, not Game.sound_on)
 	if Game.sound_on:
-		if _music.stream and not _music.playing:
-			_music.play()
 		if _ambience.stream and not _ambience.playing:
 			_ambience.play()
+	# Music has its own switch (menu), under the main sound switch.
+	if Game.sound_on and Game.music_on:
+		if _music.stream and not _music.playing:
+			_music.play()
+	elif _music.playing:
+		_music.stop()
 
 
 func play(key: String, volume_db: float = 0.0, pitch: float = 1.0, min_gap: float = 0.035) -> void:

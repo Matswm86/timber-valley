@@ -876,3 +876,16 @@ Measured with `tests/pacing_probe.gd`; tables in `docs/balance/valleys_3_5_audit
 - Design calls left for Mats: crews outnumber machines in every valley; Redwood earns $0 from
   automation for pads 9-11 and Frost Peaks until the snowcat (both need requirement changes);
   the Forester Camp's extra crews add nothing.
+
+## Playtest fixes (2026-10-05)
+Details: `docs/balance/playtest_fixes_2026-10-05.md`.
+- **Redwood Coast**: new pad "Hire 2 Timber Carriers" ($50K, after the first lumberjack) carries
+  mill timber to the Harbor counter until the forklift takes over. Shoppers at an empty counter
+  52% -> 23% of their time; timber sold before the forklift 325 -> 1,356.
+- **Grand Timber Station**: after buying it the camera shows the Home Valley platform, a toast says
+  "Fill one platform in every valley!", and the arrow and hint lead to each platform
+  ("Station 0/5: Bookcases 0/120 platform").
+- **Home Valley**: "Conveyor: Tables to Market" ($800), bridging the Sawmill 2 and chair belts;
+  part of the Grand Lodge requirements.
+- **Music**: new 150 s calm loop voiced for phone speakers, at -16 dB; separate Music on/off in the
+  menu.

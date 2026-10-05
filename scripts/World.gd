@@ -1190,6 +1190,8 @@ func _apply_unlock(id: String, animate: bool) -> void:
 			plazas.append(Vector4(11.0, -12.6, 5.0, 2.8))
 			if animate:
 				Fx.pop_in(ms, 0.9)
+		"belt_tables":
+			_belt(machines.cnc.output, shop.shelf("table"), V1_BELT_TABLES, animate)
 		"belt_mega":
 			var ms: MegaSaw = machines.megasaw
 			_belt(ms.output, machines.cnc.input, [Vector3(15.1, 0, -12.9), Vector3(15.1, 0, -27.4), Vector3(6.9, 0, -27.4), Vector3(6.9, 0, -24.7)], animate)
@@ -1600,6 +1602,10 @@ func _goal() -> Array:
 	if gate and not any_tut:
 		var what := "Next valley" if gate.id != "cap_station" else "Finale"
 		return [gate.global_position, "%s: %s - %s" % [what, gate.title, Game.fmt(gate.cost - gate.paid_amount)]]
+	# The finale: point at the platforms still to load (Mats 2026-10-04: "buy it, then nothing").
+	var can_buy := cheapest != null and Game.money >= cheapest.cost - cheapest.paid_amount
+	if station.built and not Game.complete and not can_buy:
+		return station.goal(p, _cur_region)
 	if cheapest and Game.money >= cheapest.cost - cheapest.paid_amount:
 		return [cheapest.global_position, "Buy %s!" % cheapest.title if any_tut else ""]
 	if v2_tutorial:
@@ -1775,6 +1781,14 @@ func _collect_offline(carrier: Node, _delta: float) -> bool:
 
 # ---------------------------------------------------------------- Birch Bend (Valley 2)
 
+## CNC tables to the market (2026-10-05). The Mega Sawmill closes the way south, so the belt runs
+## west of the carpentry and bridges the Sawmill 2 belt (x 0.4) and the chair belt (x 5.9).
+const V1_BELT_TABLES := [
+	Vector3(11.7, 0, -22.6), Vector3(11.7, 0, -19.8), Vector3(3.0, 0, -19.8),
+	Vector3(1.4, 0.8, -19.8), Vector3(-0.6, 0.8, -19.8), Vector3(-2.2, 0, -19.8),
+	Vector3(-2.2, 0, -9.0), Vector3(3.8, 0, -9.0), Vector3(5.2, 0.8, -9.0), Vector3(6.8, 0.8, -9.0),
+	Vector3(6.8, 0, -7.0), Vector3(6.8, 0, 1.4), Vector3(9.1, 0, 1.4),
+]
 const V2_BELT_LP := [Vector3(-42.3, 0, -7.4), Vector3(-42.3, 0, -11.5), Vector3(-49.6, 0, -11.5), Vector3(-49.6, 0, -17.8), Vector3(-48.9, 0, -17.8)]
 ## The second press hangs off the same belt: shared up to index 3, then on to press 2.
 const V2_BELT_LP2 := [Vector3(-42.3, 0, -7.4), Vector3(-42.3, 0, -11.5), Vector3(-49.6, 0, -11.5), Vector3(-49.6, 0, -17.8), Vector3(-49.6, 0, -27.8), Vector3(-48.9, 0, -27.8)]

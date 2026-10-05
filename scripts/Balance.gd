@@ -194,6 +194,9 @@ const SHOPPER_QTY_MULT := {"veneer": 5}
 const SITE_RESERVE := {
 	"beam": 12, "floorboard": 12, "cabin_kit": 4, "dry_lumber": 20, "sled": 4, "guitar": 2,
 }
+## Redwood Coast timber carriers (r4_hauler1): one walked the 40 m mill-to-harbor trip busy 100%
+## and shoppers still waited at an empty counter 26% of the time (2026-10-05).
+const TIMBER_CARRIERS := 2
 ## Log flume (Valley 2): a Conveyor with a water look. 2026-10-04: spacing 0.5 -> 0.25 s (2 -> 4
 ## logs/s; at 0.5 the five flume crews stood at a full chute while the lathe ran dry) and speed
 ## 3.5 -> 7.0 m/s (logs in the water hold lathe-input room, so fewer riders = fewer stalls).
@@ -241,9 +244,11 @@ const UNLOCKS := [
 	{"id": "belt_planks", "cost": 350, "req": ["cashier"], "title": "Conveyor: Sawmill to Market", "pad": Vector3(3.2, 0, 9.6)},
 	{"id": "belt_saw2", "cost": 500, "req": ["hauler2"], "title": "Conveyor: Sawmill 2 to Carpentry", "pad": Vector3(-2.6, 0, -18.4)},
 	{"id": "belt_chairs", "cost": 650, "req": ["hauler3", "belt_planks"], "title": "Conveyor: Chairs to Market", "pad": Vector3(8.0, 0, -8.0)},
+	# Tables had only a carrier (Mats 2026-10-05). Priced between the chair and mega-saw belts.
+	{"id": "belt_tables", "cost": 800, "req": ["hauler4", "belt_chairs"], "title": "Conveyor: Tables to Market", "pad": Vector3(13.6, 0, -19.5)},
 	{"id": "megasaw", "cost": 2500, "req": ["factory"], "title": "MEGA Sawmill", "pad": Vector3(11.0, 0, -13.5)},
 	{"id": "belt_mega", "cost": 1000, "req": ["megasaw"], "title": "Conveyor: Mega Sawmill to CNC", "pad": Vector3(9.5, 0, -18.4)},
-	{"id": "lodge", "cost": 6000, "req": ["conveyor2", "jack3", "belt_mega"], "title": "Build the Grand Lodge", "pad": Vector3(-12, 0, -39)},
+	{"id": "lodge", "cost": 6000, "req": ["conveyor2", "jack3", "belt_mega", "belt_tables"], "title": "Build the Grand Lodge", "pad": Vector3(-12, 0, -39)},
 	# ---- Valley 2: Birch Bend (unlocks_regions.csv). Bridge pad moved from the river (-27) to the V1 bank.
 	{"id": "r2_bridge", "cost": 2800, "req": ["lodge"], "title": "River Bridge to Birch Bend", "pad": Vector3(-20.5, 0, -6)},
 	{"id": "r2_lathe", "cost": 3600, "req": ["r2_bridge"], "title": "Veneer Lathe", "pad": Vector3(-45, 0, -6)},
@@ -297,6 +302,9 @@ const UNLOCKS := [
 	{"id": "r4_grove2", "cost": 40000, "req": ["r4_redmill"], "title": "More Redwoods", "pad": Vector3(45, 0, 4)},
 	{"id": "r4_office", "cost": 45000, "req": ["r4_redmill"], "title": "Harbor Office", "pad": Vector3(28, 0, 7.4)},
 	{"id": "r4_jack1", "cost": 55000, "req": ["r4_grove2"], "title": "Hire a Redwood Lumberjack", "pad": Vector3(37, 0, -2)},
+	# Mats 2026-10-05: nothing carried timber to the counter before the forklift (pad 12), so
+	# shoppers queued at an empty counter 52-54% of the time. A plain carrier right after jack1.
+	{"id": "r4_hauler1", "cost": 50000, "req": ["r4_jack1"], "title": "Hire 2 Timber Carriers", "pad": Vector3(36.5, 0, -16.5)},
 	{"id": "r4_skidder1", "cost": 65000, "req": ["r4_jack1"], "title": "Hire a Log Skidder", "pad": Vector3(38, 0, -14)},
 	{"id": "r4_harbor", "cost": 75000, "req": ["r4_skidder1"], "title": "Fishing Pier: More Shoppers", "pad": Vector3(70, 0, 4)},
 	{"id": "r4_cashier", "cost": 85000, "req": ["r4_harbor"], "title": "Harbor Cashier", "pad": Vector3(61.5, 0, -9.5)},

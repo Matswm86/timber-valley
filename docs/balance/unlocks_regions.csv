@@ -44,6 +44,7 @@ region,id,title,cost,requires,pad_x,pad_z,kind,auto_income_base_per_s,hand_incom
 4,r4_grove2,More Redwoods,40000,r4_redmill,45,4,forest,0,6,"Redwood Grove 2 (3x2, 4 m spacing)"
 4,r4_office,Harbor Office,45000,r4_redmill,28,7.4,office,0,0,Region upgrade board
 4,r4_jack1,Hire a Redwood Lumberjack,55000,r4_grove2,37,-2,worker,33.0,0,Groves 1+2 -> redwood mill
+4,r4_hauler1,Hire 2 Timber Carriers,50000,r4_jack1,36.5,-16.5,worker,0,0,2 haulers (Balance.TIMBER_CARRIERS): mill out -> TIMBER counter until r4_forklift replaces them
 4,r4_skidder1,Hire a Log Skidder,65000,r4_jack1,38,-14,worker,49.5,0,"Vehicle lumberjack: cap 16, 4.8 m/s"
 4,r4_harbor,Fishing Pier: More Shoppers,75000,r4_skidder1,70,4,shoppers,33.0,0,Boats bring shoppers: x1.7 Harbor spawn rate
 4,r4_cashier,Harbor Cashier,85000,r4_harbor,61.5,-9.5,worker,16.5,-20,Auto-collects Harbor till

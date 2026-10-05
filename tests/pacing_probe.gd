@@ -35,6 +35,9 @@ var piles: Dictionary = {}
 ## worker instance id -> {"name", "states": {state: seconds}, "win": {...}, "now"}
 var workers: Dictionary = {}
 var _win_from: float = 120.0
+## Shopper-seconds spent queueing at an empty counter, and shopper-seconds on the map.
+var empty_wait: float = 0.0
+var shopper_time: float = 0.0
 
 
 static func region_of(id: String) -> int:
@@ -203,7 +206,18 @@ func _run_auto() -> void:
 			var f := spec.split(":")
 			world.player.global_position = Vector3(float(f[1]), 0, float(f[2]))
 			await _wait(float(f[3]) if f.size() > 3 else 2.0)
+			if f[0].begins_with("menu"):
+				# "menu_*" shots open the in-game menu (sound and music switches).
+				Game.hud.menu_panel.visible = true
+				await _wait(0.3)
+			if f.size() > 4:
+				# name:x:z:wait:height = straight-down view from that height (layout checks).
+				world.set_process(false)
+				world.camera.global_position = Vector3(float(f[1]), float(f[4]), float(f[2]) + 0.01)
+				world.camera.look_at(Vector3(float(f[1]), 0, float(f[2])), Vector3.FORWARD)
+				await _wait(0.3)
 			await _save("%s/%s.jpg" % [dir, f[0]])
+			world.set_process(true)
 	elif region == 2 and dir != "":
 		await _v2_shots(dir)
 
@@ -382,6 +396,14 @@ func _sample_workers(root: Node, dt: float) -> void:
 			rec.win[s] = float(rec.win.get(s, 0.0)) + dt
 
 
+func _sample_shoppers(root: Node, dt: float) -> void:
+	for c in root.find_children("*", "Customer", true, false):
+		var cu := c as Customer
+		shopper_time += dt
+		if cu.state == Customer.State.SHELF and cu.shop.shelf(cu.product).is_empty():
+			empty_wait += dt
+
+
 func _worker_line() -> String:
 	var out: Array = []
 	for id in workers:
@@ -535,6 +557,7 @@ func _run_play() -> void:
 		step[what] += dt
 		_sample_piles(dt)
 		_sample_workers(reg, dt)
+		_sample_shoppers(reg, dt)
 		for id in Game.unlocked_ids:
 			if owned.has(id):
 				continue
@@ -553,6 +576,7 @@ func _run_play() -> void:
 			step = {"work": 0.0, "buy": 0.0, "wait": 0.0}
 			if id == landmark:
 				lm_bought_t = t
+		_collect_piles(reg)
 		if OS.get_environment("PROBE_TRACE") != "" and int(t * 2.0) != int((t - dt) * 2.0):
 			print("TRACE t=%.1f pos=%s vel=%s input=%s what=%s target=%s" % [t, p.global_position.snapped(Vector3.ONE * 0.01), p.velocity.snapped(Vector3.ONE * 0.01), p.input_vector, what, target])
 		if t >= next_log:
@@ -572,6 +596,7 @@ func _run_play() -> void:
 			first10 += 1
 	print("SUMMARY play region=%d t=%.0fs pads=%d median_gap=%.0fs max_gap=%.0fs pads_in_first_10min=%d work=%.0f%% buy=%.0f%% wait=%.0f%% valley_$=%.0f landmark_bought=%.0fs landmark_done=%s" % [
 		region, t, gaps.size(), med, mx, first10, 100.0 * states.work / tot, 100.0 * states.buy / tot, 100.0 * states.wait / tot, _earned(region), lm_bought_t, str(landmark != "" and Game.site_done(landmark))])
+	print("SHOPPERS at an empty counter: %.0f%% of shopper time (%.0f of %.0f shopper-s)" % [100.0 * empty_wait / maxf(shopper_time, 0.01), empty_wait, shopper_time])
 	_win_from = 0.0
 	_summary(0.0)
 

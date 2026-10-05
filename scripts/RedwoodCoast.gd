@@ -40,6 +40,8 @@ var shop4: Shop
 var office4_zone: Zone
 var forklift4: Worker
 var orders: OrderBoard
+## Timber carriers (r4_hauler1) until the harbor forklift takes over.
+var _timber_carriers: Array[Worker] = []
 var _gate_body: StaticBody3D
 var _gate_prop: Node3D
 var _arms: Array[Node3D] = []
@@ -251,6 +253,21 @@ func apply_unlock(id: String, animate: bool) -> void:
 			w._spawn_jack_to("character-male-d", w.forests.redwood, m.input, m.in_zone.global_position, Vector3(38, 0, -3), animate, 4)
 		"r4_skidder1":
 			_skidder(w.forests.redwood, w.machines.redmill, Vector3(38, 0, -14), animate)
+		"r4_hauler1":
+			# The harbor forklift replaces them (they took the slipways' timber: no ship launched).
+			if Game.is_unlocked("r4_forklift"):
+				return
+			var mt: Machine = w.machines.redmill
+			var shelf_pos := shop4.shelf_zone("timber").global_position
+			for k in int(Balance.TIMBER_CARRIERS):
+				var look: String = ["character-female-d", "character-male-c"][k % 2]
+				var src_pos := mt.out_zone.global_position
+				var hw := Worker.new().as_hauler(look, mt.output, src_pos, shop4.shelf("timber"), shelf_pos)
+				hw.region = 4
+				r.add_child(hw)
+				_timber_carriers.append(hw)
+				if animate:
+					Fx.pop_in(hw)
 		"r4_harbor":
 			_build_boats(animate)
 		"r4_cashier":
@@ -267,6 +284,10 @@ func apply_unlock(id: String, animate: bool) -> void:
 		"r4_belt_rd":
 			w._belt((w.machines.redmill as Machine).output, (w.machines.decksaw as Machine).input, BELT_RD, animate, 4)
 		"r4_forklift":
+			for hw in _timber_carriers:
+				if is_instance_valid(hw):
+					hw.queue_free()
+			_timber_carriers.clear()
 			forklift4 = Worker.new().as_forklift(_fork_route, Vector3(44, 0, -13), "forklift_navy")
 			forklift4.region = 4
 			r.add_child(forklift4)

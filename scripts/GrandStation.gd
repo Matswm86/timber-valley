@@ -84,6 +84,53 @@ func apply_unlock(id: String, animate: bool) -> void:
 		w._build_site(pid, animate, Vector3(-0.55, 0, 0.1), Vector3(0, 0, 2.4), Vector3(1.1, 2.7, -0.6))
 		_porter(pid, animate)
 	_refresh(false)
+	if animate:
+		_announce()
+
+
+## Right after the purchase: say what the finale is and glide the camera to the first platform.
+func _announce() -> void:
+	var first: Vector3 = Balance.BUILD_SITES.cap_p1.pos
+	w.get_tree().create_timer(1.2).timeout.connect(func() -> void:
+		if Game.hud:
+			Game.hud.toast("Fill one platform in every valley!")
+		w._pan_to = first
+		var tw := w.create_tween()
+		tw.tween_property(w, "_pan_w", 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_interval(1.4)
+		tw.tween_property(w, "_pan_w", 0.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT))
+
+
+## Guide arrow and hint while the platforms load: this valley's platform first (its porter only
+## works while the valley is awake), else the handcar stop on the way to the next one.
+func goal(p: Vector3, cur: int) -> Array:
+	var left := 0
+	var next_pid := ""
+	for pid in PLATFORMS:
+		if not Game.site_done(pid):
+			left += 1
+			if next_pid == "":
+				next_pid = pid
+	if next_pid == "":
+		return [null, ""]
+	var count := "Station %d/5" % (PLATFORMS.size() - left)
+	var here := "cap_p%d" % cur
+	var pid := here if cur >= 1 and cur <= 5 and not Game.site_done(here) else next_pid
+	var info: Dictionary = Balance.BUILD_SITES[pid]
+	var item: String = info.goods.keys()[0]
+	var need := int(info.goods[item])
+	var have := mini(int((Game.sites.get(pid, {}) as Dictionary).get(item, 0)), need)
+	var rid := int(info.region)
+	var what := "%s %d/%d" % [Items.label(item).capitalize(), have, need]
+	if rid == cur:
+		var to: Vector3 = info.pos
+		var near := Vector2(p.x - to.x, p.z - to.z).length() < 6.0
+		# The porter only works while this valley is awake: tell the player to stay.
+		var tail := ", stay here" if near else " platform"
+		return [null if near else to, "%s: %s%s" % [count, what, tail]]
+	# Another valley: the arrow points at this valley's handcar stop.
+	var stop: Vector3 = (Balance.HANDCAR_STOPS[clampi(cur, 1, 5)] as Dictionary).pos
+	return [stop, "%s: handcar to %s" % [count, Balance.REGIONS[rid].name]]
 
 
 func _block(root: Node3D, size: Vector3, at: Vector3) -> void:

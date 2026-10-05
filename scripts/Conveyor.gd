@@ -85,11 +85,20 @@ func _build_segment(a: Vector3, b: Vector3) -> void:
 	rails.scale = Vector3(1, 1, len + 0.8)
 	seg.add_child(rails)
 	var n := int(len / 1.6) + 1
+	var raised := a.y > 0.0 or b.y > 0.0
 	for i in n + 1:
 		var z := -len * 0.5 + len * float(i) / maxf(n, 1)
 		var lg: Node3D = load(Models.path("belt_legs")).instantiate()
-		lg.position = Vector3(0, 0, z)
-		seg.add_child(lg)
+		if raised:
+			# Bridge or ramp (points above the ground): upright legs stretched to the ground.
+			var at := a.lerp(b, float(i) / maxf(n, 1))
+			var stretch := Vector3(1, (HEIGHT + at.y) / HEIGHT, 1)
+			var yaw := Basis(Vector3.UP, seg.rotation.y)
+			lg.transform = Transform3D(yaw.scaled(stretch), Vector3(at.x, 0, at.z))
+			add_child(lg)
+		else:
+			lg.position = Vector3(0, 0, z)
+			seg.add_child(lg)
 
 
 ## End roller just past `end`, on the line from `from`: hides the square belt end at a pile.

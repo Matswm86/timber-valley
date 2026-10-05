@@ -31,6 +31,7 @@ var valley_card: PanelContainer
 var menu_panel: PanelContainer
 var finish_panel: PanelContainer
 var sound_btn: Button
+var music_btn: Button
 var joy_base: Control
 ## Carried stack: item icon + "count/capacity" (top left, hidden when empty).
 var carry_pill: PanelContainer
@@ -453,6 +454,14 @@ func _build_menu(root: Control) -> void:
 		_sound_text()
 		Game.save_game())
 	v.add_child(sound_btn)
+	music_btn = _button("", GREEN, 40)
+	music_btn.custom_minimum_size.y = 100
+	music_btn.pressed.connect(func() -> void:
+		Game.music_on = not Game.music_on
+		Sfx.apply_sound_setting()
+		_sound_text()
+		Game.save_game())
+	v.add_child(music_btn)
 	_sound_text()
 	var reset := _button("Start over", Color(0.75, 0.38, 0.3), 36)
 	reset.custom_minimum_size.y = 90
@@ -475,6 +484,7 @@ func _build_menu(root: Control) -> void:
 
 func _sound_text() -> void:
 	sound_btn.text = "Sound: " + ("On" if Game.sound_on else "Off")
+	music_btn.text = "Music: " + ("On" if Game.music_on else "Off")
 
 
 func _build_finish(root: Control) -> void:

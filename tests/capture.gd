@@ -1406,6 +1406,14 @@ func _m5() -> void:
 	print("M5 station bought=%s" % Game.is_unlocked("cap_station"))
 	await _wait_seconds(1.5)
 	await _shot("m5/06_station_site_rail")
+	# Within 5 s of the purchase the player must see what to do next (Mats 2026-10-04).
+	await _wait_seconds(0.8)
+	await _shot("m5/06b_station_pan_to_platform")
+	await _wait_seconds(2.2)
+	var g5 := world._goal()
+	print("M5 STATION GUIDE 5s hint='%s' arrow=%s guide_visible=%s %s" % [g5[1], g5[0], world.guide.visible,
+		"PASS" if str(g5[1]).contains("Station 0/5") and world.guide.visible else "FAIL"])
+	await _shot("m5/06c_station_guide_5s")
 	# Platforms by each handcar stop; let the porters work for a while.
 	Engine.time_scale = 4.0
 	await _frames(600)
