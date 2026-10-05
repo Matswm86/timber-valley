@@ -13,6 +13,10 @@ const OLD_SAVE_PATH := "user://save.json"
 ## 1 = original single-valley save (no "version" key), 2 = M1 (valleys, ledger, offline),
 ## 3 = M2 (build sites), 4 = M3-M5 (cargo orders, Grand Timber Station finished).
 const SAVE_VERSION := 4
+## A host app (MWM Play) sets Engine.set_meta(&"mwm_play_shell", true) before it loads
+## scenes/Main.tscn and removes it when the game closes. Inside the host the game hides its own
+## menu (sound, music, start over) and always plays, so the host's switches decide what is heard.
+const SHELL_META := &"mwm_play_shell"
 
 const PRICES := Balance.PRICES
 const UPGRADES := Balance.UPGRADES
@@ -65,6 +69,10 @@ func _process(delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_game()
+
+
+func in_shell() -> bool:
+	return Engine.has_meta(SHELL_META) and bool(Engine.get_meta(SHELL_META))
 
 
 ## region > 0 books the income to that valley (shown on its "Valley complete" card).

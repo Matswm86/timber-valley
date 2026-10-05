@@ -101,6 +101,27 @@ The music loop and forest ambience come from `tools/make_music.py`
 tutorial with a bot, unlocks everything and saves screenshots. Run it under
 Xvfb with `CAPTURE_DIR=/some/dir`; add `CAPTURE_MODE=shots` to skip the bot.
 
+`tests/kidui_capture.tscn` shoots every HUD screen with a button and measures
+each button (216 px touch areas, nothing in the bottom 256 px, top-left
+232 px free), standalone, inside a host app and with a fake camera cutout.
+`tests/reentry_test.tscn` (headless) checks that loading the save again pays
+offline earnings only once.
+
+## Running inside a host app
+
+Progress is saved to `user://timber_valley_save.json` (an older
+`user://save.json` is moved there on first start). A host app (MWM Play) sets
+one flag before it loads `scenes/Main.tscn`:
+
+```gdscript
+Engine.set_meta(&"mwm_play_shell", true)   # remove_meta when the game closes
+```
+
+With the flag the game hides its own menu (sound, music, start over), ignores
+its saved mute, never mutes the Master bus and always plays. `Game.load_game()`
+is safe to call again on every enter. Without the flag (the standalone APK)
+nothing changes.
+
 ## Build
 
 GitHub Actions builds the APK on every push to `main`

@@ -21,6 +21,9 @@ const UPGRADE_GLYPH := {
 	"prices": "star", "saws": "blade", "crew": "cup", "fame": "star",
 }
 const HudGlyph := preload("res://scripts/HudGlyph.gd")
+## The money pill and menu disc sit this far below the top edge; a camera cutout deeper than
+## this pushes them down by the difference (touch areas still start at the top edge).
+const TOP_CLEAR := 30.0
 
 var font: Font
 var money_label: Label
@@ -44,6 +47,9 @@ var finish_panel: PanelContainer
 var sound_btn: Button
 var music_btn: Button
 var menu_btn: Button
+## Test hook: a fake top safe-area inset in window px; < 0 = ask the display.
+var fake_safe_top: float = -1.0
+var _top_box: VBoxContainer
 var joy_base: Control
 ## Carried stack: item icon + "count/capacity" (top left, hidden when empty).
 var carry_pill: PanelContainer
@@ -83,6 +89,13 @@ func _ready() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fade.visible = false
 	root.add_child(_fade)
+	# Inside a host app the menu (sound, music, start over) belongs to the host's parent area.
+	var in_shell := Game.in_shell()
+	menu_btn.visible = not in_shell
+	sound_btn.visible = not in_shell
+	music_btn.visible = not in_shell
+	apply_safe_area()
+	get_viewport().size_changed.connect(apply_safe_area)
 	_shown_money = Game.money
 	Game.money_changed.connect(_on_money)
 	Game.upgraded.connect(func(_i: String, _l: int) -> void: _refresh_upgrades())
@@ -162,6 +175,7 @@ func _build_top(root: Control) -> void:
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_theme_constant_override("separation", 16)
 	root.add_child(top)
+	_top_box = top
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -254,6 +268,30 @@ func _build_carry(root: Control) -> void:
 	r.add_child(carry_icon)
 	carry_label = _label("", 44)
 	r.add_child(carry_label)
+
+
+## Moves the top row below a notch or punch-hole camera; the menu's touch area keeps the top edge.
+func apply_safe_area() -> void:
+	var dy := maxf(0.0, safe_top_inset() - TOP_CLEAR)
+	_top_box.offset_top = 70 + dy
+	menu_btn.offset_bottom = HIT + dy
+	for c in menu_btn.get_children():
+		if c.get_script() == HudGlyph:
+			c.set("top_pad", dy)
+			(c as Control).queue_redraw()
+
+
+## Depth of the top screen cutout in viewport px (0 on desktop and on phones without one).
+func safe_top_inset() -> float:
+	var top_px := fake_safe_top
+	if top_px < 0.0:
+		if not OS.has_feature("mobile"):
+			return 0.0
+		top_px = float(DisplayServer.get_display_safe_area().position.y)
+	var win := DisplayServer.window_get_size()
+	if win.y <= 0:
+		return 0.0
+	return maxf(0.0, top_px * get_viewport().get_visible_rect().size.y / float(win.y))
 
 
 ## Called every frame: shows what the player carries, "MAX" in deep red when the stack is full.

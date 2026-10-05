@@ -65,12 +65,16 @@ func _ready() -> void:
 
 
 func apply_sound_setting() -> void:
-	AudioServer.set_bus_mute(0, not Game.sound_on)
-	if Game.sound_on:
+	# Inside a host app (MWM Play) the host's switches decide: never mute its Master bus,
+	# ignore this game's saved mute and always play.
+	var shell := Game.in_shell()
+	if not shell:
+		AudioServer.set_bus_mute(0, not Game.sound_on)
+	if shell or Game.sound_on:
 		if _ambience.stream and not _ambience.playing:
 			_ambience.play()
 	# Music has its own switch (menu), under the main sound switch.
-	if Game.sound_on and Game.music_on:
+	if shell or (Game.sound_on and Game.music_on):
 		if _music.stream and not _music.playing:
 			_music.play()
 	elif _music.playing:
